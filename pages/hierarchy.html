@@ -1,0 +1,118 @@
+<div class="page-hero">
+  <h1>Hiérarchie des managers</h1>
+  <p class="lead">20 managers organisés en 6 couches + 2 couches transversales. Chaque manager possède son état, expose ses méthodes publiques, et délègue en interne à des sous-systèmes composables.</p>
+</div>
+
+<div class="callout callout-or"><strong>Règle cardinale :</strong> un manager de couche N peut appeler un manager de couche ≥ N. Jamais vers le haut. Cette règle seule suffit à éviter les dépendances circulaires.</div>
+
+<h2 class="section">Infrastructure — Stateless & Transversal</h2>
+<p class="text">Accessibles depuis toutes les couches. Ne possèdent aucune logique de jeu — répondent à des questions sans modifier l'état du monde.</p>
+<div class="table-wrap"><table>
+  <thead><tr><th>Manager</th><th>Rôle</th><th>Appelé par</th></tr></thead>
+  <tbody>
+    <tr><td><code>Registry</code></td><td>Tables d'index append-only pour l'encodage Base32 (Trône Renversé). Jamais réordonné.</td><td>TrôneRenverséManager uniquement</td></tr>
+    <tr><td><code>PoolManager</code></td><td>Interface get(key) / release(key) pour tous les objets recyclables.</td><td>SkillManager, EnemyManager, VFXManager</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">Couche 0 — Orchestration</h2>
+<div class="layer-card layer-c0">
+  <div class="lc-title" style="color:var(--or)">RunManager</div>
+  <div class="lc-managers">Chef d'orchestre du cycle de run complet — salles, récompenses, victoire, game over. Connaît tous les managers de C1 à C3.</div>
+</div>
+
+<h2 class="section">Couche 1 — Systèmes de combat</h2>
+<div class="callout callout-rouge"><strong>PhysicsManager</strong> est la source de vérité spatiale. Toute question "qui est où, qui touche quoi" passe par lui.</div>
+<div class="table-wrap"><table>
+  <thead><tr><th>Manager</th><th>Sous-systèmes internes</th><th>Responsabilité</th></tr></thead>
+  <tbody>
+    <tr><td><code>PhysicsManager</code></td><td>CollisionResolver, SpatialHash, SpatialQuery, ZoneTracker</td><td>Source de vérité spatiale</td></tr>
+    <tr><td><code>CombatManager</code></td><td>HitSequencer, KnockbackResolver</td><td>Séquence C1→C5, appel direct SkillManager</td></tr>
+    <tr><td><code>SkillManager</code></td><td>TriggerRunner, EffectRunner, CooldownTracker, ContextBuilder</td><td>Évaluation déclencheurs + exécution effets</td></tr>
+    <tr><td><code>EnemyManager</code></td><td>SpawnController, PopulationTracker, AITickScheduler</td><td>Population ennemie + spawns dynamiques</td></tr>
+    <tr><td><code>BulletTimeManager</code></td><td>—</td><td>Jauge BT, Engine.time_scale, recharges</td></tr>
+    <tr><td><code>RunMetricsCollector</code></td><td>—</td><td>Observateur pur — jamais d'écriture d'état</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">Couche 2 — État des entités</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Manager</th><th>Responsabilité</th><th>Modifié par</th></tr></thead>
+  <tbody>
+    <tr><td><code>HealthManager</code></td><td>PV joueur + ennemis. take_damage(), heal(), is_dead()</td><td>CombatManager, SkillManager</td></tr>
+    <tr><td><code>StatusManager</code></td><td>DoT, stun, slow, buffs. DOTTickManager interne.</td><td>SkillManager</td></tr>
+    <tr><td><code>BuildManager</code></td><td>Slots, tags actifs, reliques, synergies</td><td>LootManager, MerchantManager</td></tr>
+    <tr><td><code>ResourceManager</code></td><td>Petites Dents, Gouttes de Sang, Âmes</td><td>CombatManager, SkillManager, MerchantManager</td></tr>
+    <tr><td><code>DifficultyManager</code></td><td>Multiplicateurs dynamiques — modifiables en cours de combat</td><td>RunManager, BuildManager (reliques), EnemyManager (phases boss)</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">Couches 3 & 4</h2>
+<div class="cards cards-2">
+  <div class="card">
+    <div class="card-title">Couche 3 — Inter-salles</div>
+    <div class="card-desc">LootManager · MerchantManager · RoomManager<br><br>Appelés par RunManager entre chaque salle. Lisent BuildManager pour le filtrage des récompenses.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Couche 4 — Présentation</div>
+    <div class="card-desc">VFXManager · AudioManager · UIManager · EncyclopediaManager<br><br>Ne modifient jamais l'état du jeu. Reçoivent les signaux EventBus résiduels uniquement.</div>
+  </div>
+</div>
+
+<h2 class="section">Simulateur — Vérificateur de dépendances</h2>
+<div class="simulator">
+  <div class="sim-title">⚡ Ce manager peut-il appeler cet autre ?</div>
+  <div class="sim-controls">
+    <select class="sim-select" id="sim-from">
+      <option value="c1">Couche 1 (CombatManager…)</option>
+      <option value="c0">Couche 0 (RunManager)</option>
+      <option value="c2">Couche 2 (HealthManager…)</option>
+      <option value="c3">Couche 3 (LootManager…)</option>
+      <option value="c4">Couche 4 (VFXManager…)</option>
+    </select>
+    <span style="color:var(--gris);align-self:center;font-size:18px">→</span>
+    <select class="sim-select" id="sim-to">
+      <option value="infra">Infrastructure (Registry, Pool)</option>
+      <option value="c2">Couche 2 (HealthManager…)</option>
+      <option value="c1">Couche 1 (CombatManager…)</option>
+      <option value="c0">Couche 0 (RunManager)</option>
+      <option value="c3">Couche 3 (LootManager…)</option>
+      <option value="c4">Couche 4 (VFXManager…)</option>
+    </select>
+    <button class="sim-btn" onclick="checkDep()">Vérifier</button>
+  </div>
+  <div class="sim-output" id="dep-result">Sélectionnez deux couches et cliquez sur Vérifier.</div>
+</div>
+
+<div class="sources">
+  <div class="sources-title">Sources</div>
+  <div class="source-list">
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">Godot — Autoload / Singletons</div>
+        <div class="source-desc">Comment déclarer et utiliser les Autoloads en Godot 4 — base des managers globaux.</div>
+        <a class="source-link" href="https://docs.godotengine.org/en/stable/tutorials/scripting/singletons_autoload.html" target="_blank">docs.godotengine.org — Singletons/Autoload</a>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-repo">REPO</span>
+      <div class="source-content">
+        <div class="source-title">Game Programming Patterns — Component</div>
+        <div class="source-desc">Robert Nystrom — pattern Composant, base des sous-systèmes internes des managers.</div>
+        <a class="source-link" href="https://gameprogrammingpatterns.com/component.html" target="_blank">gameprogrammingpatterns.com/component.html</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.registerSearchEntries([
+  { title: 'Hiérarchie des managers', page: 'hierarchy', section: 'Architecture', content: 'couche infrastructure persistance combat état inter-salles présentation autoload manager' },
+  { title: 'PhysicsManager', page: 'hierarchy', section: 'Architecture', content: 'physique spatialhash collisionresolver zonetracker proximity spatial query' },
+  { title: 'CombatManager', page: 'hierarchy', section: 'Architecture', content: 'combat hit collision séquence C1 C2 C3 C4 C5 knockback' },
+  { title: 'SkillManager', page: 'hierarchy', section: 'Architecture', content: 'compétences triggerrunner effectrunner cooldown contextbuilder' },
+  { title: 'HealthManager — StatusManager', page: 'hierarchy', section: 'Architecture', content: 'santé PV take_damage heal statuts dot stun buff debuff' },
+  { title: 'DifficultyManager', page: 'hierarchy', section: 'Architecture', content: 'difficulté multiplicateur dynamique malédiction relique phase boss' },
+]);
+</script>

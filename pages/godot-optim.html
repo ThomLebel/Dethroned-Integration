@@ -1,0 +1,122 @@
+<div class="page-hero">
+  <h1>Optimisations Godot 4.6</h1>
+  <p class="lead">Décisions d'optimisation pour maintenir 60 FPS stables avec 15+ entités, 130+ effets actifs, et physique de billes en temps réel.</p>
+</div>
+
+<h2 class="section">Matrice de priorités</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Priorité</th><th>Système</th><th>Solution</th><th>Impact</th></tr></thead>
+  <tbody>
+    <tr><td><span style="color:var(--rouge)">■ CRITIQUE</span></td><td>Billes qui se traversent</td><td>CollisionResolver + Area3D</td><td>Gameplay correct</td></tr>
+    <tr><td><span style="color:var(--rouge)">■ CRITIQUE</span></td><td>EventBus overhead</td><td>Appel direct SkillSystem</td><td>−60% overhead</td></tr>
+    <tr><td><span style="color:var(--rouge)">■ CRITIQUE</span></td><td>Layers collision</td><td>Plan de 8 layers strict</td><td>Moins de tests</td></tr>
+    <tr><td><span style="color:var(--ocre)">■ HAUTE</span></td><td>IA à 60fps</td><td>AI tick 10fps / physique 60fps</td><td>−80% CPU IA</td></tr>
+    <tr><td><span style="color:var(--ocre)">■ HAUTE</span></td><td>DoT _process distribués</td><td>DOTTickManager centralisé</td><td>−N _process</td></tr>
+    <tr><td><span style="color:var(--ocre)">■ HAUTE</span></td><td>Queries de proximité</td><td>SpatialHash O(1)</td><td>Queries gratuites</td></tr>
+    <tr><td><span style="color:var(--vert)">■ MOYENNE</span></td><td>VFX CPU-driven</td><td>GPU-only + pool</td><td>GPU fluide</td></tr>
+    <tr><td><span style="color:var(--vert)">■ MOYENNE</span></td><td>Audio saturation</td><td>Bus limits + velocity</td><td>Mix propre</td></tr>
+  </tbody>
+</table></div>
+
+<div class="callout callout-rouge"><strong>Principe cardinal :</strong> CharacterBody3D n'est pas conçu pour les collisions entre corps mobiles. C'est une limitation de conception. Le CollisionResolver manuel est une nécessité architecturale.</div>
+
+<h2 class="section">CollisionResolver — Physique bille-bille</h2>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">GDScript — collision_resolver.gd (simplifié)</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="cm"># Plan de layers</span>
+<span class="cm"># Layer 1 : Joueur      détecte 2,3,6,7</span>
+<span class="cm"># Layer 2 : Ennemis     détecte 3,4,5,7</span>
+<span class="cm"># Layer 3 : Murs/géo</span>
+<span class="cm"># Layer 7 : Zones terrain (Area3D)</span>
+
+<span class="kw">func</span> <span class="fn">resolve</span>(a: <span class="tp">Node</span>, b: <span class="tp">Node</span>) -> <span class="tp">void</span>:
+    <span class="kw">var</span> normal = (b.global_position - a.global_position).<span class="fn">normalized</span>()
+    <span class="kw">var</span> rel_vel = a.velocity - b.velocity
+    <span class="kw">var</span> impulse = rel_vel.<span class="fn">dot</span>(normal)
+    <span class="kw">if</span> impulse > <span class="nm">0</span>: <span class="kw">return</span>  <span class="cm"># déjà en séparation</span>
+    <span class="kw">var</span> ma = a.<span class="fn">get_mass</span>(); <span class="kw">var</span> mb = b.<span class="fn">get_mass</span>()
+    <span class="kw">var</span> j = -((<span class="nm">1.0</span> + restitution) * impulse) / (<span class="nm">1.0</span>/ma + <span class="nm">1.0</span>/mb)
+    a.<span class="fn">apply_resolved_velocity</span>(a.velocity - normal * (j/ma))
+    b.<span class="fn">apply_resolved_velocity</span>(b.velocity + normal * (j/mb))</pre>
+</div>
+
+<h2 class="section">SpatialHash — queries O(1)</h2>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">GDScript — spatial_hash.gd (sous-système PhysicsManager)</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="kw">const</span> CELL_SIZE := <span class="nm">200.0</span>
+<span class="kw">var</span> _grid: <span class="tp">Dictionary</span> = {}
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(_delta: <span class="tp">float</span>) -> <span class="tp">void</span>:
+    _grid.<span class="fn">clear</span>()
+    <span class="kw">for</span> entity <span class="kw">in</span> <span class="fn">get_tree</span>().<span class="fn">get_nodes_in_group</span>(<span class="st">"spatial_entities"</span>):
+        <span class="kw">if not</span> <span class="fn">is_instance_valid</span>(entity): <span class="kw">continue</span>
+        <span class="kw">var</span> cell = <span class="fn">_to_cell</span>(entity.global_position)
+        <span class="kw">if not</span> _grid.<span class="fn">has</span>(cell): _grid[cell] = []
+        _grid[cell].<span class="fn">append</span>(entity)
+
+<span class="kw">func</span> <span class="fn">query_radius</span>(pos: <span class="tp">Vector3</span>, radius: <span class="tp">float</span>, group: <span class="tp">String</span> = <span class="st">""</span>) -> <span class="tp">Array</span>:
+    <span class="kw">var</span> result = []; <span class="kw">var</span> cr = <span class="fn">ceili</span>(radius / CELL_SIZE)
+    <span class="kw">var</span> cc = <span class="fn">_to_cell</span>(pos); <span class="kw">var</span> r2 = radius * radius
+    <span class="kw">for</span> dx <span class="kw">in range</span>(-cr, cr+<span class="nm">1</span>):
+        <span class="kw">for</span> dz <span class="kw">in range</span>(-cr, cr+<span class="nm">1</span>):
+            <span class="kw">var</span> cell = cc + <span class="tp">Vector3i</span>(dx, <span class="nm">0</span>, dz)
+            <span class="kw">if not</span> _grid.<span class="fn">has</span>(cell): <span class="kw">continue</span>
+            <span class="kw">for</span> e <span class="kw">in</span> _grid[cell]:
+                <span class="kw">if</span> group != <span class="st">""</span> <span class="kw">and not</span> e.<span class="fn">is_in_group</span>(group): <span class="kw">continue</span>
+                <span class="kw">if</span> pos.<span class="fn">distance_squared_to</span>(e.global_position) <= r2:
+                    result.<span class="fn">append</span>(e)
+    <span class="kw">return</span> result</pre>
+</div>
+
+<h2 class="section">IA tickée séparément</h2>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">GDScript — ai_tick_scheduler.gd (sous-système EnemyManager)</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="cm"># Taux de tick par type d'ennemi :</span>
+<span class="cm"># Faibles : 0.15s (~7fps)  |  Normaux : 0.10s (~10fps)</span>
+<span class="cm"># Puissants : 0.08s (~12fps) | Mini-boss : 0.05s (~20fps)</span>
+<span class="cm"># Boss / Trône Renversé : 0.033s (~30fps)</span>
+
+<span class="kw">func</span> <span class="fn">_physics_process</span>(delta: <span class="tp">float</span>) -> <span class="tp">void</span>:
+    <span class="kw">for</span> enemy <span class="kw">in</span> _active_enemies:
+        enemy._ai_timer -= delta
+        <span class="kw">if</span> enemy._ai_timer <= <span class="nm">0</span>:
+            enemy._ai_timer = enemy.data.ai_tick_rate
+            enemy.ai_component.<span class="fn">tick</span>()</pre>
+</div>
+
+<div class="sources">
+  <div class="sources-title">Sources</div>
+  <div class="source-list">
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">Godot — Optimization using Servers</div>
+        <a class="source-link" href="https://docs.godotengine.org/en/stable/tutorials/performance/using_servers.html" target="_blank">docs.godotengine.org — Optimization</a>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-repo">REPO</span>
+      <div class="source-content">
+        <div class="source-title">Randy Gaul — Impulse-Based Rigid Body Physics</div>
+        <div class="source-desc">Formules de résolution élastique utilisées dans CollisionResolver.</div>
+        <a class="source-link" href="https://randygaul.github.io/articles/impulse-based-dynamics/" target="_blank">randygaul.github.io</a>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-forum">FORUM</span>
+      <div class="source-content">
+        <div class="source-title">Godot Forum — Performance & Optimization</div>
+        <a class="source-link" href="https://forum.godotengine.org/c/help/performance-optimization/" target="_blank">forum.godotengine.org — Performance</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.registerSearchEntries([
+  { title: 'Optimisations — Matrice de priorités', page: 'godot-optim', section: 'Godot', content: 'optimisation fps performance critique haute moyenne collision ia dot vfx audio' },
+  { title: 'CollisionResolver — Physique bille', page: 'godot-optim', section: 'Godot', content: 'collisionresolver characterbody3d physique bille impulse layer mask restitution' },
+  { title: 'SpatialHash O(1)', page: 'godot-optim', section: 'Godot', content: 'spatialhash query grille cellule O(1) query_radius proximité performance' },
+  { title: 'IA tick séparé de la physique', page: 'godot-optim', section: 'Godot', content: 'ia tick rate fps 7 10 12 20 30 ennemi boss physics process' },
+]);
+</script>

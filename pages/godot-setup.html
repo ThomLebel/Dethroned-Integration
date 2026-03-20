@@ -1,0 +1,151 @@
+<div class="page-hero">
+  <h1>Intégration Godot 4.6</h1>
+  <p class="lead">Guide pas à pas pour mettre en place l'architecture Manager Graph dans un projet Godot 4.6 en GDScript. Conçu pour être compréhensible par un développeur junior.</p>
+  <div class="tags"><span class="tag tag-or">Godot 4.6</span><span class="tag tag-vert">GDScript</span></div>
+</div>
+
+<h2 class="section">Structure des fichiers recommandée</h2>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">Arborescence du projet</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre>res://
+├── autoloads/
+│   ├── managers/
+│   │   ├── physics_manager.gd
+│   │   ├── combat_manager.gd
+│   │   ├── skill_manager.gd
+│   │   ├── enemy_manager.gd
+│   │   ├── health_manager.gd
+│   │   ├── status_manager.gd
+│   │   ├── build_manager.gd
+│   │   ├── resource_manager.gd
+│   │   ├── difficulty_manager.gd
+│   │   └── bullet_time_manager.gd
+│   └── infrastructure/
+│       ├── registry.gd
+│       └── pool_manager.gd
+├── entities/
+│   ├── player/bille_joueur.gd       <span class="cm"># Implémente l'interface entité</span>
+│   ├── enemies/enemy_base.gd
+│   └── boss/boss_base.gd
+├── skills/
+│   ├── base/
+│   │   ├── effect_behaviour.gd      <span class="cm"># Classe de base (Resource)</span>
+│   │   ├── effect_data.gd
+│   │   ├── trigger_data.gd
+│   │   └── trigger_condition.gd
+│   ├── behaviours/                  <span class="cm"># ~25 scripts</span>
+│   ├── conditions/                  <span class="cm"># ~20 scripts</span>
+│   └── data/                        <span class="cm"># Tous les .tres</span>
+│       ├── triggers/
+│       └── effects/
+└── components/
+    ├── health_component.gd
+    ├── status_component.gd
+    └── trigger_state_component.gd</pre>
+</div>
+
+<h2 class="section">Ordre de déclaration des Autoloads</h2>
+<p class="text">Dans Godot : <strong>Project → Project Settings → Autoload</strong>. L'ordre détermine l'initialisation — déclarer dans l'ordre des couches, les plus basses en premier.</p>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">Ordre recommandé</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="cm"># 1. Infrastructure (aucune dépendance)</span>
+Registry          → res://autoloads/infrastructure/registry.gd
+PoolManager       → res://autoloads/infrastructure/pool_manager.gd
+
+<span class="cm"># 2. Couche 2 — État (avant C1 qui en a besoin)</span>
+HealthManager     → res://autoloads/managers/health_manager.gd
+StatusManager     → res://autoloads/managers/status_manager.gd
+BuildManager      → res://autoloads/managers/build_manager.gd
+ResourceManager   → res://autoloads/managers/resource_manager.gd
+DifficultyManager → res://autoloads/managers/difficulty_manager.gd
+
+<span class="cm"># 3. Couche 1 — Combat (peut appeler C2)</span>
+PhysicsManager    → res://autoloads/managers/physics_manager.gd
+SkillManager      → res://autoloads/managers/skill_manager.gd
+CombatManager     → res://autoloads/managers/combat_manager.gd
+EnemyManager      → res://autoloads/managers/enemy_manager.gd
+BulletTimeManager → res://autoloads/managers/bullet_time_manager.gd
+
+<span class="cm"># 4. Couche 0 — Orchestration</span>
+RunManager        → res://autoloads/managers/run_manager.gd</pre>
+</div>
+
+<h2 class="section">Template d'un manager</h2>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">GDScript — template_manager.gd</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="cm"># À copier pour chaque nouveau manager</span>
+<span class="kw">extends</span> <span class="tp">Node</span>
+
+<span class="cm"># ── État interne (privé) ──────────────────────────────</span>
+<span class="kw">var</span> _data: <span class="tp">Dictionary</span> = {}
+
+<span class="cm"># ── Initialisation ────────────────────────────────────</span>
+<span class="kw">func</span> <span class="fn">_ready</span>() -> <span class="tp">void</span>:
+    <span class="fn">_init_subsystems</span>()
+
+<span class="kw">func</span> <span class="fn">_init_subsystems</span>() -> <span class="tp">void</span>:
+    pass  <span class="cm"># initialiser les sous-systèmes ici</span>
+
+<span class="cm"># ── Interface publique ────────────────────────────────</span>
+<span class="cm"># Les autres managers n'appellent que ces méthodes</span>
+<span class="kw">func</span> <span class="fn">do_something</span>(entity: <span class="tp">Node</span>, value: <span class="tp">float</span>) -> <span class="tp">void</span>:
+    <span class="fn">_internal_logic</span>(entity, value)
+
+<span class="cm"># ── Logique interne (privée — préfixée _) ─────────────</span>
+<span class="kw">func</span> <span class="fn">_internal_logic</span>(entity: <span class="tp">Node</span>, value: <span class="tp">float</span>) -> <span class="tp">void</span>:
+    pass
+
+<span class="cm"># ── Debug ─────────────────────────────────────────────</span>
+<span class="kw">func</span> <span class="fn">debug_state</span>() -> <span class="tp">String</span>:
+    <span class="kw">return</span> <span class="st">""</span></pre>
+</div>
+
+<h2 class="section">Démarrage en local</h2>
+<div class="callout callout-rouge"><strong>Important :</strong> le site utilise fetch() — il ne fonctionne pas en ouvrant index.html directement. Utiliser un serveur HTTP local.</div>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">Terminal — serveur local</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="cm"># Option 1 — Python (recommandé)</span>
+python3 -m http.server 8080
+<span class="cm"># → http://localhost:8080</span>
+
+<span class="cm"># Option 2 — Node.js</span>
+npx serve .
+
+<span class="cm"># Option 3 — VS Code</span>
+<span class="cm"># Extension "Live Server" → clic droit index.html → Open with Live Server</span></pre>
+</div>
+
+<div class="sources">
+  <div class="sources-title">Sources</div>
+  <div class="source-list">
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">Godot 4 — GDScript reference</div>
+        <a class="source-link" href="https://docs.godotengine.org/en/stable/tutorials/scripting/gdscript/gdscript_basics.html" target="_blank">docs.godotengine.org — GDScript basics</a>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">Godot 4 — Autoload / Singletons</div>
+        <a class="source-link" href="https://docs.godotengine.org/en/stable/tutorials/scripting/singletons_autoload.html" target="_blank">docs.godotengine.org — Singletons/Autoload</a>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-video">VIDEO</span>
+      <div class="source-content">
+        <div class="source-title">Brackeys — How to make a Video Game in Godot 4</div>
+        <a class="source-link" href="https://www.youtube.com/watch?v=LOhfqjmasi0" target="_blank">youtube.com/watch?v=LOhfqjmasi0</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.registerSearchEntries([
+  { title: 'Structure du projet Godot 4.6', page: 'godot-setup', section: 'Godot', content: 'structure fichiers autoloads managers entities skills components arborescence' },
+  { title: 'Ordre de déclaration Autoload', page: 'godot-setup', section: 'Godot', content: 'autoload ordre initialisation déclaration project settings couche' },
+  { title: 'Template manager GDScript', page: 'godot-setup', section: 'Godot', content: 'template manager gdscript interface publique interne debug_state' },
+]);
+</script>

@@ -1,0 +1,253 @@
+<div class="page-hero">
+  <h1>Prompt d'intégration</h1>
+  <p class="lead">Prompt à donner à Claude pour adapter n'importe quel contenu existant — outil interactif, visualiseur, documentation — en une nouvelle page autonome du site.</p>
+</div>
+
+<div class="callout callout-or">
+  <strong>Architecture du site</strong> — Le site est multi-fichiers. <code>index.html</code> est le shell global (CSS, navigation, moteur). Chaque page est un fragment HTML dans <code>pages/ID.html</code>, chargé à la demande. Les <code>&lt;script&gt;</code> et les <code>&lt;style&gt;</code> dans les fragments fonctionnent normalement — aucune modification de <code>index.html</code> n'est nécessaire pour ajouter une page.
+</div>
+
+<h2 class="section">Prompt à donner à Claude</h2>
+<p class="text">Copie ce prompt en entier, puis fournis-lui la description ou le code de l'outil à intégrer.</p>
+
+<div class="code-wrap">
+  <div class="code-header">
+    <span class="code-lang">Prompt — À copier dans Claude</span>
+    <button class="copy-btn" onclick="copyCode(this)">📋 Copier</button>
+  </div>
+  <pre>Tu vas adapter un contenu existant pour l'intégrer comme une nouvelle page
+dans le site guide d'architecture "Dethroned: The King's Den".
+
+════════════════════════════════════════
+ARCHITECTURE DU SITE
+════════════════════════════════════════
+
+Structure de fichiers :
+  index.html       ← Shell (CSS global, navigation, JS core) — NE PAS MODIFIER
+  nav.json         ← Arbre de navigation — seule modification nécessaire
+  pages/ID.html    ← Fragments de page — à créer
+
+Chaque page est un fragment HTML sans &lt;html&gt;/&lt;head&gt;/&lt;body&gt;,
+injecté dynamiquement dans #page-container.
+
+Après injection, index.html appelle automatiquement :
+  - runPageScripts()   → réexécute tous les &lt;script&gt; du fragment
+  - applyPageLayout()  → active la pleine largeur si data-fullwidth="true"
+
+CONSÉQUENCE : les pages sont 100% autonomes. Aucune modification
+de index.html n'est jamais nécessaire pour ajouter une nouvelle page.
+
+════════════════════════════════════════
+PALETTE CSS ET VARIABLES DISPONIBLES
+════════════════════════════════════════
+
+Couleurs :
+  --or:#F2B749    --ocre:#A65526   --brun:#6B3A1F
+  --vert:#4A7C59  --rouge:#8B1A1A  --bleu:#2E5B8A  --violet:#6B3FA0
+  --noir:#0D0A07  --noir2:#1A1008  --noir3:#241508
+  --gris:#888888  --gris2:#444444  --blanc:#F5F0E8
+
+Typographie :
+  --font-display : 'Syne', sans-serif     (titres, labels)
+  --font-mono    : 'Space Mono', mono     (code, UI dense)
+  --font-body    : 'Inter', sans-serif    (corps de texte)
+
+Divers :
+  --radius:6px   --transition:0.18s ease
+  --sidebar-w:260px   --header-h:56px
+
+Classes de composants disponibles :
+  .page-hero                         → En-tête h1 + lead + tags
+  h2.section / h3.subsection         → Titres de sections
+  p.text / ul.list                   → Corps de texte
+  .callout .callout-or/vert/rouge/bleu/violet  → Blocs callout
+  .code-wrap + .code-header + pre    → Blocs de code avec copier
+  .table-wrap + table                → Tableaux stylés
+  .cards .cards-2/.cards-3 + .card   → Grilles de cartes
+  .simulator + .sim-controls/.sim-btn/.sim-output  → Simulateurs
+  .sources + .source-list + .source-item           → Section sources
+  .tag .tag-or/vert/bleu/rouge/violet              → Badges
+
+Fonctions globales JS (appelables depuis n'importe quel fragment) :
+  window.navigateTo('page-id')         → Navigation
+  window.copyCode(btn)                 → Copie bloc de code parent
+  window.registerSearchEntries([...])  → Enrichit l'index de recherche
+
+════════════════════════════════════════
+STRUCTURE D'UN FRAGMENT — CAS STANDARD
+════════════════════════════════════════
+
+Fichier : pages/mon-sujet.html
+
+&lt;div class="page-hero"&gt;
+  &lt;h1&gt;Titre&lt;/h1&gt;
+  &lt;p class="lead"&gt;Description.&lt;/p&gt;
+  &lt;div class="tags"&gt;
+    &lt;span class="tag tag-or"&gt;Tag&lt;/span&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;h2 class="section"&gt;Section&lt;/h2&gt;
+&lt;p class="text"&gt;Contenu...&lt;/p&gt;
+
+&lt;div class="sources"&gt;
+  &lt;div class="sources-title"&gt;Sources&lt;/div&gt;
+  &lt;div class="source-list"&gt;
+    &lt;div class="source-item"&gt;
+      &lt;span class="source-badge badge-docs"&gt;DOCS&lt;/span&gt;
+      &lt;div class="source-content"&gt;
+        &lt;div class="source-title"&gt;Titre source&lt;/div&gt;
+        &lt;a class="source-link" href="..." target="_blank"&gt;url&lt;/a&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/div&gt;
+
+&lt;script&gt;
+window.registerSearchEntries([
+  { title: 'Titre', page: 'mon-sujet', section: 'Section nav', content: 'mots-clés' },
+]);
+&lt;/script&gt;
+
+════════════════════════════════════════
+STRUCTURE D'UN FRAGMENT — OUTIL INTERACTIF (pleine largeur + JS)
+════════════════════════════════════════
+
+Fichier : pages/mon-outil.html
+
+&lt;!-- data-fullwidth="true" sur la racine = pleine largeur automatique --&gt;
+&lt;div data-fullwidth="true"&gt;
+
+  &lt;div class="page-hero"&gt;...&lt;/div&gt;
+
+  &lt;div class="callout callout-or"&gt;...mode d'emploi...&lt;/div&gt;
+
+  &lt;!-- Styles locaux — préfixe les sélecteurs pour éviter les conflits --&gt;
+  &lt;style&gt;
+    #mo-root { display: grid; ... }
+    .mo-panel { background: var(--noir2); ... }
+    /* Utiliser les variables CSS du site, jamais de valeurs hardcodées */
+  &lt;/style&gt;
+
+  &lt;!-- HTML de l'outil --&gt;
+  &lt;div id="mo-root"&gt;
+    &lt;!-- Utiliser des IDs préfixés (ex: "mo-") pour éviter les conflits --&gt;
+    &lt;select id="mo-select"&gt;...&lt;/select&gt;
+    &lt;canvas id="mo-canvas"&gt;&lt;/canvas&gt;
+  &lt;/div&gt;
+
+  &lt;div class="sources"&gt;...&lt;/div&gt;
+
+&lt;/div&gt;&lt;!-- /data-fullwidth --&gt;
+
+&lt;!--
+  RÈGLES POUR LE JAVASCRIPT :
+  1. Tout le JS dans une IIFE (function() { ... })() pour éviter
+     la pollution de scope global entre les pages.
+  2. Préfixer toutes les fonctions et variables locales.
+  3. Utiliser uniquement document.getElementById() — pas de sélecteurs
+     globaux qui pourraient toucher d'autres pages encore en cache.
+  4. Les event listeners sur document/window doivent être propres :
+     éviter d'en ajouter plusieurs si la page est visitée plusieurs fois.
+  5. window.registerSearchEntries() appeler à la fin du script.
+--&gt;
+&lt;script&gt;
+(function() {
+  'use strict';
+
+  // Toutes les variables et fonctions ici sont locales à cette page.
+
+  function g(id) { return document.getElementById(id); }
+
+  // ... logique de l'outil ...
+
+  // Enregistrement dans la recherche — toujours en dernier
+  if (typeof window.registerSearchEntries === 'function') {
+    window.registerSearchEntries([
+      { title: 'Mon Outil', page: 'mon-outil', section: 'Outils', content: 'mots-clés' },
+    ]);
+  }
+
+  // Initialisation
+  init();
+})();
+&lt;/script&gt;
+
+════════════════════════════════════════
+ENTRÉE nav.json À AJOUTER
+════════════════════════════════════════
+
+Dans la section appropriée de nav.json :
+{
+  "id": "mon-sujet",    ← nom du fichier sans .html
+  "icon": "🎮",
+  "label": "Mon sujet"
+}
+
+Si la section n'existe pas encore, ajouter un bloc :
+{
+  "section": "Ma Section",
+  "items": [
+    { "id": "mon-sujet", "icon": "🎮", "label": "Mon sujet" }
+  ]
+}
+
+════════════════════════════════════════
+CONSIGNES DE LIVRAISON
+════════════════════════════════════════
+
+Livrer :
+  A. Le fichier pages/mon-sujet.html complet et autonome
+  B. L'entrée nav.json à ajouter (section + item)
+
+NE PAS livrer de modifications à index.html — ce n'est jamais nécessaire.
+
+Pour les outils avec beaucoup de JS : utiliser une IIFE,
+préfixer tous les IDs HTML et les variables JS, ne jamais
+utiliser de noms génériques (ex: "canvas", "btn") qui
+pourraient entrer en conflit avec d'autres pages.
+
+Pour les styles : toujours utiliser les variables CSS du site
+(--or, --noir2, --vert, etc.) plutôt que des valeurs hardcodées,
+et préfixer les sélecteurs CSS pour les limiter à l'outil.
+
+════════════════════════════════════════
+CONTENU À INTÉGRER
+════════════════════════════════════════
+
+[COLLE ICI LA DESCRIPTION, LE CODE, OU LES SPECS DE L'OUTIL]</pre>
+</div>
+
+<h2 class="section">Récapitulatif — Ce qui change selon le type de contenu</h2>
+
+<div class="table-wrap"><table>
+  <thead>
+    <tr><th>Type de contenu</th><th>data-fullwidth</th><th>Style inline</th><th>JS dans le fragment</th></tr>
+  </thead>
+  <tbody>
+    <tr><td>Documentation, guide, référence</td><td class="neutral">Non</td><td class="neutral">Non (classes du site)</td><td class="neutral">Uniquement <code>registerSearchEntries</code></td></tr>
+    <tr><td>Simulateur simple</td><td class="neutral">Non</td><td class="neutral">Non</td><td class="check">Oui, IIFE recommandée</td></tr>
+    <tr><td>Outil interactif (canvas, 3 colonnes…)</td><td class="check">Oui</td><td class="check">Oui, préfixé</td><td class="check">Oui, IIFE obligatoire</td></tr>
+    <tr><td>Visualiseur de données</td><td class="check">Oui</td><td class="check">Oui, préfixé</td><td class="check">Oui, IIFE obligatoire</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">Outils déjà intégrés</h2>
+<div class="cards cards-2">
+  <div class="card">
+    <div class="card-title">⚔ Arena Forge</div>
+    <div class="card-desc">Générateur procédural d'arènes avec WFC, biomes, gabarits et placement d'ennemis. Export JSON.</div>
+    <span class="card-link" onclick="window.navigateTo('arena_forge_integration')" style="cursor:pointer">→ Voir la page</span>
+  </div>
+  <div class="card">
+    <div class="card-title">⚖️ Équilibreur PP</div>
+    <div class="card-desc">Calcul de budget Point de Puissance pour les effets et déclencheurs.</div>
+    <div class="card-link" style="color:var(--gris)">À intégrer</div>
+  </div>
+</div>
+
+<script>
+window.registerSearchEntries([
+  { title: 'Prompt d\'intégration', page: 'integration-prompt', section: 'Référence', content: 'prompt intégration outil page fragment html js css autonome pleine largeur data-fullwidth IIFE runPageScripts nav.json' },
+]);
+</script>

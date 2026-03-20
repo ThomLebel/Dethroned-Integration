@@ -1,0 +1,126 @@
+<div class="page-hero">
+  <h1>Déclencheurs</h1>
+  <p class="lead">~114 déclencheurs assemblés depuis ~20 blocs TriggerCondition. Chaque déclencheur est une TriggerData.tres — aucun code par déclencheur.</p>
+</div>
+
+<div class="callout callout-or"><strong>Principe :</strong> un déclencheur ne va jamais chercher l'information lui-même. Tout lui arrive dans le ctx. Les conditions lisent ctx, elles ne font pas de get_node().</div>
+
+<h2 class="section">Structure d'un déclencheur</h2>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">GDScript — TriggerData (Resource)</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="kw">extends</span> <span class="tp">Resource</span>
+<span class="kw">class_name</span> <span class="tp">TriggerData</span>
+
+@export <span class="kw">var</span> id: <span class="tp">String</span> = <span class="st">""</span>
+@export <span class="kw">var</span> event_ids: <span class="tp">Array</span>[<span class="tp">String</span>] = []   <span class="cm"># ex: ["enemy_hit"]</span>
+@export <span class="kw">var</span> loc_type: <span class="tp">String</span> = <span class="st">"loc_soi"</span>     <span class="cm"># loc_cible / loc_point / loc_soi / loc_global</span>
+@export <span class="kw">var</span> cooldown: <span class="tp">float</span> = <span class="nm">0.3</span>
+@export <span class="kw">var</span> tags: <span class="tp">Array</span>[<span class="tp">String</span>] = []
+@export <span class="kw">var</span> conditions: <span class="tp">Array</span>[<span class="tp">TriggerCondition</span>] = []
+
+<span class="cm"># Paramètres partagés entre les conditions</span>
+@export <span class="kw">var</span> threshold_value: <span class="tp">float</span> = <span class="nm">0.0</span>
+@export <span class="kw">var</span> threshold_count: <span class="tp">int</span> = <span class="nm">0</span>
+@export <span class="kw">var</span> time_window: <span class="tp">float</span> = <span class="nm">0.0</span>
+@export <span class="kw">var</span> required_tag: <span class="tp">String</span> = <span class="st">""</span></pre>
+</div>
+
+<h2 class="section">Bibliothèque de TriggerCondition</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Bloc</th><th>Vérifie</th><th>Exemples d'usage</th></tr></thead>
+  <tbody>
+    <tr><td><code>CheckThresholdBelow</code></td><td>ctx[key] ≤ seuil</td><td>Ennemi Agonisant (&lt;25% PV), Seuil de Vitesse</td></tr>
+    <tr><td><code>CheckThresholdBetween</code></td><td>min ≤ ctx[key] ≤ max</td><td>Tir à Mi-Charge (40–60%), Virage Serré</td></tr>
+    <tr><td><code>CheckTimeSince</code></td><td>Événement dans une fenêtre temporelle</td><td>Enchaînement Rapide (&lt;0.5s), Kill en Rafale</td></tr>
+    <tr><td><code>CheckTimeWithout</code></td><td>Événement absent depuis N secondes</td><td>Sans Dégâts Reçus (&gt;5s), Ligne Droite</td></tr>
+    <tr><td><code>CheckCounter</code></td><td>Compteur ≥ N</td><td>Compteur de Rebonds (×4), Compteur de Collisions</td></tr>
+    <tr><td><code>CheckTargetTag</code></td><td>Tag présent sur la cible</td><td>Ennemi Sous DoT, Ennemi Marqué</td></tr>
+    <tr><td><code>CheckTargetStatus</code></td><td>Statut précis sur la cible</td><td>Ennemi Sous Brûlure, Marque de Mort Active</td></tr>
+    <tr><td><code>CheckBoolFlag</code></td><td>Flag booléen dans ctx</td><td>Choc Frontal, Ennemi Déjà Touché</td></tr>
+    <tr><td><code>CheckBuildTag</code></td><td>Tag présent dans ctx["build_tags"]</td><td>Compatibilité Déclencheurs Avancés</td></tr>
+    <tr><td><code>IncrementTriggerCounter</code></td><td>Toujours vrai — incrémente</td><td>Tête de tout pipeline à compteur</td></tr>
+    <tr><td><code>RecordTimestamp</code></td><td>Toujours vrai — enregistre timestamp</td><td>Fin de pipeline temporel</td></tr>
+    <tr><td><code>CheckSequenceOrder</code></td><td>N dernières compétences dans l'ordre</td><td>Séquence Parfaite</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">Exemples de déclencheurs assemblés</h2>
+
+<h3 class="subsection">Collision Standard (0 condition)</h3>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">TriggerData.tres — DB-COL-01</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre>TriggerData {
+    id: <span class="st">"DB-COL-01"</span>  event_ids: [<span class="st">"enemy_hit"</span>]
+    loc_type: <span class="st">"loc_cible"</span>  cooldown: <span class="nm">0.3</span>
+    conditions: []  <span class="cm"># tout signal enemy_hit passe</span>
+}</pre>
+</div>
+
+<h3 class="subsection">Enchaînement Rapide (3 conditions)</h3>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">TriggerData.tres — DB-COL-12</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre>TriggerData {
+    id: <span class="st">"DB-COL-12"</span>  event_ids: [<span class="st">"enemy_hit"</span>]
+    loc_type: <span class="st">"loc_cible"</span>  time_window: <span class="nm">0.5</span>
+    conditions: [
+        CheckTargetDifference {},             <span class="cm"># cible différente de la précédente</span>
+        CheckTimeSince {                       <span class="cm"># last hit il y a moins de 0.5s</span>
+            event_key: <span class="st">"last_enemy_hit"</span>,
+            time_window: <span class="nm">0.5</span>
+        },
+        RecordTimestamp {                      <span class="cm"># met à jour (toujours vrai)</span>
+            event_key: <span class="st">"last_enemy_hit"</span>
+        }
+    ]
+}</pre>
+</div>
+
+<h3 class="subsection">Compteur de Rebonds (2 conditions + état)</h3>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">TriggerData.tres — DB-REB-05</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre>TriggerData {
+    id: <span class="st">"DB-REB-05"</span>  event_ids: [<span class="st">"wall_hit"</span>]
+    loc_type: <span class="st">"loc_soi"</span>  threshold_count: <span class="nm">4</span>
+    conditions: [
+        IncrementTriggerCounter {             <span class="cm"># incrémente (toujours vrai)</span>
+            counter_key: <span class="st">"wall_bounce_count"</span>,
+            reset_on_room: <span class="kw">true</span>
+        },
+        CheckCounter {                         <span class="cm"># déclenche au 4e rebond</span>
+            counter_key: <span class="st">"wall_bounce_count"</span>,
+            threshold_count: <span class="nm">4</span>
+        }
+    ]
+}</pre>
+</div>
+
+<div class="sources">
+  <div class="sources-title">Sources</div>
+  <div class="source-list">
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">Godot — Resources (custom)</div>
+        <div class="source-desc">Utilisation des Resources Godot 4 pour les TriggerData.tres — données sans code.</div>
+        <a class="source-link" href="https://docs.godotengine.org/en/stable/tutorials/scripting/resources.html" target="_blank">docs.godotengine.org — Resources</a>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-repo">REPO</span>
+      <div class="source-content">
+        <div class="source-title">Game Programming Patterns — Interpreter</div>
+        <div class="source-desc">Pattern Interpréteur — proche du système de TriggerCondition composées.</div>
+        <a class="source-link" href="https://gameprogrammingpatterns.com/interpreter.html" target="_blank">gameprogrammingpatterns.com/interpreter.html</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.registerSearchEntries([
+  { title: 'Déclencheurs — TriggerData', page: 'triggers', section: 'Compétences', content: 'triggerdata event_ids loc_type cooldown conditions resource tres assembly' },
+  { title: 'Bibliothèque TriggerCondition', page: 'triggers', section: 'Compétences', content: 'checkthreshold checktimesince checkbuildtag incrementcounter recordtimestamp séquence' },
+  { title: 'Enchaînement Rapide', page: 'triggers', section: 'Compétences', content: 'enchaînement rapide collision target difference timestamp window' },
+  { title: 'Compteur de Rebonds', page: 'triggers', section: 'Compétences', content: 'compteur rebonds wall_hit incrementcounter checkcounter reset_on_room' },
+]);
+</script>

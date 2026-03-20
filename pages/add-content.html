@@ -1,0 +1,69 @@
+<div class="page-hero">
+  <h1>Ajouter du contenu</h1>
+  <p class="lead">Procédures pour étendre le système sans modifier l'existant. Chaque type de contenu a son propre flux d'ajout.</p>
+</div>
+
+<div class="callout callout-vert"><strong>Principe :</strong> ajouter = créer des fichiers. Ne jamais modifier les fichiers de base existants sauf si la règle ci-dessous l'exige explicitement.</div>
+
+<h2 class="section">Ajouter un nouveau déclencheur</h2>
+<div class="callout callout-or"><strong>Règle :</strong> créer un .tres suffit. Aucun code existant n'est modifié sauf si le type d'événement est nouveau.</div>
+<ul class="list">
+  <li>Créer <code>res://skills/data/triggers/DB-XXX_nom.tres</code> de type TriggerData</li>
+  <li>Renseigner <code>event_ids</code>, <code>loc_type</code>, <code>cooldown</code>, <code>tags</code></li>
+  <li>Assembler les <code>conditions</code> depuis la bibliothèque dans l'inspecteur</li>
+  <li>Si le type d'événement est nouveau : ajouter <code>process_event("nouveau_type", ctx)</code> dans le manager source + enrichissement dans <code>ContextBuilder</code></li>
+</ul>
+
+<h2 class="section">Ajouter un nouvel effet</h2>
+<ul class="list">
+  <li>Créer <code>res://skills/data/effects/FAMILLE/E-XX-YY_nom.tres</code> de type EffectData</li>
+  <li>Assembler les <code>behaviours</code> depuis la bibliothèque dans l'inspecteur</li>
+  <li>Si un nouveau behaviour est nécessaire : créer <code>res://skills/behaviours/CATEGORIE/nom_behaviour.gd</code> qui étend EffectBehaviour</li>
+</ul>
+
+<h2 class="section">Ajouter un nouveau manager</h2>
+<ul class="list">
+  <li>Déterminer la couche (N) selon les responsabilités et les dépendances</li>
+  <li>Copier le template <code>template_manager.gd</code></li>
+  <li>Déclarer en Autoload dans l'ordre de sa couche (voir page <a onclick="window.navigateTo('godot-setup')" style="cursor:pointer">Intégration Godot</a>)</li>
+  <li>Documenter les méthodes publiques et les managers appelés</li>
+</ul>
+
+<h2 class="section">Ajouter un nouvel ennemi</h2>
+<ul class="list">
+  <li>Créer <code>EnemyData.tres</code> avec stats, type IA, compétences</li>
+  <li>Utiliser la scène <code>enemy_base.tscn</code> — pas de nouvelle scène sauf cas exceptionnel</li>
+  <li>Les 3 méthodes hors-contrat propres à EnemyBase sont héritées automatiquement</li>
+  <li>Passer par <code>EnemyManager.spawn(data)</code> — ne jamais instancier directement</li>
+</ul>
+
+<h2 class="section">Ajouter une page à ce guide</h2>
+<ul class="list">
+  <li>Créer <code>pages/mon-sujet.html</code> — fragment HTML avec <code>registerSearchEntries()</code></li>
+  <li>Éditer <code>nav.json</code> — ou utiliser l'éditeur ✏️ Nav dans la sidebar</li>
+  <li>Tester en local avec <code>python3 -m http.server 8080</code></li>
+</ul>
+<p class="text">Pour les outils existants (Arena Forge, équilibreur…), utiliser le <a onclick="window.navigateTo('integration-prompt')" style="cursor:pointer">Prompt d'intégration →</a></p>
+
+<div class="sources">
+  <div class="sources-title">Sources</div>
+  <div class="source-list">
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">Godot — Custom Resources</div>
+        <div class="source-desc">Créer et utiliser des Resources custom (.tres) pour les TriggerData et EffectData.</div>
+        <a class="source-link" href="https://docs.godotengine.org/en/stable/tutorials/scripting/resources.html" target="_blank">docs.godotengine.org — Resources</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.registerSearchEntries([
+  { title: 'Ajouter un déclencheur', page: 'add-content', section: 'Godot', content: 'ajouter déclencheur tres event_ids conditions nouveau contenu inspecteur' },
+  { title: 'Ajouter un effet', page: 'add-content', section: 'Godot', content: 'ajouter effet behaviours effectdata tres nouveau contenu inspecteur' },
+  { title: 'Ajouter un manager', page: 'add-content', section: 'Godot', content: 'ajouter manager couche autoload template dépendances' },
+  { title: 'Ajouter une page au guide', page: 'add-content', section: 'Godot', content: 'ajouter page html nav.json registerSearchEntries site guide' },
+]);
+</script>

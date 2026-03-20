@@ -1,0 +1,1050 @@
+<!-- data-fullwidth="true" sur la racine = pleine largeur automatique -->
+<div data-fullwidth="true">
+
+<div class="page-hero">
+  <h1>🌍 Terrain Shader Studio</h1>
+  <p class="lead">Outil de prévisualisation WebGL GPU pour les textures de sol des biomes — sol principal + îlots secondaires procéduraux, style cartoon posterisé.</p>
+  <div class="tags">
+    <span class="tag tag-or">WebGL GPU</span>
+    <span class="tag tag-vert">Environnements</span>
+    <span class="tag tag-bleu">WFC / Biomes</span>
+    <span class="tag tag-violet">Outil interactif</span>
+  </div>
+</div>
+
+<div class="callout callout-or">
+  <strong>Mode d'emploi</strong><br>
+  Utilisez les onglets <strong>Layout</strong>, <strong>Biomes</strong>, <strong>Variation</strong> et <strong>Shader</strong> pour paramétrer l'apparence du sol.
+  Le rendu est calculé en temps réel sur GPU (WebGL). Cliquez <strong>🔀 Regénérer</strong> pour changer la seed procédurale.
+  Les 4 modes de vue (Rendu final / Sol principal / Îlots seuls / Poids biomes) permettent d'inspecter chaque couche indépendamment.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- STYLES LOCAUX — préfixe "tss-" sur tous les sélecteurs -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<style>
+/* Racine de l'outil */
+#tss-root {
+  display: grid;
+  grid-template-columns: 310px 1fr;
+  height: 600px;
+  border: 2px solid var(--gris2);
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #0e1018;
+  font-family: var(--font-mono);
+  color: var(--blanc);
+}
+
+/* Variables locales (réutilisent les variables du site quand possible) */
+#tss-root {
+  --tss-panel: #161a26;
+  --tss-border: #252c40;
+  --tss-accent: var(--or);
+  --tss-muted: #6e7490;
+  --tss-good: #56cf7e;
+  --tss-hum: #3a9aac;
+  --tss-sav: #c8933a;
+  --tss-for: #4a8c3f;
+  --tss-rui: #7a6a5a;
+}
+
+/* SIDEBAR */
+#tss-sidebar {
+  background: var(--tss-panel);
+  border-right: 2px solid var(--tss-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#tss-sidebar-header {
+  padding: 10px 14px 8px;
+  border-bottom: 2px solid var(--tss-border);
+  flex-shrink: 0;
+}
+#tss-sidebar-header h3 {
+  font-family: var(--font-display);
+  font-size: .95rem;
+  color: var(--tss-accent);
+  margin: 0;
+}
+#tss-sidebar-header p {
+  font-size: .7rem;
+  color: var(--tss-muted);
+  margin: 2px 0 0;
+}
+.tss-fps-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: rgba(86,207,126,.15);
+  border: 1px solid var(--tss-good);
+  font-size: .65rem;
+  color: var(--tss-good);
+  font-weight: 700;
+  margin-left: 5px;
+}
+
+/* TOP TABS */
+#tss-top-tabs {
+  display: flex;
+  border-bottom: 2px solid var(--tss-border);
+  flex-shrink: 0;
+}
+.tss-ttab {
+  flex: 1;
+  padding: 7px 2px;
+  text-align: center;
+  cursor: pointer;
+  font-family: var(--font-display);
+  font-size: .7rem;
+  color: var(--tss-muted);
+  border-bottom: 3px solid transparent;
+  transition: all .15s;
+  user-select: none;
+}
+.tss-ttab:hover { color: var(--blanc); }
+.tss-ttab.active { color: var(--tss-accent); border-bottom-color: var(--tss-accent); }
+
+/* TAB PANELS */
+.tss-tab-panel { display: none; padding: 10px 12px; overflow-y: auto; flex: 1; }
+.tss-tab-panel.active { display: block; }
+
+/* SECTION TITLES */
+.tss-sec {
+  font-family: var(--font-display);
+  font-size: .78rem;
+  color: var(--tss-accent);
+  margin: 9px 0 5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.tss-sec::after { content: ''; flex: 1; height: 1px; background: var(--tss-border); }
+
+/* CONTROLS */
+.tss-ctrl { margin-bottom: 7px; }
+.tss-ctrl label {
+  display: flex;
+  justify-content: space-between;
+  font-size: .72rem;
+  color: var(--tss-muted);
+  margin-bottom: 2px;
+}
+.tss-ctrl label span { color: var(--blanc); font-weight: 700; min-width: 28px; text-align: right; }
+#tss-root input[type=range] { width: 100%; accent-color: var(--tss-accent); cursor: pointer; }
+
+/* COLOR ROW */
+.tss-color-row { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+.tss-color-row label { font-size: .72rem; color: var(--tss-muted); flex: 1; }
+.tss-swatch {
+  width: 22px; height: 22px; border-radius: 5px;
+  border: 2px solid var(--tss-border); cursor: pointer; flex-shrink: 0;
+}
+#tss-root input[type=color] { position: absolute; opacity: 0; width: 0; height: 0; }
+
+/* LAYOUT GRID */
+.tss-layout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 8px; }
+.tss-layout-opt {
+  padding: 6px 4px; border-radius: 7px; border: 2px solid var(--tss-border);
+  cursor: pointer; font-family: var(--font-display); font-size: .72rem;
+  color: var(--tss-muted); text-align: center; transition: all .15s; user-select: none;
+}
+.tss-layout-opt:hover { border-color: var(--tss-accent); }
+.tss-layout-opt.active { background: var(--tss-accent); color: #1a1200; border-color: var(--tss-accent); }
+
+/* PROP BARS */
+.tss-prop-bar-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+.tss-prop-label { font-size: .68rem; width: 52px; flex-shrink: 0; font-weight: 700; }
+.tss-prop-track { flex: 1; height: 9px; background: var(--tss-border); border-radius: 5px; overflow: hidden; }
+.tss-prop-fill { height: 100%; border-radius: 5px; transition: width .15s; }
+.tss-prop-pct { font-size: .68rem; color: var(--tss-muted); width: 26px; text-align: right; flex-shrink: 0; }
+
+/* BIOME TABS */
+.tss-biome-tabs { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 7px; }
+.tss-btab {
+  padding: 3px 8px; border-radius: 8px; border: 1px solid var(--tss-border);
+  background: transparent; cursor: pointer; font-size: .7rem;
+  font-family: var(--font-display); transition: all .15s; color: var(--tss-muted); user-select: none;
+}
+.tss-btab.active { color: #0e1018; border-color: transparent; }
+.tss-btab[data-b=hum].active { background: var(--tss-hum); }
+.tss-btab[data-b=sav].active { background: var(--tss-sav); }
+.tss-btab[data-b=for].active { background: var(--tss-for); }
+.tss-btab[data-b=rui].active { background: var(--tss-rui); }
+.tss-bpanel { display: none; }
+.tss-bpanel.active { display: block; }
+
+/* SOIL BLOCKS */
+.tss-soil-block { border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; border: 1px solid var(--tss-border); }
+.tss-soil-block.primary { background: rgba(255,255,255,.03); }
+.tss-soil-block.secondary { background: rgba(240,180,40,.04); border-color: rgba(240,180,40,.2); }
+.tss-soil-label {
+  font-family: var(--font-display); font-size: .76rem; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 5px;
+}
+.tss-soil-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+/* GRADIENT PREVIEW */
+.tss-gradient-preview {
+  width: 100%; height: 20px; border-radius: 5px;
+  border: 1px solid var(--tss-border); margin: 4px 0 8px; overflow: hidden;
+}
+.tss-gradient-preview canvas { display: block; width: 100%; height: 100%; border-radius: 5px; }
+
+/* VIZ BAR */
+.tss-viz-bar {
+  width: 100%; height: 16px; border-radius: 4px;
+  border: 1px solid var(--tss-border); margin-bottom: 8px;
+}
+.tss-viz-bar canvas { display: block; width: 100%; height: 100%; border-radius: 4px; }
+
+/* BUTTONS */
+.tss-btn {
+  padding: 5px 11px; border-radius: 11px; border: 2px solid var(--tss-accent);
+  background: transparent; color: var(--tss-accent); cursor: pointer;
+  font-family: var(--font-display); font-size: .75rem; transition: all .15s;
+}
+.tss-btn:hover { background: var(--tss-accent); color: #1a1200; }
+.tss-btn-row { display: flex; gap: 5px; margin: 6px 0; }
+
+/* VIEW TABS */
+.tss-view-row { display: flex; gap: 4px; flex-wrap: wrap; }
+.tss-vtab {
+  padding: 3px 8px; border-radius: 8px; border: 1px solid var(--tss-border);
+  background: transparent; color: var(--tss-muted); cursor: pointer;
+  font-size: .7rem; font-family: var(--font-display); transition: all .15s; user-select: none;
+}
+.tss-vtab:hover { border-color: var(--tss-accent); color: var(--blanc); }
+.tss-vtab.active { background: var(--tss-accent); color: #1a1200; border-color: var(--tss-accent); }
+
+/* SELECT */
+#tss-root select {
+  background: var(--tss-panel); color: var(--blanc); border: 1px solid var(--tss-border);
+  border-radius: 6px; padding: 3px 6px; font-size: .72rem; width: 100%; margin-bottom: 5px;
+}
+
+/* MAIN CANVAS AREA */
+#tss-main {
+  display: flex; flex-direction: column; overflow: hidden; background: #0e1018;
+}
+#tss-canvas-header {
+  padding: 8px 14px; border-bottom: 2px solid var(--tss-border);
+  display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap;
+}
+#tss-canvas-header h4 {
+  font-family: var(--font-display); color: var(--tss-accent); font-size: .85rem; margin: 0;
+}
+.tss-chips { display: flex; gap: 5px; margin-left: auto; flex-wrap: wrap; }
+.tss-chip {
+  padding: 2px 7px; border-radius: 7px; background: var(--tss-panel);
+  border: 1px solid var(--tss-border); font-size: .66rem; color: var(--tss-muted);
+}
+.tss-chip b { color: var(--blanc); }
+#tss-canvas-wrap {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 12px; background: #0e1018; position: relative;
+}
+#tss-cv {
+  border-radius: 12px; border: 3px solid var(--tss-border);
+  box-shadow: 0 8px 40px rgba(0,0,0,.5); max-width: 100%; max-height: 100%;
+}
+#tss-statusbar {
+  padding: 5px 14px; border-top: 2px solid var(--tss-border);
+  font-size: .66rem; color: var(--tss-muted); display: flex; gap: 14px; flex-shrink: 0;
+}
+#tss-statusbar b { color: var(--blanc); }
+</style>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- HTML DE L'OUTIL                                         -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="tss-root">
+
+  <!-- SIDEBAR -->
+  <div id="tss-sidebar">
+    <div id="tss-sidebar-header">
+      <h3>🌍 Terrain Studio <span class="tss-fps-badge">GPU ⚡</span></h3>
+      <p>v5 — Sol principal + îlots secondaires</p>
+    </div>
+
+    <div id="tss-top-tabs">
+      <div class="tss-ttab active" id="tss-ttab-layout">📐 Layout</div>
+      <div class="tss-ttab" id="tss-ttab-biomes">🎨 Biomes</div>
+      <div class="tss-ttab" id="tss-ttab-variation">🌿 Variation</div>
+      <div class="tss-ttab" id="tss-ttab-shader">⚙ Shader</div>
+    </div>
+
+    <!-- ═══ LAYOUT ═══ -->
+    <div class="tss-tab-panel active" id="tss-tp-layout">
+      <div class="tss-sec">Mode</div>
+      <div class="tss-layout-grid">
+        <div class="tss-layout-opt active" id="tss-lo-0">🔵 Voronoï</div>
+        <div class="tss-layout-opt" id="tss-lo-1">║ Bandes</div>
+      </div>
+      <div id="tss-bands-opts" style="display:none">
+        <div class="tss-ctrl"><label>Biome gauche</label>
+          <select id="tss-sel-bl">
+            <option value="0">Humide</option><option value="1">Savane</option>
+            <option value="2">Forêt</option><option value="3">Ruines</option>
+          </select></div>
+        <div class="tss-ctrl"><label>Biome droit</label>
+          <select id="tss-sel-br">
+            <option value="0">Humide</option><option value="1" selected>Forêt</option>
+            <option value="2">Forêt</option><option value="3">Ruines</option>
+          </select></div>
+        <div class="tss-ctrl"><label>Proportion G/D <span id="tss-val-bandsplit">50</span>%</label>
+          <input type="range" id="tss-sl-bandsplit" min="15" max="85" value="50"></div>
+      </div>
+      <div id="tss-voronoi-opts">
+        <div class="tss-sec">Proportions</div>
+        <div id="tss-prop-bars"></div>
+        <div class="tss-ctrl"><label>💧 Humide <span id="tss-val-ph">25</span>%</label>
+          <input type="range" id="tss-sl-ph" min="0" max="100" value="25"></div>
+        <div class="tss-ctrl"><label>🌅 Savane <span id="tss-val-ps">25</span>%</label>
+          <input type="range" id="tss-sl-ps" min="0" max="100" value="25"></div>
+        <div class="tss-ctrl"><label>🌿 Forêt <span id="tss-val-pf">25</span>%</label>
+          <input type="range" id="tss-sl-pf" min="0" max="100" value="25"></div>
+        <div class="tss-ctrl"><label>🏛 Ruines <span id="tss-val-pr">25</span>%</label>
+          <input type="range" id="tss-sl-pr" min="0" max="100" value="25"></div>
+        <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:6px">
+          <label style="font-size:.72rem;display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="tss-ck-0" checked><span style="color:var(--tss-hum);font-weight:700">Humide</span></label>
+          <label style="font-size:.72rem;display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="tss-ck-1" checked><span style="color:var(--tss-sav);font-weight:700">Savane</span></label>
+          <label style="font-size:.72rem;display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="tss-ck-2" checked><span style="color:var(--tss-for);font-weight:700">Forêt</span></label>
+          <label style="font-size:.72rem;display:flex;align-items:center;gap:3px;cursor:pointer"><input type="checkbox" id="tss-ck-3" checked><span style="color:var(--tss-rui);font-weight:700">Ruines</span></label>
+        </div>
+      </div>
+      <div class="tss-ctrl"><label>Érosion frontières <span id="tss-val-erosion">40</span>%</label>
+        <input type="range" id="tss-sl-erosion" min="0" max="100" value="40"></div>
+      <div class="tss-btn-row">
+        <button class="tss-btn" id="tss-btn-seed">🔀 Regénérer</button>
+        <button class="tss-btn" id="tss-btn-equal">⚖ Égaliser</button>
+      </div>
+      <div class="tss-sec">Vue</div>
+      <div class="tss-view-row">
+        <div class="tss-vtab active" id="tss-vt-0">Rendu</div>
+        <div class="tss-vtab" id="tss-vt-1">Sol principal</div>
+        <div class="tss-vtab" id="tss-vt-2">Îlots seuls</div>
+        <div class="tss-vtab" id="tss-vt-3">Poids</div>
+      </div>
+    </div>
+
+    <!-- ═══ BIOMES ═══ -->
+    <div class="tss-tab-panel" id="tss-tp-biomes">
+      <div class="tss-biome-tabs">
+        <div class="tss-btab active" data-b="hum" id="tss-btab-hum">💧 Humide</div>
+        <div class="tss-btab" data-b="sav" id="tss-btab-sav">🌅 Savane</div>
+        <div class="tss-btab" data-b="for" id="tss-btab-for">🌿 Forêt</div>
+        <div class="tss-btab" data-b="rui" id="tss-btab-rui">🏛 Ruines</div>
+      </div>
+
+      <!-- HUM -->
+      <div class="tss-bpanel active" id="tss-bp-hum">
+        <div class="tss-soil-block primary">
+          <div class="tss-soil-label"><div class="tss-soil-dot" style="background:#d4c48a"></div>Sol principal — Sable</div>
+          <div class="tss-color-row"><label>Bord (clair)</label><div class="tss-swatch" id="tss-sw-ha1" style="background:#e8dca0"></div><input type="color" id="tss-cp-ha1" value="#e8dca0"></div>
+          <div class="tss-color-row"><label>Centre (foncé)</label><div class="tss-swatch" id="tss-sw-ha2" style="background:#a07830"></div><input type="color" id="tss-cp-ha2" value="#a07830"></div>
+          <div class="tss-gradient-preview"><canvas id="tss-gp-ha" width="270" height="20"></canvas></div>
+        </div>
+        <div class="tss-soil-block secondary">
+          <div class="tss-soil-label"><div class="tss-soil-dot" style="background:#3a9aac"></div>Sol secondaire — Eau</div>
+          <div class="tss-color-row"><label>Bord îlot (clair)</label><div class="tss-swatch" id="tss-sw-hb1" style="background:#70d0e0"></div><input type="color" id="tss-cp-hb1" value="#70d0e0"></div>
+          <div class="tss-color-row"><label>Centre îlot (foncé)</label><div class="tss-swatch" id="tss-sw-hb2" style="background:#082840"></div><input type="color" id="tss-cp-hb2" value="#082840"></div>
+          <div class="tss-gradient-preview"><canvas id="tss-gp-hb" width="270" height="20"></canvas></div>
+          <div class="tss-ctrl"><label>Densité îlots <span id="tss-val-hd">45</span>%</label><input type="range" id="tss-sl-hd" min="5" max="85" value="45"></div>
+          <div class="tss-ctrl"><label>Échelle îlots <span id="tss-val-hs">1.8</span></label><input type="range" id="tss-sl-hs" min="5" max="40" value="18"></div>
+        </div>
+        <div class="tss-viz-bar"><canvas id="tss-viz-hum" width="265" height="16"></canvas></div>
+      </div>
+
+      <!-- SAV -->
+      <div class="tss-bpanel" id="tss-bp-sav">
+        <div class="tss-soil-block primary">
+          <div class="tss-soil-label"><div class="tss-soil-dot" style="background:#c8933a"></div>Sol principal — Terre aride</div>
+          <div class="tss-color-row"><label>Bord (clair)</label><div class="tss-swatch" id="tss-sw-sa1" style="background:#d4a850"></div><input type="color" id="tss-cp-sa1" value="#d4a850"></div>
+          <div class="tss-color-row"><label>Centre (foncé)</label><div class="tss-swatch" id="tss-sw-sa2" style="background:#8a5018"></div><input type="color" id="tss-cp-sa2" value="#8a5018"></div>
+          <div class="tss-gradient-preview"><canvas id="tss-gp-sa" width="270" height="20"></canvas></div>
+        </div>
+        <div class="tss-soil-block secondary">
+          <div class="tss-soil-label"><div class="tss-soil-dot" style="background:#b8c450"></div>Sol secondaire — Herbe sèche</div>
+          <div class="tss-color-row"><label>Bord îlot (clair)</label><div class="tss-swatch" id="tss-sw-sb1" style="background:#d4e060"></div><input type="color" id="tss-cp-sb1" value="#d4e060"></div>
+          <div class="tss-color-row"><label>Centre îlot (foncé)</label><div class="tss-swatch" id="tss-sw-sb2" style="background:#788018"></div><input type="color" id="tss-cp-sb2" value="#788018"></div>
+          <div class="tss-gradient-preview"><canvas id="tss-gp-sb" width="270" height="20"></canvas></div>
+          <div class="tss-ctrl"><label>Densité îlots <span id="tss-val-sd">35</span>%</label><input type="range" id="tss-sl-sd" min="5" max="85" value="35"></div>
+          <div class="tss-ctrl"><label>Échelle îlots <span id="tss-val-ss">2.2</span></label><input type="range" id="tss-sl-ss" min="5" max="40" value="22"></div>
+        </div>
+        <div class="tss-viz-bar"><canvas id="tss-viz-sav" width="265" height="16"></canvas></div>
+      </div>
+
+      <!-- FOR -->
+      <div class="tss-bpanel" id="tss-bp-for">
+        <div class="tss-soil-block primary">
+          <div class="tss-soil-label"><div class="tss-soil-dot" style="background:#78c840"></div>Sol principal — Herbe</div>
+          <div class="tss-color-row"><label>Bord (clair)</label><div class="tss-swatch" id="tss-sw-fa1" style="background:#90e050"></div><input type="color" id="tss-cp-fa1" value="#90e050"></div>
+          <div class="tss-color-row"><label>Centre (foncé)</label><div class="tss-swatch" id="tss-sw-fa2" style="background:#284810"></div><input type="color" id="tss-cp-fa2" value="#284810"></div>
+          <div class="tss-gradient-preview"><canvas id="tss-gp-fa" width="270" height="20"></canvas></div>
+        </div>
+        <div class="tss-soil-block secondary">
+          <div class="tss-soil-label"><div class="tss-soil-dot" style="background:#885020"></div>Sol secondaire — Terre</div>
+          <div class="tss-color-row"><label>Bord îlot (clair)</label><div class="tss-swatch" id="tss-sw-fb1" style="background:#b07040"></div><input type="color" id="tss-cp-fb1" value="#b07040"></div>
+          <div class="tss-color-row"><label>Centre îlot (foncé)</label><div class="tss-swatch" id="tss-sw-fb2" style="background:#201008"></div><input type="color" id="tss-cp-fb2" value="#201008"></div>
+          <div class="tss-gradient-preview"><canvas id="tss-gp-fb" width="270" height="20"></canvas></div>
+          <div class="tss-ctrl"><label>Densité îlots <span id="tss-val-fd">40</span>%</label><input type="range" id="tss-sl-fd" min="5" max="85" value="40"></div>
+          <div class="tss-ctrl"><label>Échelle îlots <span id="tss-val-fs">1.6</span></label><input type="range" id="tss-sl-fs" min="5" max="40" value="16"></div>
+        </div>
+        <div class="tss-viz-bar"><canvas id="tss-viz-for" width="265" height="16"></canvas></div>
+      </div>
+
+      <!-- RUI -->
+      <div class="tss-bpanel" id="tss-bp-rui">
+        <div class="tss-soil-block primary">
+          <div class="tss-soil-label"><div class="tss-soil-dot" style="background:#9c8c78"></div>Sol principal — Pierre</div>
+          <div class="tss-color-row"><label>Bord (clair)</label><div class="tss-swatch" id="tss-sw-ra1" style="background:#c8b898"></div><input type="color" id="tss-cp-ra1" value="#c8b898"></div>
+          <div class="tss-color-row"><label>Centre (foncé)</label><div class="tss-swatch" id="tss-sw-ra2" style="background:#383830"></div><input type="color" id="tss-cp-ra2" value="#383830"></div>
+          <div class="tss-gradient-preview"><canvas id="tss-gp-ra" width="270" height="20"></canvas></div>
+        </div>
+        <div class="tss-soil-block secondary">
+          <div class="tss-soil-label"><div class="tss-soil-dot" style="background:#c8b888"></div>Sol secondaire — Poussière</div>
+          <div class="tss-color-row"><label>Bord îlot (clair)</label><div class="tss-swatch" id="tss-sw-rb1" style="background:#e0d0a8"></div><input type="color" id="tss-cp-rb1" value="#e0d0a8"></div>
+          <div class="tss-color-row"><label>Centre îlot (foncé)</label><div class="tss-swatch" id="tss-sw-rb2" style="background:#806848"></div><input type="color" id="tss-cp-rb2" value="#806848"></div>
+          <div class="tss-gradient-preview"><canvas id="tss-gp-rb" width="270" height="20"></canvas></div>
+          <div class="tss-ctrl"><label>Densité îlots <span id="tss-val-rd">38</span>%</label><input type="range" id="tss-sl-rd" min="5" max="85" value="38"></div>
+          <div class="tss-ctrl"><label>Échelle îlots <span id="tss-val-rs">2.0</span></label><input type="range" id="tss-sl-rs" min="5" max="40" value="20"></div>
+        </div>
+        <div class="tss-viz-bar"><canvas id="tss-viz-rui" width="265" height="16"></canvas></div>
+      </div>
+    </div>
+
+    <!-- ═══ VARIATION ═══ -->
+    <div class="tss-tab-panel" id="tss-tp-variation">
+      <div class="tss-sec">N1 — Micro-variation couleur</div>
+      <p style="font-size:.7rem;color:var(--tss-muted);margin-bottom:5px">Grain pixel — casse les aplats unis.</p>
+      <div class="tss-ctrl"><label>Intensité <span id="tss-val-v1">16</span>%</label><input type="range" id="tss-sl-v1" min="0" max="60" value="16"></div>
+      <div class="tss-ctrl"><label>Fréquence <span id="tss-val-v1f">3.2</span></label><input type="range" id="tss-sl-v1f" min="10" max="80" value="32"></div>
+      <div class="tss-ctrl"><label>Bandes micro <span id="tss-val-v1b">8</span></label><input type="range" id="tss-sl-v1b" min="2" max="20" value="8"></div>
+      <div class="tss-sec">N2 — Motifs organiques</div>
+      <p style="font-size:.7rem;color:var(--tss-muted);margin-bottom:5px">Taches claires/sombres à moyenne échelle.</p>
+      <div class="tss-ctrl"><label>Intensité <span id="tss-val-v2">25</span>%</label><input type="range" id="tss-sl-v2" min="0" max="70" value="25"></div>
+      <div class="tss-ctrl"><label>Échelle <span id="tss-val-v2s">1.5</span></label><input type="range" id="tss-sl-v2s" min="5" max="30" value="15"></div>
+      <div class="tss-ctrl"><label>Bandes motifs <span id="tss-val-v2b">3</span></label><input type="range" id="tss-sl-v2b" min="2" max="8" value="3"></div>
+      <div class="tss-sec">N3 — Stippling</div>
+      <p style="font-size:.7rem;color:var(--tss-muted);margin-bottom:5px">Points ponctuels — effet dessiné à la main.</p>
+      <div class="tss-ctrl"><label>Densité <span id="tss-val-v3d">10</span>%</label><input type="range" id="tss-sl-v3d" min="0" max="50" value="10"></div>
+      <div class="tss-ctrl"><label>Taille <span id="tss-val-v3s">1.4</span></label><input type="range" id="tss-sl-v3s" min="5" max="30" value="14"></div>
+      <div class="tss-ctrl"><label>Contraste <span id="tss-val-v3c">30</span>%</label><input type="range" id="tss-sl-v3c" min="5" max="80" value="30"></div>
+      <div class="tss-btn-row" style="margin-top:8px">
+        <button class="tss-btn" id="tss-btn-var-off">🚫 Off</button>
+        <button class="tss-btn" id="tss-btn-var-def">✅ Défauts</button>
+      </div>
+    </div>
+
+    <!-- ═══ SHADER ═══ -->
+    <div class="tss-tab-panel" id="tss-tp-shader">
+      <div class="tss-sec">Style cartoon</div>
+      <div class="tss-ctrl"><label>Bandes poster. sol principal <span id="tss-val-bands">4</span></label><input type="range" id="tss-sl-bands" min="2" max="16" value="4"></div>
+      <div class="tss-ctrl"><label>Bandes poster. îlots <span id="tss-val-ibandsv">4</span></label><input type="range" id="tss-sl-ibandsv" min="2" max="16" value="4"></div>
+      <div class="tss-ctrl"><label>Netteté inter-biomes <span id="tss-val-sharp">22</span></label><input type="range" id="tss-sl-sharp" min="2" max="50" value="22"></div>
+      <div class="tss-ctrl"><label>Netteté îlots <span id="tss-val-isharp">20</span></label><input type="range" id="tss-sl-isharp" min="2" max="50" value="20"></div>
+      <div class="tss-ctrl"><label>Zone exclusion bordures <span id="tss-val-imargin">55</span>%</label><input type="range" id="tss-sl-imargin" min="0" max="100" value="55"></div>
+      <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:.75rem;color:var(--tss-muted);margin-bottom:9px;">
+        <input type="checkbox" id="tss-ck-idoubleshade">
+        <span>Double shading — îlots héritent du gradient biome parent</span>
+      </label>
+      <div class="tss-ctrl"><label>Outline biomes <span id="tss-val-outline">0</span>px</label><input type="range" id="tss-sl-outline" min="0" max="8" value="0"></div>
+      <div class="tss-color-row"><label>Couleur outline</label>
+        <div class="tss-swatch" id="tss-sw-outc" style="background:#0a0d14"></div>
+        <input type="color" id="tss-cp-outc" value="#0a0d14"></div>
+      <div class="tss-sec">Obstacles</div>
+      <div class="tss-ctrl"><label>Densité <span id="tss-val-obsd">5</span>%</label><input type="range" id="tss-sl-obsd" min="0" max="20" value="5"></div>
+    </div>
+  </div><!-- /sidebar -->
+
+  <!-- MAIN CANVAS -->
+  <div id="tss-main">
+    <div id="tss-canvas-header">
+      <h4 id="tss-view-label">🎨 Rendu final</h4>
+      <div class="tss-chips">
+        <div class="tss-chip">Layout: <b id="tss-chip-layout">Voronoï</b></div>
+        <div class="tss-chip">Bandes: <b id="tss-chip-bands">4</b></div>
+        <div class="tss-chip">⚡ WebGL GPU</div>
+      </div>
+    </div>
+    <div id="tss-canvas-wrap">
+      <canvas id="tss-cv" width="730" height="490"></canvas>
+    </div>
+    <div id="tss-statusbar">
+      <div>Vue: <b id="tss-sb-view">Rendu</b></div>
+      <div>Seed: <b id="tss-sb-seed">-</b></div>
+      <div>Sol principal + îlots secondaires indépendants</div>
+    </div>
+  </div>
+
+</div><!-- /tss-root -->
+
+<!-- SOURCES -->
+<div class="sources" style="margin-top:2rem">
+  <div class="sources-title">Contexte</div>
+  <div class="source-list">
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">environnements_wfc_v3.md — Système biomes &amp; WFC</div>
+        <div class="source-link" style="color:var(--gris);font-size:.75rem">Fichier projet local</div>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-docs">TOOL</span>
+      <div class="source-content">
+        <div class="source-title">terrain_shader_studio_v5.html — Source de cet outil</div>
+        <div class="source-link" style="color:var(--gris);font-size:.75rem">Fichier projet local</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- JAVASCRIPT — IIFE, tout préfixé "tss"                  -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<script>
+(function() {
+  'use strict';
+
+  // ── Helpers ────────────────────────────────────────────
+  function g(id) { return document.getElementById(id); }
+  function gv(id) { return parseFloat(g('tss-sl-'+id).value); }
+  function gc(id) {
+    const v = g('tss-cp-'+id).value;
+    return [parseInt(v.slice(1,3),16)/255, parseInt(v.slice(3,5),16)/255, parseInt(v.slice(5,7),16)/255];
+  }
+  function sv(id) {
+    const el = g('tss-sl-'+id), d = g('tss-val-'+id);
+    if (!el || !d) return;
+    const raw = parseFloat(el.value);
+    const scaled = ['hs','ss','fs','rs','v1f','v2s','v3s'];
+    d.textContent = scaled.includes(id) ? (raw/10).toFixed(1) : raw;
+  }
+  function oc(id) { g('tss-cp-'+id).click(); }
+  function ss_color(id) { g('tss-sw-'+id).style.background = g('tss-cp-'+id).value; }
+
+  function mulberry32(a) {
+    return function() {
+      a|=0; a=a+0x6D2B79F5|0;
+      let t=Math.imul(a^a>>>15,1|a);
+      t=t+Math.imul(t^t>>>7,61|t)^t;
+      return((t^t>>>14)>>>0)/4294967296;
+    };
+  }
+
+  // ── WebGL setup ─────────────────────────────────────────
+  const CV = g('tss-cv');
+  const gl = CV.getContext('webgl') || CV.getContext('experimental-webgl');
+  if (!gl) {
+    CV.parentElement.innerHTML = '<div style="color:var(--or);padding:20px;font-family:var(--font-mono)">⚠ WebGL non disponible dans ce navigateur.</div>';
+    return;
+  }
+  const CW = CV.width, CH = CV.height;
+
+  const VS = `
+attribute vec2 a_pos;
+varying vec2 v_uv;
+void main(){ v_uv=a_pos*.5+.5; gl_Position=vec4(a_pos,0,1); }`;
+
+  const FS = `
+precision mediump float;
+varying vec2 v_uv;
+uniform float u_seed;
+uniform int   u_layout;
+uniform float u_erosion;
+uniform float u_sharp;
+uniform float u_isharp;
+uniform vec4  u_props;
+uniform int   u_bl, u_br;
+uniform float u_bandsplit;
+uniform float u_bands;
+uniform float u_ibands;
+uniform float u_outline;
+uniform vec3  u_outc;
+uniform float u_view;
+uniform float u_hd, u_hs;
+uniform float u_sd, u_ss;
+uniform float u_fd, u_fs;
+uniform float u_rd, u_rs;
+uniform float u_imargin;
+uniform float u_idoubleshade;
+uniform float u_v1,u_v1f,u_v1b;
+uniform float u_v2,u_v2s,u_v2b;
+uniform float u_v3d,u_v3s,u_v3c;
+uniform vec3 u_ha1,u_ha2,u_hb1,u_hb2;
+uniform vec3 u_sa1,u_sa2,u_sb1,u_sb2;
+uniform vec3 u_fa1,u_fa2,u_fb1,u_fb2;
+uniform vec3 u_ra1,u_ra2,u_rb1,u_rb2;
+
+float hash(vec2 p){p=fract(p*vec2(127.1,311.7));p+=dot(p,p+19.19);return fract(p.x*p.y);}
+float noise(vec2 p){
+  vec2 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);
+}
+float fbm(vec2 p, int oct, float seedOff){
+  float v=0.,a=.5; vec2 sh=vec2(u_seed*.731+seedOff,(u_seed+seedOff)*.419);
+  for(int i=0;i<8;i++){if(i>=oct)break;v+=a*noise(p+sh);a*=.5;p*=2.1;sh*=1.3;}
+  return v;
+}
+float posterize(float v,float b){return floor(v*b)/b;}
+float ss2(float e0,float e1,float x){float t=clamp((x-e0)/(e1-e0),0.,1.);return t*t*(3.-2.*t);}
+
+vec4 computeSplat(vec2 uv){
+  float er=u_erosion; vec4 w=vec4(0.);
+  if(u_layout==1){
+    float n=fbm(uv*vec2(3.,5.),3,0.)*er*.45;
+    float split=u_bandsplit; float hw=.04+er*.08;
+    float t=ss2(split-hw,split+hw,uv.x+n);
+    if(u_bl==0)w.x+=1.-t;else if(u_bl==1)w.y+=1.-t;else if(u_bl==2)w.z+=1.-t;else w.w+=1.-t;
+    if(u_br==0)w.x+=t;else if(u_br==1)w.y+=t;else if(u_br==2)w.z+=t;else w.w+=t;
+    return w;
+  }
+  float n0=fbm(uv*5.5,4,0.); float n1=fbm(uv*5.5,4,13.);
+  float n2=fbm(uv*5.5,4,27.); float n3=fbm(uv*5.5,4,41.);
+  vec4 raw=vec4(n0*n0*u_props.x, n1*n1*u_props.y, n2*n2*u_props.z, n3*n3*u_props.w);
+  float rs=raw.x+raw.y+raw.z+raw.w;
+  if(rs<.0001)raw=u_props;else raw/=rs;
+  float mv=max(max(raw.x,raw.y),max(raw.z,raw.w));
+  vec4 sharp=mix(raw,step(mv-.001,raw)*raw,clamp((u_sharp-2.)/48.,0.,1.)*.8);
+  float ss3=sharp.x+sharp.y+sharp.z+sharp.w;if(ss3>0.)sharp/=ss3;
+  return sharp;
+}
+
+float islandValue(vec2 uv,float density,float scale,float seedOff,float domW){
+  float marginCurve=smoothstep(0.,u_imargin,domW);
+  float effectiveDensity=density*marginCurve;
+  float n=fbm(uv*scale,4,seedOff+50.);
+  float threshold=1.-effectiveDensity;
+  if(n<threshold)return 0.;
+  float depth=(n-threshold)/max(effectiveDensity,.001);
+  return clamp(depth,0.,1.);
+}
+
+float biomeDist(float w){ return clamp(w,0.,1.); }
+
+vec3 primaryColor(int bi,float dist,float bands){
+  float t=posterize(dist,bands);
+  if(bi==0)return mix(u_ha1,u_ha2,t);
+  if(bi==1)return mix(u_sa1,u_sa2,t);
+  if(bi==2)return mix(u_fa1,u_fa2,t);
+  return mix(u_ra1,u_ra2,t);
+}
+vec3 secondaryColor(int bi,float islandDist,float bands){
+  float t=posterize(islandDist,bands);
+  if(bi==0)return mix(u_hb1,u_hb2,t);
+  if(bi==1)return mix(u_sb1,u_sb2,t);
+  if(bi==2)return mix(u_fb1,u_fb2,t);
+  return mix(u_rb1,u_rb2,t);
+}
+float biomeDensity(int bi){ if(bi==0)return u_hd;if(bi==1)return u_sd;if(bi==2)return u_fd;return u_rd; }
+float biomeScale(int bi){ if(bi==0)return u_hs;if(bi==1)return u_ss;if(bi==2)return u_fs;return u_rs; }
+float biomeSeedOff(int bi){ return float(bi)*37.; }
+
+void main(){
+  vec2 uv=v_uv;
+  vec4 splat=computeSplat(uv);
+  float mw=max(max(splat.x,splat.y),max(splat.z,splat.w));
+  int dbi=0; if(splat.y>mw-.001){dbi=1;mw=splat.y;} if(splat.z>mw-.001){dbi=2;mw=splat.z;} if(splat.w>mw-.001){dbi=3;}
+  float domW=mw;
+
+  if(u_view>0.5&&u_view<1.5){
+    float dist=biomeDist(domW); vec3 col=primaryColor(dbi,dist,u_bands);
+    float vd=length(uv-.5); gl_FragColor=vec4(col*(1.-ss2(.3,.75,vd)*.3),1.); return;
+  }
+  if(u_view>1.5&&u_view<2.5){
+    float iv=islandValue(uv,biomeDensity(dbi),biomeScale(dbi),biomeSeedOff(dbi),domW);
+    if(iv>0.){ gl_FragColor=vec4(secondaryColor(dbi,iv,u_ibands),1.); }
+    else { gl_FragColor=vec4(.08,.09,.11,1.); }
+    return;
+  }
+  if(u_view>2.5){
+    vec3 tint=dbi==0?vec3(.23,.6,.67):dbi==1?vec3(.78,.58,.23):dbi==2?vec3(.29,.55,.25):vec3(.48,.42,.35);
+    gl_FragColor=vec4(tint*(.3+domW*.9),1.); return;
+  }
+
+  float micro=noise(uv*gv_v1f_hack*10.+vec2(u_seed*3.1,u_seed*2.7));
+  micro=posterize(micro,u_v1b)*2.-1.; micro*=u_v1*.4;
+  float patch=fbm(uv*u_v2s,3,5.); patch=posterize(patch,u_v2b)*2.-1.; patch*=u_v2*.35;
+  vec2 scell=floor(uv*80.*u_v3s);
+  float stH=hash(scell+vec2(u_seed*.37,u_seed*.81));
+  float isStipple=step(1.-u_v3d,stH);
+
+  float primaryDist=clamp(biomeDist(domW)+patch*.25+micro*.2,0.,1.);
+  vec3 col=primaryColor(dbi,primaryDist,u_bands);
+  float iv=islandValue(uv,biomeDensity(dbi),biomeScale(dbi),biomeSeedOff(dbi),domW);
+  if(iv>0.){
+    float sharpEdge=clamp((u_isharp-2.)/48.,0.,1.); float showThreshold=.5-sharpEdge*.45;
+    if(iv>showThreshold){
+      float islandD=clamp(iv+patch*.2+micro*.15,0.,1.);
+      float combinedD=mix(islandD,clamp(islandD*primaryDist*1.6,0.,1.),u_idoubleshade);
+      col=secondaryColor(dbi,combinedD,u_ibands);
+    }
+  }
+  col=clamp(col+vec3(micro*.12,micro*.08,micro*.04),0.,1.);
+  if(isStipple>.5){ float br=(stH>.5?1.:-1.)*u_v3c*.5; col=clamp(col+vec3(br),0.,1.); }
+  if(u_outline>.5){
+    float eps=u_outline*.003;
+    vec4 sR=computeSplat(uv+vec2(eps,0.)); vec4 sU=computeSplat(uv+vec2(0.,eps));
+    float mR=max(max(sR.x,sR.y),max(sR.z,sR.w)); float mU=max(max(sU.x,sU.y),max(sU.z,sU.w));
+    int dR=0;if(sR.y>mR-.001){dR=1;mR=sR.y;}if(sR.z>mR-.001){dR=2;mR=sR.z;}if(sR.w>mR-.001)dR=3;
+    int dU=0;if(sU.y>mU-.001){dU=1;mU=sU.y;}if(sU.z>mU-.001){dU=2;mU=sU.z;}if(sU.w>mU-.001)dU=3;
+    if(dR!=dbi||dU!=dbi) col=u_outc;
+  }
+  float vd=length(uv-.5); col*=1.-ss2(.28,.75,vd)*.32;
+  gl_FragColor=vec4(col,1.);
+}`;
+
+  // NOTE: le fragment shader référence gv_v1f_hack qui n'existe pas en GLSL —
+  // on utilise u_v1f à la place (correction ci-dessous dans le FS réel).
+  // Le FS ci-dessus est identique à l'original une fois compilé.
+
+  const FS_CLEAN = FS.replace('gv_v1f_hack', 'u_v1f');
+
+  function mkShader(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS))
+      console.error('Shader error:', gl.getShaderInfoLog(s));
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, mkShader(gl.VERTEX_SHADER, VS));
+  gl.attachShader(prog, mkShader(gl.FRAGMENT_SHADER, FS_CLEAN));
+  gl.linkProgram(prog); gl.useProgram(prog);
+
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1,1,-1,-1,1,1,1]), gl.STATIC_DRAW);
+  const aPos = gl.getAttribLocation(prog, 'a_pos');
+  gl.enableVertexAttribArray(aPos); gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+
+  function ul(n) { return gl.getUniformLocation(prog, n); }
+  const U = {
+    seed:ul('u_seed'),layout:ul('u_layout'),erosion:ul('u_erosion'),sharp:ul('u_sharp'),isharp:ul('u_isharp'),
+    props:ul('u_props'),bl:ul('u_bl'),br:ul('u_br'),bandsplit:ul('u_bandsplit'),
+    bands:ul('u_bands'),ibands:ul('u_ibands'),outline:ul('u_outline'),outc:ul('u_outc'),view:ul('u_view'),
+    hd:ul('u_hd'),hs:ul('u_hs'),sd:ul('u_sd'),ss_:ul('u_ss'),fd:ul('u_fd'),fs_:ul('u_fs'),
+    rd:ul('u_rd'),rs_:ul('u_rs'),imargin:ul('u_imargin'),idoubleshade:ul('u_idoubleshade'),
+    v1:ul('u_v1'),v1f:ul('u_v1f'),v1b:ul('u_v1b'),
+    v2:ul('u_v2'),v2s:ul('u_v2s'),v2b:ul('u_v2b'),
+    v3d:ul('u_v3d'),v3s:ul('u_v3s'),v3c:ul('u_v3c'),
+    ha1:ul('u_ha1'),ha2:ul('u_ha2'),hb1:ul('u_hb1'),hb2:ul('u_hb2'),
+    sa1:ul('u_sa1'),sa2:ul('u_sa2'),sb1:ul('u_sb1'),sb2:ul('u_sb2'),
+    fa1:ul('u_fa1'),fa2:ul('u_fa2'),fb1:ul('u_fb1'),fb2:ul('u_fb2'),
+    ra1:ul('u_ra1'),ra2:ul('u_ra2'),rb1:ul('u_rb1'),rb2:ul('u_rb2'),
+  };
+
+  // ── State ──────────────────────────────────────────────
+  let TSS_SEED = Math.random() * 100;
+  let TSS_LAYOUT = 0;
+  let TSS_VIEW = 0;
+  let TSS_PROPS = [.25, .25, .25, .25];
+  let TSS_PROP_LOCK = false;
+  let TSS_RENDER_PENDING = false;
+  let TSS_OBS_CANVAS = null;
+
+  function tssNewSeed() {
+    TSS_SEED = Math.random() * 100;
+    g('tss-sb-seed').textContent = TSS_SEED.toFixed(2);
+  }
+
+  function tssRequestRender() {
+    if (TSS_RENDER_PENDING) return;
+    TSS_RENDER_PENDING = true;
+    requestAnimationFrame(() => { tssRender(); TSS_RENDER_PENDING = false; });
+  }
+
+  // ── Render ─────────────────────────────────────────────
+  function tssRender() {
+    gl.uniform1f(U.seed, TSS_SEED);
+    gl.uniform1i(U.layout, TSS_LAYOUT);
+    gl.uniform1f(U.erosion, gv('erosion')/100);
+    gl.uniform1f(U.sharp, gv('sharp'));
+    gl.uniform1f(U.isharp, gv('isharp'));
+    gl.uniform4f(U.props, TSS_PROPS[0], TSS_PROPS[1], TSS_PROPS[2], TSS_PROPS[3]);
+    gl.uniform1i(U.bl, parseInt(g('tss-sel-bl').value));
+    gl.uniform1i(U.br, parseInt(g('tss-sel-br').value));
+    gl.uniform1f(U.bandsplit, gv('bandsplit')/100);
+    gl.uniform1f(U.bands, gv('bands'));
+    gl.uniform1f(U.ibands, gv('ibandsv'));
+    gl.uniform1f(U.outline, gv('outline'));
+    const oc2 = gc('outc'); gl.uniform3f(U.outc, oc2[0], oc2[1], oc2[2]);
+    gl.uniform1f(U.view, TSS_VIEW);
+    gl.uniform1f(U.hd, gv('hd')/100); gl.uniform1f(U.hs, gv('hs')/10);
+    gl.uniform1f(U.sd, gv('sd')/100); gl.uniform1f(U.ss_, gv('ss')/10);
+    gl.uniform1f(U.fd, gv('fd')/100); gl.uniform1f(U.fs_, gv('fs')/10);
+    gl.uniform1f(U.rd, gv('rd')/100); gl.uniform1f(U.rs_, gv('rs')/10);
+    gl.uniform1f(U.imargin, gv('imargin')/100);
+    gl.uniform1f(U.idoubleshade, g('tss-ck-idoubleshade').checked ? 1.0 : 0.0);
+    gl.uniform1f(U.v1, gv('v1')/100); gl.uniform1f(U.v1f, gv('v1f')/10); gl.uniform1f(U.v1b, gv('v1b'));
+    gl.uniform1f(U.v2, gv('v2')/100); gl.uniform1f(U.v2s, gv('v2s')/10); gl.uniform1f(U.v2b, gv('v2b'));
+    gl.uniform1f(U.v3d, gv('v3d')/100); gl.uniform1f(U.v3s, gv('v3s')/10); gl.uniform1f(U.v3c, gv('v3c')/100);
+
+    function sc(u, id) { const c = gc(id); gl.uniform3f(u, c[0], c[1], c[2]); }
+    sc(U.ha1,'ha1'); sc(U.ha2,'ha2'); sc(U.hb1,'hb1'); sc(U.hb2,'hb2');
+    sc(U.sa1,'sa1'); sc(U.sa2,'sa2'); sc(U.sb1,'sb1'); sc(U.sb2,'sb2');
+    sc(U.fa1,'fa1'); sc(U.fa2,'fa2'); sc(U.fb1,'fb1'); sc(U.fb2,'fb2');
+    sc(U.ra1,'ra1'); sc(U.ra2,'ra2'); sc(U.rb1,'rb1'); sc(U.rb2,'rb2');
+
+    gl.viewport(0, 0, CW, CH);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+
+    tssDrawObsLayer(gv('obsd')/100);
+    tssUpdateAllViz();
+    g('tss-chip-bands').textContent = Math.round(gv('bands'));
+  }
+
+  // ── Obstacles overlay ──────────────────────────────────
+  function tssDrawObsLayer(density) {
+    if (!TSS_OBS_CANVAS) {
+      TSS_OBS_CANVAS = document.createElement('canvas');
+      TSS_OBS_CANVAS.width = CW; TSS_OBS_CANVAS.height = CH;
+      TSS_OBS_CANVAS.style.cssText = 'position:absolute;pointer-events:none;border-radius:12px;';
+      g('tss-canvas-wrap').appendChild(TSS_OBS_CANVAS);
+      const ro = () => {
+        const r = CV.getBoundingClientRect();
+        TSS_OBS_CANVAS.style.width = r.width+'px';
+        TSS_OBS_CANVAS.style.height = r.height+'px';
+        TSS_OBS_CANVAS.style.left = CV.offsetLeft+'px';
+        TSS_OBS_CANVAS.style.top = CV.offsetTop+'px';
+      };
+      ro();
+      window.addEventListener('resize', ro);
+    }
+    const c2 = TSS_OBS_CANVAS.getContext('2d');
+    c2.clearRect(0, 0, CW, CH);
+    if (TSS_VIEW !== 0 || density < .005) return;
+    const TILE=40, cols=Math.floor(CW/TILE), rows=Math.floor(CH/TILE);
+    const rng = mulberry32(Math.floor(TSS_SEED*9999));
+    for (let r=1; r<rows-1; r++) for (let c=1; c<cols-1; c++) {
+      if (rng() > density) continue;
+      if (c/cols>.22 && c/cols<.78 && r/rows>.18 && r/rows<.82) continue;
+      const s=28, x=c*TILE+4, y=r*TILE+4;
+      c2.fillStyle='rgba(0,0,0,0.18)'; c2.beginPath(); c2.ellipse(x+s*.6,y+s*.6+5,s/2,s/5,0,0,Math.PI*2); c2.fill();
+      c2.fillStyle='rgba(35,25,15,0.55)'; c2.beginPath(); c2.arc(x+s*.6,y+s*.5,s/2.1,0,Math.PI*2); c2.fill();
+      c2.fillStyle='rgba(255,255,255,0.16)'; c2.beginPath(); c2.ellipse(x+s*.4,y+s*.3,s/5,s/9,-.3,0,Math.PI*2); c2.fill();
+    }
+  }
+
+  // ── Gradient previews ──────────────────────────────────
+  function tssDrawGradPreview(canvasId, c1id, c2id) {
+    const cv = g(canvasId); if (!cv) return;
+    const c = cv.getContext('2d'), W=cv.width, H=cv.height;
+    const bands = gv('bands');
+    function hx(id) {
+      const v = g('tss-cp-'+id).value;
+      return [parseInt(v.slice(1,3),16), parseInt(v.slice(3,5),16), parseInt(v.slice(5,7),16)];
+    }
+    const c1=hx(c1id), c2=hx(c2id);
+    for (let x=0; x<W; x++) {
+      const t = Math.floor((x/W)*bands)/bands;
+      c.fillStyle = `rgb(${Math.round(c1[0]*(1-t)+c2[0]*t)},${Math.round(c1[1]*(1-t)+c2[1]*t)},${Math.round(c1[2]*(1-t)+c2[2]*t)})`;
+      c.fillRect(x, 0, 1, H);
+    }
+    c.strokeStyle='rgba(255,255,255,.5)'; c.lineWidth=1; c.setLineDash([2,2]);
+    [.33,.66].forEach(s => { c.beginPath(); c.moveTo(s*W,0); c.lineTo(s*W,H); c.stroke(); });
+    c.setLineDash([]);
+  }
+
+  function tssDrawCombinedViz(biomeId, canvasId) {
+    const cv = g(canvasId); if (!cv) return;
+    const c = cv.getContext('2d'), W=cv.width, H=cv.height;
+    const bands = gv('bands');
+    function hx(id) {
+      const v = g('tss-cp-'+id).value;
+      return [parseInt(v.slice(1,3),16), parseInt(v.slice(3,5),16), parseInt(v.slice(5,7),16)];
+    }
+    const half = Math.floor(W/2);
+    const pfx = {'hum':'h','sav':'s','for':'f','rui':'r'}[biomeId];
+    const a1=hx(pfx+'a1'), a2=hx(pfx+'a2'), b1=hx(pfx+'b1'), b2=hx(pfx+'b2');
+    for (let x=0; x<half; x++) {
+      const t=Math.floor((x/half)*bands)/bands;
+      c.fillStyle=`rgb(${Math.round(a1[0]*(1-t)+a2[0]*t)},${Math.round(a1[1]*(1-t)+a2[1]*t)},${Math.round(a1[2]*(1-t)+a2[2]*t)})`;
+      c.fillRect(x,0,1,H);
+    }
+    for (let x=half; x<W; x++) {
+      const t=Math.floor(((x-half)/(W-half))*bands)/bands;
+      c.fillStyle=`rgb(${Math.round(b1[0]*(1-t)+b2[0]*t)},${Math.round(b1[1]*(1-t)+b2[1]*t)},${Math.round(b1[2]*(1-t)+b2[2]*t)})`;
+      c.fillRect(x,0,1,H);
+    }
+    c.fillStyle='rgba(0,0,0,.5)'; c.fillRect(half-1,0,2,H);
+    c.fillStyle='rgba(255,255,255,.6)'; c.font='8px monospace';
+    c.fillText('Principal',2,H-3); c.fillText('Îlots',half+3,H-3);
+  }
+
+  function tssUpdateAllViz() {
+    ['hum','sav','for','rui'].forEach(b => {
+      const pfx = {'hum':'h','sav':'s','for':'f','rui':'r'}[b];
+      tssDrawGradPreview('tss-gp-'+pfx+'a', pfx+'a1', pfx+'a2');
+      tssDrawGradPreview('tss-gp-'+pfx+'b', pfx+'b1', pfx+'b2');
+      tssDrawCombinedViz(b, 'tss-viz-'+b);
+    });
+  }
+
+  // ── Props ──────────────────────────────────────────────
+  function tssOnProp(idx) {
+    if (TSS_PROP_LOCK) return; TSS_PROP_LOCK = true;
+    const ids = ['ph','ps','pf','pr'];
+    const v = gv(ids[idx])/100;
+    const others = ids.filter((_,i) => i!==idx && g('tss-ck-'+i).checked);
+    const rem = Math.max(0, 1-v) / Math.max(others.length, 1);
+    TSS_PROPS[idx] = v;
+    ids.forEach((id,i) => {
+      if (i===idx) return;
+      if (g('tss-ck-'+i).checked) {
+        TSS_PROPS[i] = rem;
+        g('tss-sl-'+id).value = Math.round(rem*100);
+        g('tss-val-'+id).textContent = Math.round(rem*100);
+      }
+    });
+    g('tss-val-'+ids[idx]).textContent = Math.round(v*100);
+    tssUpdatePropBars(); TSS_PROP_LOCK = false;
+  }
+
+  function tssResetProps() {
+    const n = Math.max(1, [0,1,2,3].filter(i => g('tss-ck-'+i).checked).length);
+    const v = 1/n; const ids=['ph','ps','pf','pr'];
+    ids.forEach((id,i) => {
+      const a = g('tss-ck-'+i).checked;
+      TSS_PROPS[i] = a?v:0;
+      g('tss-sl-'+id).value = Math.round((a?v:0)*100);
+      g('tss-val-'+id).textContent = Math.round((a?v:0)*100);
+    });
+    tssUpdatePropBars();
+  }
+
+  function tssUpdatePropBars() {
+    const colors=['var(--tss-hum)','var(--tss-sav)','var(--tss-for)','var(--tss-rui)'];
+    const names=['💧','🌅','🌿','🏛'];
+    const el = g('tss-prop-bars'); el.innerHTML='';
+    TSS_PROPS.forEach((p,i) => {
+      const pct = Math.round(p*100);
+      const row = document.createElement('div');
+      row.className = 'tss-prop-bar-row';
+      row.innerHTML = `<div class="tss-prop-label" style="color:${colors[i]}">${names[i]} ${['Hum','Sav','For','Rui'][i]}</div><div class="tss-prop-track"><div class="tss-prop-fill" style="width:${pct}%;background:${colors[i]}"></div></div><div class="tss-prop-pct">${pct}%</div>`;
+      el.appendChild(row);
+    });
+  }
+
+  // ── UI tabs ────────────────────────────────────────────
+  function tssShowTopTab(id) {
+    ['layout','biomes','variation','shader'].forEach(t => {
+      g('tss-ttab-'+t).classList.toggle('active', t===id);
+      g('tss-tp-'+t).classList.toggle('active', t===id);
+    });
+  }
+
+  function tssSetBiomeTab(id) {
+    ['hum','sav','for','rui'].forEach(b => {
+      g('tss-btab-'+b).classList.toggle('active', b===id);
+      g('tss-bp-'+b).classList.toggle('active', b===id);
+    });
+  }
+
+  const LNAMES = ['Voronoï','Bandes'];
+  function tssSetLayout(id) {
+    [0,1].forEach(i => g('tss-lo-'+i).classList.toggle('active', i===id));
+    TSS_LAYOUT = id;
+    g('tss-bands-opts').style.display = id===1 ? 'block' : 'none';
+    g('tss-voronoi-opts').style.display = id===1 ? 'none' : 'block';
+    g('tss-chip-layout').textContent = LNAMES[id] || 'Voronoï';
+    tssRequestRender();
+  }
+
+  const VLABELS = ['🎨 Rendu final','🏜 Sol principal seul','🌊 Îlots secondaires seuls','⚖ Poids biomes'];
+  function tssSetView(v) {
+    [0,1,2,3].forEach(i => g('tss-vt-'+i).classList.toggle('active', i===v));
+    TSS_VIEW = v;
+    g('tss-view-label').textContent = VLABELS[v];
+    g('tss-sb-view').textContent = VLABELS[v];
+    tssRequestRender();
+  }
+
+  function tssSetVar(mode) {
+    if (mode===0) {
+      ['v1','v2','v3d'].forEach(id => { g('tss-sl-'+id).value=0; sv(id); });
+    } else {
+      [['v1',16],['v2',25],['v3d',10]].forEach(([id,val]) => { g('tss-sl-'+id).value=val; sv(id); });
+    }
+    tssRequestRender();
+  }
+
+  // ── Bind all controls ──────────────────────────────────
+  function tssBindRange(id, handler) {
+    const el = g('tss-sl-'+id);
+    if (!el) return;
+    el.addEventListener('input', () => { sv(id); if(handler) handler(); else tssRequestRender(); });
+  }
+
+  // Tab buttons
+  ['layout','biomes','variation','shader'].forEach(t =>
+    g('tss-ttab-'+t).addEventListener('click', () => tssShowTopTab(t))
+  );
+
+  // Biome tabs
+  ['hum','sav','for','rui'].forEach(b =>
+    g('tss-btab-'+b).addEventListener('click', () => tssSetBiomeTab(b))
+  );
+
+  // Layout options
+  [0,1].forEach(i => g('tss-lo-'+i).addEventListener('click', () => tssSetLayout(i)));
+
+  // View tabs
+  [0,1,2,3].forEach(i => g('tss-vt-'+i).addEventListener('click', () => tssSetView(i)));
+
+  // Buttons
+  g('tss-btn-seed').addEventListener('click', () => { tssNewSeed(); tssRequestRender(); });
+  g('tss-btn-equal').addEventListener('click', () => { tssResetProps(); tssRequestRender(); });
+  g('tss-btn-var-off').addEventListener('click', () => tssSetVar(0));
+  g('tss-btn-var-def').addEventListener('click', () => tssSetVar(1));
+
+  // Sliders — layout / props
+  ['erosion','bandsplit'].forEach(id => tssBindRange(id, null));
+  ['ph','ps','pf','pr'].forEach((id, i) =>
+    g('tss-sl-'+id).addEventListener('input', () => { tssOnProp(i); tssRequestRender(); })
+  );
+  // Biome color sliders
+  ['hd','hs','sd','ss','fd','fs','rd','rs'].forEach(id => tssBindRange(id, null));
+  // Shader sliders
+  ['bands','ibandsv','sharp','isharp','imargin','outline','obsd'].forEach(id => tssBindRange(id, null));
+  // Variation sliders
+  ['v1','v1f','v1b','v2','v2s','v2b','v3d','v3s','v3c'].forEach(id => tssBindRange(id, null));
+  // Select changes
+  g('tss-sel-bl').addEventListener('change', tssRequestRender);
+  g('tss-sel-br').addEventListener('change', tssRequestRender);
+  // Biome enable checkboxes
+  [0,1,2,3].forEach(i => g('tss-ck-'+i).addEventListener('change', () => { tssResetProps(); tssRequestRender(); }));
+  // Double shading
+  g('tss-ck-idoubleshade').addEventListener('change', tssRequestRender);
+  // Color pickers
+  const colorIds = ['ha1','ha2','hb1','hb2','sa1','sa2','sb1','sb2','fa1','fa2','fb1','fb2','ra1','ra2','rb1','rb2','outc'];
+  colorIds.forEach(id => {
+    g('tss-sw-'+id).addEventListener('click', () => oc(id));
+    g('tss-cp-'+id).addEventListener('input', () => { ss_color(id); tssRequestRender(); });
+  });
+
+  // ── Init ───────────────────────────────────────────────
+  function tssInit() {
+    ['erosion','sharp','isharp','bands','ibandsv','outline','obsd','imargin','bandsplit',
+     'hd','hs','sd','ss','fd','fs','rd','rs',
+     'v1','v1f','v1b','v2','v2s','v2b','v3d','v3s','v3c'].forEach(sv);
+    tssUpdatePropBars();
+    g('tss-sb-seed').textContent = TSS_SEED.toFixed(2);
+    tssRender();
+  }
+
+  tssInit();
+
+  // ── Search entries ─────────────────────────────────────
+  if (typeof window.registerSearchEntries === 'function') {
+    window.registerSearchEntries([
+      { title: 'Terrain Shader Studio', page: 'terrain-shader-studio', section: 'Outils', content: 'terrain shader biomes sol textures WebGL GPU Voronoï bandes procédural humide savane forêt ruines îlots posterize cartoon' },
+    ]);
+  }
+
+})();
+</script>
+
+</div><!-- /data-fullwidth -->

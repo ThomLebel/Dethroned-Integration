@@ -1,0 +1,105 @@
+<div class="page-hero">
+  <h1>Effets & EffectBehaviour</h1>
+  <p class="lead">~140 effets assemblés depuis ~25 blocs stateless. Chaque effet est une EffectData.tres avec une liste ordonnée de behaviours. Le pipeline ctx circule de bloc en bloc.</p>
+</div>
+
+<h2 class="section">Le pipeline EffectRunner</h2>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">GDScript — effect_runner.gd</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="kw">static func</span> <span class="fn">execute</span>(effect_data: <span class="tp">EffectData</span>, ctx: <span class="tp">Dictionary</span>) -> <span class="tp">void</span>:
+    <span class="kw">var</span> c = ctx.duplicate()
+    <span class="kw">for</span> behaviour <span class="kw">in</span> effect_data.behaviours:
+        <span class="kw">if</span> c.get(<span class="st">"pipeline_stopped"</span>, <span class="kw">false</span>):
+            <span class="kw">break</span>
+        c = behaviour.<span class="fn">apply</span>(c, effect_data)
+    <span class="cm"># VFX et Audio notifiés après le pipeline complet — jamais pendant</span>
+    <span class="tp">VFXManager</span>.<span class="fn">on_effect_executed</span>(c)
+    <span class="tp">AudioManager</span>.<span class="fn">on_effect_executed</span>(c)</pre>
+</div>
+
+<div class="callout callout-or"><strong>Règle :</strong> les EffectBehaviour lisent les managers depuis ctx — jamais en statique. CombatManager est l'unique point d'injection du ctx.</div>
+
+<h2 class="section">Bibliothèque de behaviours</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Catégorie</th><th>Bloc</th><th>Rôle</th></tr></thead>
+  <tbody>
+    <tr><td rowspan="4" style="vertical-align:middle;color:var(--or)"><strong>Calcul</strong></td>
+      <td><code>ComputeBaseDamage</code></td><td>ctx["damage"] = data.base_damage</td></tr>
+    <tr><td><code>ComputeAccRatio</code></td><td>ctx["damage"] = ctx["acc_value"] × coeff</td></tr>
+    <tr><td><code>MultiplyIfTagOnTarget</code></td><td>ctx["damage"] × multiplier si tag présent sur cible</td></tr>
+    <tr><td><code>IncrementCounter</code></td><td>Incrémente compteur persistant sur la bille</td></tr>
+    <tr><td rowspan="5" style="vertical-align:middle;color:var(--rouge)"><strong>Application</strong></td>
+      <td><code>ApplyDirectDamage</code></td><td>ctx["health_manager"].take_damage(target, dmg, tags)</td></tr>
+    <tr><td><code>ApplyAoe</code></td><td>Dégâts dans un rayon via PhysicsManager.query_radius()</td></tr>
+    <tr><td><code>ApplyDotStatus</code></td><td>ctx["status_manager"].apply(target, "dot_…")</td></tr>
+    <tr><td><code>ApplyKnockback</code></td><td>receive_impulse() + ctx["knockback_applied"] = true</td></tr>
+    <tr><td><code>ApplyBuff</code></td><td>Buff sur le joueur via StatusManager</td></tr>
+    <tr><td rowspan="3" style="vertical-align:middle;color:var(--vert)"><strong>Spawn</strong></td>
+      <td><code>SpawnZone</code></td><td>ctx["pool_manager"].get("zone_…") + placement</td></tr>
+    <tr><td><code>SpawnInvocation</code></td><td>Pool + EnemyManager.register_ally()</td></tr>
+    <tr><td><code>SpawnProjectile</code></td><td>Pool + trajectoire analytique</td></tr>
+    <tr><td rowspan="4" style="vertical-align:middle;color:var(--violet)"><strong>Flux</strong></td>
+      <td><code>ConditionalThreshold</code></td><td>ctx["pipeline_stopped"] = true si condition échoue</td></tr>
+    <tr><td><code>RetargetNearest</code></td><td>Remplace ctx["target"] par l'ennemi le plus proche</td></tr>
+    <tr><td><code>PropagateOnExpiry</code></td><td>Callback dans StatusManager.on_expiry()</td></tr>
+    <tr><td><code>RepeatDelayed</code></td><td>Enregistre dans SkillManager.schedule_repeated_effect()</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">Exemple — ApplyDirectDamage (Manager Graph)</h2>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">GDScript — apply_direct_damage.gd</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="kw">extends</span> <span class="tp">EffectBehaviour</span>
+
+<span class="kw">func</span> <span class="fn">apply</span>(ctx: <span class="tp">Dictionary</span>, data: <span class="tp">EffectData</span>) -> <span class="tp">Dictionary</span>:
+    <span class="kw">var</span> target = ctx.get(<span class="st">"target"</span>)
+    <span class="kw">var</span> dmg    = ctx.get(<span class="st">"damage"</span>, <span class="nm">0.0</span>)
+    <span class="kw">if</span> target <span class="kw">and</span> dmg > <span class="nm">0</span>:
+        <span class="cm"># Manager depuis ctx — jamais get_node()</span>
+        ctx[<span class="st">"health_manager"</span>].<span class="fn">take_damage</span>(target, dmg, data.tags)
+        <span class="cm"># Pas d'EventBus ici — VFXManager notifié après le pipeline</span>
+    <span class="kw">return</span> ctx</pre>
+</div>
+
+<h2 class="section">Niveaux de complexité</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Niveau</th><th>Pipeline</th><th>Effets couverts</th></tr></thead>
+  <tbody>
+    <tr><td>1 — Stateless</td><td>ComputeBaseDamage → ApplyDirectDamage</td><td>E-DD-01, E-CE-01…03</td></tr>
+    <tr><td>2 — Lecture C1</td><td>ComputeAccRatio → ApplyDirectDamage</td><td>E-DD-08, E-DD-14…16</td></tr>
+    <tr><td>3 — Condition</td><td>Compute → MultiplyIfTag → Apply → ConditionalThreshold</td><td>E-DD-05, E-DOT-10</td></tr>
+    <tr><td>4 — DoT différé</td><td>ApplyDotStatus → PropagateOnExpiry</td><td>E-DOT-09, E-CE-14</td></tr>
+    <tr><td>5 — Compteur</td><td>IncrementCounter → ConditionalThreshold → Apply → ResetCounter</td><td>E-DD-17, E-DEF-07</td></tr>
+  </tbody>
+</table></div>
+
+<div class="sources">
+  <div class="sources-title">Sources</div>
+  <div class="source-list">
+    <div class="source-item">
+      <span class="source-badge badge-repo">REPO</span>
+      <div class="source-content">
+        <div class="source-title">Game Programming Patterns — Component</div>
+        <div class="source-desc">Base conceptuelle des EffectBehaviour — blocs indépendants composés sans héritage.</div>
+        <a class="source-link" href="https://gameprogrammingpatterns.com/component.html" target="_blank">gameprogrammingpatterns.com/component.html</a>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">Godot — Resources (custom)</div>
+        <div class="source-desc">EffectData.tres — assembler des behaviours dans l'inspecteur sans écrire de code.</div>
+        <a class="source-link" href="https://docs.godotengine.org/en/stable/tutorials/scripting/resources.html" target="_blank">docs.godotengine.org — Resources</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.registerSearchEntries([
+  { title: 'Effets — EffectBehaviour pipeline', page: 'effects', section: 'Compétences', content: 'effectbehaviour pipeline ctx compute apply spawn flow conditionnel stateless' },
+  { title: 'ApplyDirectDamage', page: 'effects', section: 'Compétences', content: 'apply direct damage health_manager take_damage ctx manager injecté' },
+  { title: 'PropagateOnExpiry', page: 'effects', section: 'Compétences', content: 'propagate on expiry status manager callback dot expiration contamination' },
+  { title: 'Niveaux de complexité des effets', page: 'effects', section: 'Compétences', content: 'niveau complexité pipeline stateless compteur dot différé condition' },
+]);
+</script>

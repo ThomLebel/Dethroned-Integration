@@ -1,0 +1,85 @@
+<div class="page-hero">
+  <h1>Pourquoi Manager Graph ?</h1>
+  <p class="lead">Analyse comparative EventBus vs Manager Graph sur 5 critères. Ce document justifie le choix architectural retenu pour <em>Dethroned</em>.</p>
+</div>
+
+<h2 class="section">Le problème de l'EventBus pur</h2>
+<p class="text">L'EventBus natif Godot est élégant pour des projets simples. Sur un jeu avec 15+ systèmes, 100+ événements et un système de compétences modulaire, il devient un obstacle à la lisibilité.</p>
+<div class="callout callout-rouge"><strong>Symptôme concret :</strong> débugger un comportement inattendu nécessite de grepper tout le projet. La callstack s'arrête à l'émission du signal.</div>
+<ul class="list">
+  <li>L'ordre de résolution est implicite et fragile</li>
+  <li>Retirer un émetteur est silencieux — les écouteurs orphelins ne se plaignent pas</li>
+  <li>Les performances se dégradent avec le broadcast aveugle à grande échelle</li>
+  <li>Impossible de mocker un signal pour les tests unitaires</li>
+</ul>
+
+<h2 class="section">Comparatif détaillé</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Critère</th><th>EventBus pur</th><th>Manager Graph</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Performance théorique</strong></td><td>✅ Signaux natifs optimisés</td><td>✅ Appels directs sur chemin critique</td><td>Égalité</td></tr>
+    <tr><td><strong>Performance pratique</strong></td><td>⚠️ Broadcast aveugle croissant</td><td>✅ −60% overhead critique</td><td>Manager Graph</td></tr>
+    <tr><td><strong>Complexité initiale</strong></td><td>✅ Faible — connexion libre</td><td>⚠️ Élevée — hiérarchie à concevoir</td><td>EventBus</td></tr>
+    <tr><td><strong>Complexité à 12 mois</strong></td><td>⚠️ Croissante</td><td>✅ Stable</td><td>Manager Graph</td></tr>
+    <tr><td><strong>Lisibilité / debug</strong></td><td>❌ Callstack tronquée</td><td>✅ Flux complet tracé</td><td>Manager Graph</td></tr>
+    <tr><td><strong>Modularité ajout</strong></td><td>✅ Très libre</td><td>✅ Structuré par couche</td><td>Égalité</td></tr>
+    <tr><td><strong>Modularité retrait</strong></td><td>❌ Silencieux — risqué</td><td>✅ Compilateur alerte</td><td>Manager Graph</td></tr>
+    <tr><td><strong>Testabilité</strong></td><td>⚠️ Fragile</td><td>✅ Mock direct d'un manager</td><td>Manager Graph</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">Simulateur — Choisir le bon pattern</h2>
+<div class="simulator">
+  <div class="sim-title">⚖️ Quel pattern pour ma situation ?</div>
+  <div class="sim-controls">
+    <select class="sim-select" id="dec-situation">
+      <option value="">-- Décris ta situation --</option>
+      <option value="direct">A appelle B avec résultat immédiat</option>
+      <option value="read">B veut lire l'état de A à un instant T</option>
+      <option value="broadcast">Événement ponctuel → N systèmes de présentation</option>
+      <option value="shared">N composants partagent l'état d'un acteur</option>
+      <option value="future">Notifier un événement futur sur une entité précise</option>
+    </select>
+    <button class="sim-btn" onclick="decidePattern()">→ Recommandation</button>
+  </div>
+  <div class="sim-output" id="dec-result">Sélectionnez une situation.</div>
+</div>
+
+<div class="sources">
+  <div class="sources-title">Sources</div>
+  <div class="source-list">
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">Godot — Signals (documentation officielle)</div>
+        <a class="source-link" href="https://docs.godotengine.org/en/stable/getting_started/step_by_step/signals.html" target="_blank">docs.godotengine.org — Signals</a>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-repo">REPO</span>
+      <div class="source-content">
+        <div class="source-title">Game Programming Patterns — Service Locator (Robert Nystrom)</div>
+        <a class="source-link" href="https://gameprogrammingpatterns.com/service-locator.html" target="_blank">gameprogrammingpatterns.com/service-locator.html</a>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-video">VIDEO</span>
+      <div class="source-content">
+        <div class="source-title">GDQuest — Architecture Patterns in Godot 4</div>
+        <a class="source-link" href="https://www.youtube.com/@GDQuest" target="_blank">youtube.com/@GDQuest</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+window.registerSearchEntries([
+  { title: 'Pourquoi Manager Graph', page: 'decision', section: 'Vue d\'ensemble', content: 'eventbus signal comparatif performance lisibilité debug callstack broadcast overhead' },
+  { title: 'Comparatif EventBus vs Manager Graph', page: 'decision', section: 'Vue d\'ensemble', content: 'tableau critère complexité testabilité retrait modularité' },
+]);
+window.decidePattern = function() {
+  const v = document.getElementById('dec-situation').value;
+  const m = { direct:'✅ APPEL DIRECT\nA.method(params) — synchrone, callstack complète.\nEx: CombatManager → SkillManager.process_hit(ctx)', read:'✅ PROPRIÉTÉ OBSERVABLE\nLire ctx["clé"] ou entity.get_stat() au moment T.\nEx: TriggerCondition lit ctx["target_hp_ratio"]', broadcast:'✅ EVENTBUS RÉSIDUEL\nSignal Godot vers Couche 4 uniquement.\nRègle: aucun récepteur ne modifie l\'état du jeu.', shared:'✅ BLACKBOARD (ctx)\nDictionnaire enrichi couche par couche.\nEx: ctx circule dans TriggerCondition → EffectBehaviour', future:'✅ CALLBACK ENREGISTRÉ\nStatusManager.on_expiry() ou SkillManager._active_observers.\nEx: PropagateOnExpiry, Symbiote' };
+  document.getElementById('dec-result').textContent = m[v] || '← Sélectionnez une situation.';
+};
+</script>
