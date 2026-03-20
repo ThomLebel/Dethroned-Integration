@@ -1,0 +1,1252 @@
+<div data-fullwidth="true">
+
+<div class="page-hero">
+  <h1>⚖️ PP Balancer</h1>
+  <p class="lead">Équilibreur interactif par budget de Puissance. Gère les valeurs de dégâts, durées et cooldowns de tous tes effets, déclencheurs, compétences et reliques. Export JSON prêt pour Godot.</p>
+  <div class="tags">
+    <span class="tag tag-or">Outil interactif</span>
+    <span class="tag tag-vert">Équilibrage</span>
+    <span class="tag tag-bleu">Export Godot</span>
+    <span class="tag tag-violet">Import CSV / JSON</span>
+  </div>
+</div>
+
+<div class="callout callout-or">
+  <strong>Formule centrale :</strong> <code>Valeur d'effet = Budget_PP / Fréquence_déclencheur</code><br>
+  Ajuste les 3 curseurs globaux en haut de l'outil (DMG ×, HP ennemi ×, Budget PP) pour recalibrer tout le catalogue d'un seul geste. Exporte en JSON pour charger dans ton <code>DataManager</code> autoload Godot.
+</div>
+
+<!-- ═══════════════════════════════════════════════════ -->
+<!-- STYLES LOCAUX — préfixe ppb- pour éviter conflits  -->
+<!-- ═══════════════════════════════════════════════════ -->
+<style>
+/* ── Reset local ── */
+#ppb-root *, #ppb-root *::before, #ppb-root *::after { box-sizing: border-box; }
+
+/* ── Variables locales mappées sur le site ── */
+#ppb-root {
+  --ppb-bg0:     var(--noir);
+  --ppb-bg1:     var(--noir2);
+  --ppb-bg2:     var(--noir3);
+  --ppb-bg3:     #2e1e0e;
+  --ppb-border:  #3a2810;
+  --ppb-border2: #5a3e20;
+  --ppb-gold:    var(--or);
+  --ppb-amber:   #f8d060;
+  --ppb-muted:   #7a6040;
+  --ppb-text:    var(--blanc);
+  --ppb-red:     var(--rouge);
+  --ppb-green:   var(--vert);
+  --ppb-blue:    var(--bleu);
+  --ppb-purple:  var(--violet);
+  --ppb-cyan:    #40c8a0;
+  --ppb-orange:  var(--ocre);
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ppb-text);
+  margin: 0 -24px;
+}
+
+/* ── Controls bar ── */
+#ppb-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: var(--ppb-bg1);
+  border: 1px solid var(--ppb-border);
+  border-radius: var(--radius);
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.ppb-ctrl-group {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--ppb-bg2);
+  border: 1px solid var(--ppb-border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+}
+
+.ppb-ctrl-label {
+  font-family: var(--font-mono);
+  font-size: 9px; color: var(--ppb-muted);
+  letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap;
+}
+
+.ppb-ctrl-val {
+  font-family: var(--font-mono);
+  font-size: 14px; font-weight: 600;
+  color: var(--ppb-amber); min-width: 36px; text-align: center;
+}
+
+.ppb-ctrl-spacer { flex: 1; }
+
+.ppb-ctrl-actions { display: flex; gap: 8px; }
+
+input[type=range].ppb-range {
+  -webkit-appearance: none;
+  width: 80px; height: 3px;
+  background: var(--ppb-border2);
+  border-radius: 2px; outline: none;
+}
+input[type=range].ppb-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 13px; height: 13px;
+  border-radius: 50%; background: var(--ppb-gold); cursor: pointer;
+}
+
+/* ── Tabs ── */
+#ppb-tabs {
+  display: flex; gap: 2px;
+  padding: 10px 24px 0;
+  background: var(--ppb-bg1);
+  border: 1px solid var(--ppb-border);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+}
+
+.ppb-tab {
+  padding: 8px 16px;
+  font-size: 12px; font-weight: 600;
+  color: var(--ppb-muted);
+  cursor: pointer;
+  border-radius: var(--radius) var(--radius) 0 0;
+  border: 1px solid transparent; border-bottom: none;
+  transition: all var(--transition);
+  user-select: none; white-space: nowrap;
+  font-family: var(--font-display);
+}
+.ppb-tab:hover { color: var(--ppb-text); background: var(--ppb-bg2); }
+.ppb-tab.active {
+  color: var(--ppb-amber);
+  background: var(--ppb-bg0);
+  border-color: var(--ppb-border);
+  border-bottom-color: var(--ppb-bg0);
+}
+
+/* ── Main layout ── */
+#ppb-main {
+  display: flex;
+  background: var(--ppb-bg0);
+  border: 1px solid var(--ppb-border);
+  border-radius: 0 0 var(--radius) var(--radius);
+  min-height: 500px;
+}
+
+/* ── Sidebar ── */
+#ppb-sidebar {
+  width: 200px; flex-shrink: 0;
+  background: var(--ppb-bg1);
+  border-right: 1px solid var(--ppb-border);
+  padding: 12px 10px;
+  overflow-y: auto;
+}
+
+.ppb-sb-section {
+  font-family: var(--font-mono);
+  font-size: 9px; color: var(--ppb-muted);
+  letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 8px 6px 4px;
+}
+
+.ppb-sb-item {
+  padding: 6px 8px; border-radius: 4px;
+  cursor: pointer; font-size: 11px; color: var(--ppb-text);
+  display: flex; justify-content: space-between; align-items: center;
+  transition: background var(--transition); user-select: none;
+}
+.ppb-sb-item:hover { background: var(--ppb-bg2); }
+.ppb-sb-item.active { background: var(--ppb-bg3); color: var(--ppb-amber); }
+
+.ppb-sb-count {
+  font-family: var(--font-mono); font-size: 10px; color: var(--ppb-muted);
+  background: var(--ppb-bg2); padding: 1px 5px; border-radius: 10px;
+}
+
+/* ── Content ── */
+#ppb-content { flex: 1; overflow: auto; padding: 18px 20px; }
+
+.ppb-panel { display: none; }
+.ppb-panel.active { display: block; }
+
+/* ── Toolbar ── */
+.ppb-toolbar {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 14px; flex-wrap: wrap;
+}
+.ppb-toolbar-title {
+  font-size: 15px; font-weight: 700;
+  color: var(--ppb-amber); flex: 1;
+  font-family: var(--font-display);
+}
+
+/* ── Search / Select inputs ── */
+.ppb-search {
+  background: var(--ppb-bg2);
+  border: 1px solid var(--ppb-border);
+  border-radius: var(--radius);
+  padding: 6px 10px; color: var(--ppb-text);
+  font-family: var(--font-body); font-size: 12px;
+  width: 180px; outline: none;
+  transition: border-color var(--transition);
+}
+.ppb-search:focus { border-color: var(--ppb-border2); }
+.ppb-search::placeholder { color: var(--ppb-muted); }
+
+.ppb-select {
+  background: var(--ppb-bg2);
+  border: 1px solid var(--ppb-border);
+  border-radius: var(--radius);
+  padding: 6px 10px; color: var(--ppb-text);
+  font-family: var(--font-body); font-size: 12px;
+  outline: none; width: 140px;
+}
+
+/* ── Buttons ── */
+.ppb-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 13px; border-radius: var(--radius);
+  font-family: var(--font-display); font-size: 11px; font-weight: 600;
+  cursor: pointer; border: 1px solid transparent;
+  transition: all var(--transition); white-space: nowrap; user-select: none;
+}
+.ppb-btn-p  { background: var(--ppb-orange); color: #fff; border-color: var(--ppb-gold); }
+.ppb-btn-p:hover { background: var(--ppb-gold); color: #000; }
+.ppb-btn-s  { background: var(--ppb-bg2); color: var(--ppb-text); border-color: var(--ppb-border); }
+.ppb-btn-s:hover { background: var(--ppb-bg3); }
+.ppb-btn-d  { background: rgba(139,26,26,0.2); color: #e07070; border-color: rgba(139,26,26,0.4); }
+.ppb-btn-d:hover { background: rgba(139,26,26,0.35); }
+.ppb-btn-sm { padding: 3px 8px; font-size: 10px; }
+
+/* ── Tables ── */
+.ppb-table-wrap { overflow-x: auto; border-radius: var(--radius); border: 1px solid var(--ppb-border); }
+.ppb-table-wrap table { width: 100%; border-collapse: collapse; }
+.ppb-table-wrap thead th {
+  background: var(--ppb-bg2);
+  padding: 8px 10px;
+  font-family: var(--font-mono); font-size: 9px;
+  letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--ppb-muted); text-align: left;
+  border-bottom: 1px solid var(--ppb-border);
+  white-space: nowrap;
+}
+.ppb-table-wrap tbody tr { transition: background var(--transition); }
+.ppb-table-wrap tbody tr:hover { background: var(--ppb-bg2); }
+.ppb-table-wrap tbody td {
+  padding: 7px 10px; border-bottom: 1px solid var(--ppb-border);
+  vertical-align: middle;
+}
+.ppb-table-wrap tbody tr:last-child td { border-bottom: none; }
+
+/* ── Editable inputs ── */
+.ppb-editable {
+  background: transparent; border: 1px solid transparent;
+  border-radius: 3px; padding: 2px 5px;
+  color: var(--ppb-text); font-family: var(--font-mono);
+  font-size: 11px; outline: none;
+  transition: border-color var(--transition), background var(--transition);
+}
+.ppb-editable:focus { border-color: var(--ppb-border2); background: var(--ppb-bg3); }
+.ppb-editable:hover:not(:focus) { border-color: var(--ppb-border); }
+
+/* ── Badges ── */
+.ppb-pp { display:inline-flex; align-items:center; font-family:var(--font-mono); font-size:10px; padding:2px 7px; border-radius:3px; white-space:nowrap; font-weight:600; }
+.ppb-ok   { background:rgba(74,124,89,0.2);  color:#80d898; border:1px solid rgba(74,124,89,0.4); }
+.ppb-high { background:rgba(139,26,26,0.2);  color:#e08080; border:1px solid rgba(139,26,26,0.4); }
+.ppb-low  { background:rgba(80,60,30,0.2);   color:var(--ppb-muted); border:1px solid rgba(80,60,30,0.4); }
+.ppb-warn { background:rgba(166,85,38,0.2);  color:var(--ppb-gold);  border:1px solid rgba(166,85,38,0.4); }
+
+.ppb-rar { font-family:var(--font-mono); font-size:9px; padding:2px 6px; border-radius:3px; text-transform:uppercase; letter-spacing:0.07em; white-space:nowrap; }
+.ppb-rc  { background:rgba(74,124,89,0.15); color:#80d898; border:1px solid rgba(74,124,89,0.25); }
+.ppb-rr  { background:rgba(46,91,138,0.15); color:#80b0e0; border:1px solid rgba(46,91,138,0.25); }
+.ppb-re  { background:rgba(107,63,160,0.15);color:#c090e0; border:1px solid rgba(107,63,160,0.25); }
+.ppb-rl  { background:rgba(166,85,38,0.15); color:var(--ppb-amber); border:1px solid rgba(166,85,38,0.25); }
+
+.ppb-freq { font-family:var(--font-mono); font-size:9px; padding:2px 5px; border-radius:3px; text-transform:uppercase; }
+.ppb-fth { background:rgba(139,26,26,0.15); color:#e08080; border:1px solid rgba(139,26,26,0.25); }
+.ppb-fh  { background:rgba(166,85,38,0.15); color:var(--ppb-gold); border:1px solid rgba(166,85,38,0.25); }
+.ppb-fm  { background:rgba(46,91,138,0.15); color:#80b0e0; border:1px solid rgba(46,91,138,0.25); }
+.ppb-fb  { background:rgba(74,124,89,0.15); color:#80d898; border:1px solid rgba(74,124,89,0.25); }
+.ppb-fr  { background:rgba(107,63,160,0.15);color:#c090e0; border:1px solid rgba(107,63,160,0.25); }
+
+.ppb-type-b { background:rgba(40,120,100,0.15); color:#60c8a0; border:1px solid rgba(40,120,100,0.25); font-family:var(--font-mono); font-size:9px; padding:2px 5px; border-radius:3px; }
+.ppb-type-a { background:rgba(166,85,38,0.15); color:var(--ppb-orange); border:1px solid rgba(166,85,38,0.25); font-family:var(--font-mono); font-size:9px; padding:2px 5px; border-radius:3px; }
+
+.ppb-tag-chip { display:inline-block; font-family:var(--font-mono); font-size:9px; color:var(--ppb-muted); background:var(--ppb-bg2); border:1px solid var(--ppb-border); border-radius:3px; padding:1px 4px; margin:1px; }
+
+/* ── Stat cards ── */
+.ppb-stat-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:16px; }
+.ppb-stat-card { background:var(--ppb-bg1); border:1px solid var(--ppb-border); border-radius:var(--radius); padding:12px 14px; }
+.ppb-stat-num  { font-family:var(--font-mono); font-size:22px; font-weight:700; color:var(--ppb-amber); }
+.ppb-stat-lbl  { font-size:11px; color:var(--ppb-muted); margin-top:2px; }
+
+/* ── Chart wrap ── */
+.ppb-chart { background:var(--ppb-bg1); border:1px solid var(--ppb-border); border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+.ppb-chart-title { font-size:12px; font-weight:600; color:var(--ppb-amber); margin-bottom:12px; font-family:var(--font-display); }
+
+/* ── Calc grid ── */
+.ppb-calc-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:18px; }
+.ppb-calc-card { background:var(--ppb-bg1); border:1px solid var(--ppb-border); border-radius:var(--radius); padding:14px; }
+.ppb-calc-card h3 { font-family:var(--font-mono); font-size:9px; color:var(--ppb-muted); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:10px; }
+.ppb-calc-result { font-family:var(--font-mono); font-size:26px; font-weight:600; color:var(--ppb-amber); line-height:1; margin:6px 0 4px; }
+.ppb-calc-sub { font-size:10px; color:var(--ppb-muted); }
+
+/* form fields */
+.ppb-field { margin-bottom:10px; }
+.ppb-field label { display:block; font-size:10px; color:var(--ppb-muted); margin-bottom:4px; font-family:var(--font-mono); letter-spacing:0.05em; }
+.ppb-input {
+  background:var(--ppb-bg2); border:1px solid var(--ppb-border);
+  border-radius:var(--radius); padding:6px 9px; color:var(--ppb-text);
+  font-family:var(--font-body); font-size:12px; width:100%; outline:none;
+}
+.ppb-input:focus { border-color:var(--ppb-border2); }
+
+/* ── Modal ── */
+.ppb-modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.75); z-index:9000;
+  align-items:center; justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.ppb-modal-overlay.open { display:flex; }
+.ppb-modal {
+  background:var(--ppb-bg1); border:1px solid var(--ppb-border2);
+  border-radius:10px; width:540px; max-height:80vh;
+  overflow-y:auto; padding:22px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.7);
+}
+.ppb-modal-hdr { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+.ppb-modal-title { font-size:15px; font-weight:700; color:var(--ppb-amber); font-family:var(--font-display); }
+.ppb-modal-close { cursor:pointer; color:var(--ppb-muted); font-size:18px; padding:3px 7px; }
+.ppb-modal-close:hover { color:var(--ppb-text); }
+.ppb-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.ppb-form-full { grid-column:1/-1; }
+.ppb-modal-ftr { display:flex; gap:8px; justify-content:flex-end; margin-top:16px; border-top:1px solid var(--ppb-border); padding-top:14px; }
+
+/* ── Import zone ── */
+.ppb-import-zone {
+  border:2px dashed var(--ppb-border2); border-radius:var(--radius);
+  padding:28px; text-align:center; cursor:pointer;
+  transition:all var(--transition); margin-bottom:14px;
+}
+.ppb-import-zone:hover { border-color:var(--ppb-gold); background:rgba(242,183,73,0.03); }
+.ppb-import-zone.drag  { border-color:var(--ppb-cyan); background:rgba(64,200,160,0.05); }
+
+/* ── Empty state ── */
+.ppb-empty { text-align:center; padding:40px 20px; color:var(--ppb-muted); }
+.ppb-empty-icon { font-size:32px; margin-bottom:10px; }
+.ppb-empty-title { font-size:13px; font-weight:600; color:var(--ppb-text); margin-bottom:5px; }
+
+/* ── PP bar ── */
+.ppb-bar-bg { background:var(--ppb-bg3); border-radius:3px; height:4px; overflow:hidden; width:100%; }
+.ppb-bar-fill { height:100%; border-radius:3px; transition:width 0.3s; }
+
+/* ── Toast ── */
+#ppb-toast {
+  position:fixed; bottom:24px; right:24px;
+  background:var(--ppb-bg2); border:1px solid var(--ppb-border2);
+  border-radius:var(--radius); padding:11px 14px;
+  font-size:12px; color:var(--ppb-text);
+  z-index:9999; opacity:0; transform:translateY(10px);
+  transition:all 0.2s; pointer-events:none; max-width:300px;
+}
+#ppb-toast.show { opacity:1; transform:translateY(0); }
+#ppb-toast.ok  { border-color:rgba(74,124,89,0.6); }
+#ppb-toast.err { border-color:rgba(139,26,26,0.6); }
+</style>
+
+<!-- ══════════════════ HTML DE L'OUTIL ══════════════════ -->
+<div id="ppb-root">
+
+  <!-- Controls -->
+  <div id="ppb-controls">
+    <div class="ppb-ctrl-group">
+      <span class="ppb-ctrl-label">DMG ×</span>
+      <input type="range" class="ppb-range" id="ppb-sliderDmg" min="0.3" max="2.5" step="0.05" value="1.0">
+      <span class="ppb-ctrl-val" id="ppb-valDmg">1.0</span>
+    </div>
+    <div class="ppb-ctrl-group">
+      <span class="ppb-ctrl-label">HP ennemi ×</span>
+      <input type="range" class="ppb-range" id="ppb-sliderHp" min="0.3" max="2.5" step="0.05" value="1.0">
+      <span class="ppb-ctrl-val" id="ppb-valHp">1.0</span>
+    </div>
+    <div class="ppb-ctrl-group">
+      <span class="ppb-ctrl-label">Budget PP</span>
+      <input type="range" class="ppb-range" id="ppb-sliderBudget" min="60" max="200" step="5" value="100">
+      <span class="ppb-ctrl-val" id="ppb-valBudget">100</span>
+    </div>
+    <div class="ppb-ctrl-spacer"></div>
+    <div class="ppb-ctrl-actions">
+      <button class="ppb-btn ppb-btn-s" id="ppb-btnImport">⬆ Import</button>
+      <button class="ppb-btn ppb-btn-p" id="ppb-btnExport">⬇ Export JSON</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div id="ppb-tabs">
+    <div class="ppb-tab active" data-tab="dashboard">Dashboard</div>
+    <div class="ppb-tab" data-tab="effects">Effets</div>
+    <div class="ppb-tab" data-tab="triggers">Déclencheurs</div>
+    <div class="ppb-tab" data-tab="skills">Compétences</div>
+    <div class="ppb-tab" data-tab="relics">Reliques</div>
+    <div class="ppb-tab" data-tab="calculator">Calculateur PP</div>
+  </div>
+
+  <div id="ppb-main">
+    <!-- Sidebar -->
+    <div id="ppb-sidebar"><div id="ppb-sbContent"></div></div>
+
+    <!-- Content -->
+    <div id="ppb-content">
+
+      <!-- DASHBOARD -->
+      <div class="ppb-panel active" id="ppb-panel-dashboard">
+        <div class="ppb-stat-grid" id="ppb-statsGrid"></div>
+        <div class="ppb-chart"><div class="ppb-chart-title">Courbe de puissance — PP total par nombre de compétences</div><canvas id="ppb-chartProgress" height="160"></canvas></div>
+        <div class="ppb-chart"><div class="ppb-chart-title">Distribution des déclencheurs par fréquence</div><canvas id="ppb-chartFreq" height="140"></canvas></div>
+      </div>
+
+      <!-- EFFECTS -->
+      <div class="ppb-panel" id="ppb-panel-effects">
+        <div class="ppb-toolbar">
+          <div class="ppb-toolbar-title">Effets <span id="ppb-effectCount" style="font-size:11px;color:var(--ppb-muted);font-weight:400"></span></div>
+          <input class="ppb-search" id="ppb-searchEffects" placeholder="🔍 Rechercher…">
+          <select class="ppb-select" id="ppb-filterEffectFamily">
+            <option value="">Toutes familles</option>
+            <option>Dégâts directs</option><option>DoT / Érosion</option>
+            <option>Contrôle terrain</option><option>Contrôle ennemis</option>
+            <option>Mobilité</option><option>Invocations</option>
+            <option>Défense</option><option>Économie / Chaos</option>
+          </select>
+          <button class="ppb-btn ppb-btn-p" id="ppb-btnNewEffect">+ Nouvel effet</button>
+        </div>
+        <div class="ppb-table-wrap">
+          <table><thead><tr><th>ID</th><th>Nom</th><th>Famille</th><th>Rareté</th><th>base_damage</th><th>duration</th><th>radius</th><th>cooldown</th><th>PP calculé</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="ppb-effectsBody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- TRIGGERS -->
+      <div class="ppb-panel" id="ppb-panel-triggers">
+        <div class="ppb-toolbar">
+          <div class="ppb-toolbar-title">Déclencheurs <span id="ppb-triggerCount" style="font-size:11px;color:var(--ppb-muted);font-weight:400"></span></div>
+          <input class="ppb-search" id="ppb-searchTriggers" placeholder="🔍 Rechercher…">
+          <select class="ppb-select" id="ppb-filterTriggerType">
+            <option value="">Base + Avancés</option><option value="base">Base</option><option value="advanced">Avancés</option>
+          </select>
+          <select class="ppb-select" id="ppb-filterFreq" style="width:130px">
+            <option value="">Toutes fréquences</option>
+            <option value="th">Très haute</option><option value="h">Haute</option>
+            <option value="m">Moyenne</option><option value="b">Basse</option><option value="r">Rare</option>
+          </select>
+          <button class="ppb-btn ppb-btn-p" id="ppb-btnNewTrigger">+ Nouveau</button>
+        </div>
+        <div class="ppb-table-wrap">
+          <table><thead><tr><th>ID</th><th>Nom</th><th>Type</th><th>Famille</th><th>Rareté</th><th>Fréquence</th><th>Freq/salle</th><th>Cooldown</th><th>PP cible</th><th>Tags</th><th></th></tr></thead>
+          <tbody id="ppb-triggersBody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- SKILLS -->
+      <div class="ppb-panel" id="ppb-panel-skills">
+        <div class="ppb-toolbar">
+          <div class="ppb-toolbar-title">Compétences assemblées</div>
+          <input class="ppb-search" id="ppb-searchSkills" placeholder="🔍 Rechercher…">
+          <button class="ppb-btn ppb-btn-p" id="ppb-btnNewSkill">+ Nouvelle compétence</button>
+        </div>
+        <div class="ppb-table-wrap">
+          <table><thead><tr><th>ID</th><th>Nom</th><th>Déclencheur</th><th>Effet</th><th>PP estimé/salle</th><th>Statut</th><th>Tags communs</th><th></th></tr></thead>
+          <tbody id="ppb-skillsBody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- RELICS -->
+      <div class="ppb-panel" id="ppb-panel-relics">
+        <div class="ppb-toolbar">
+          <div class="ppb-toolbar-title">Reliques</div>
+          <input class="ppb-search" id="ppb-searchRelics" placeholder="🔍 Rechercher…">
+          <select class="ppb-select" id="ppb-filterRelicType">
+            <option value="">Toutes</option><option value="faible">Faibles</option><option value="forte">Fortes</option>
+          </select>
+          <button class="ppb-btn ppb-btn-p" id="ppb-btnNewRelic">+ Nouvelle relique</button>
+        </div>
+        <div class="ppb-table-wrap">
+          <table><thead><tr><th>ID</th><th>Nom</th><th>Type</th><th>Description</th><th>Tags</th><th>Valeur</th><th></th></tr></thead>
+          <tbody id="ppb-relicsBody"></tbody></table>
+        </div>
+      </div>
+
+      <!-- CALCULATOR -->
+      <div class="ppb-panel" id="ppb-panel-calculator">
+        <div class="ppb-toolbar"><div class="ppb-toolbar-title">Calculateur PP</div></div>
+        <div class="ppb-calc-grid">
+          <div class="ppb-calc-card">
+            <h3>Paramètres</h3>
+            <div class="ppb-field"><label>BUDGET PP CIBLE</label><input type="number" class="ppb-input" id="ppb-calcBudget" value="100"></div>
+            <div class="ppb-field"><label>FRÉQUENCE (activations/salle)</label><input type="number" class="ppb-input" id="ppb-calcFreq" value="10" step="0.5"></div>
+            <div class="ppb-field"><label>TYPE D'EFFET</label>
+              <select class="ppb-input" id="ppb-calcType">
+                <option value="1.0">Burst (×1.0)</option><option value="0.85">DoT (×0.85)</option>
+                <option value="0.75">AoE Zone (×0.75)</option><option value="0.5">Contrôle (×0.5)</option>
+                <option value="0.7">Invocation (×0.7)</option><option value="0.6">Buff joueur (×0.6)</option>
+              </select>
+            </div>
+            <div class="ppb-field"><label>CATÉGORIE FRÉQUENCE</label>
+              <select class="ppb-input" id="ppb-calcFreqCat">
+                <option value="">Manuel</option><option value="20">Très haute (20×)</option>
+                <option value="11">Haute (11×)</option><option value="6">Moyenne (6×)</option>
+                <option value="2.5">Basse (2.5×)</option><option value="0.75">Rare (0.75×)</option>
+              </select>
+            </div>
+          </div>
+          <div class="ppb-calc-card">
+            <h3>Résultat</h3>
+            <div class="ppb-calc-result" id="ppb-calcResult">—</div>
+            <div class="ppb-calc-sub" id="ppb-calcSub">PP par activation</div>
+            <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--ppb-border)">
+              <div class="ppb-field"><label>base_damage suggéré</label>
+                <div class="ppb-calc-result" id="ppb-calcDamage" style="font-size:20px">—</div>
+              </div>
+              <div style="font-size:10px;color:var(--ppb-muted)">Après mult. global (×<span id="ppb-calcMult">1.0</span>)</div>
+            </div>
+          </div>
+          <div class="ppb-calc-card">
+            <h3>Référence rapide</h3>
+            <table style="font-size:11px;width:100%">
+              <tr><td style="padding:4px 6px"><span class="ppb-freq ppb-fth">20×</span></td><td style="padding:4px 6px;font-family:var(--font-mono);color:var(--ppb-amber)" id="ppb-refTH">—</td></tr>
+              <tr><td style="padding:4px 6px"><span class="ppb-freq ppb-fh">11×</span></td><td style="padding:4px 6px;font-family:var(--font-mono);color:var(--ppb-amber)" id="ppb-refH">—</td></tr>
+              <tr><td style="padding:4px 6px"><span class="ppb-freq ppb-fm">6×</span></td><td style="padding:4px 6px;font-family:var(--font-mono);color:var(--ppb-amber)" id="ppb-refM">—</td></tr>
+              <tr><td style="padding:4px 6px"><span class="ppb-freq ppb-fb">2.5×</span></td><td style="padding:4px 6px;font-family:var(--font-mono);color:var(--ppb-amber)" id="ppb-refB">—</td></tr>
+              <tr><td style="padding:4px 6px"><span class="ppb-freq ppb-fr">0.75×</span></td><td style="padding:4px 6px;font-family:var(--font-mono);color:var(--ppb-amber)" id="ppb-refR">—</td></tr>
+            </table>
+          </div>
+        </div>
+        <div class="ppb-chart"><div class="ppb-chart-title">Simulation — DPS avec N compétences identiques</div><canvas id="ppb-chartSim" height="150"></canvas></div>
+      </div>
+
+    </div><!-- /ppb-content -->
+  </div><!-- /ppb-main -->
+
+</div><!-- /ppb-root -->
+
+<!-- TOAST -->
+<div id="ppb-toast"></div>
+
+<!-- MODALS -->
+<!-- Effect modal -->
+<div class="ppb-modal-overlay" id="ppb-modalEffect">
+  <div class="ppb-modal">
+    <div class="ppb-modal-hdr"><div class="ppb-modal-title" id="ppb-modalEffectTitle">Nouvel effet</div><span class="ppb-modal-close" data-close="ppb-modalEffect">✕</span></div>
+    <div class="ppb-form-grid">
+      <div class="ppb-field"><label>ID</label><input type="text" class="ppb-input" id="ppb-eff_id" placeholder="E01"></div>
+      <div class="ppb-field"><label>NOM</label><input type="text" class="ppb-input" id="ppb-eff_name"></div>
+      <div class="ppb-field ppb-form-full"><label>FAMILLE</label>
+        <select class="ppb-input" id="ppb-eff_family"><option>Dégâts directs</option><option>DoT / Érosion</option><option>Contrôle terrain</option><option>Contrôle ennemis</option><option>Mobilité</option><option>Invocations</option><option>Défense</option><option>Économie / Chaos</option></select>
+      </div>
+      <div class="ppb-field"><label>RARETÉ</label><select class="ppb-input" id="ppb-eff_rarity"><option value="commun">Commun</option><option value="rare">Rare</option><option value="epique">Épique</option><option value="legendaire">Légendaire</option></select></div>
+      <div class="ppb-field"><label>TYPE</label><select class="ppb-input" id="ppb-eff_type"><option value="1.0">Burst</option><option value="0.85">DoT</option><option value="0.75">AoE Zone</option><option value="0.5">Contrôle</option><option value="0.7">Invocation</option><option value="0.6">Buff</option></select></div>
+      <div class="ppb-field"><label>BASE_DAMAGE</label><input type="number" class="ppb-input" id="ppb-eff_damage" value="0" step="0.5"></div>
+      <div class="ppb-field"><label>DURATION (s)</label><input type="number" class="ppb-input" id="ppb-eff_duration" value="0" step="0.5"></div>
+      <div class="ppb-field"><label>AREA_RADIUS</label><input type="number" class="ppb-input" id="ppb-eff_radius" value="0" step="0.5"></div>
+      <div class="ppb-field"><label>COOLDOWN (s)</label><input type="number" class="ppb-input" id="ppb-eff_cooldown" value="0.5" step="0.1"></div>
+      <div class="ppb-field"><label>MULTIPLIER</label><input type="number" class="ppb-input" id="ppb-eff_mult" value="1.0" step="0.05"></div>
+      <div class="ppb-field ppb-form-full"><label>TAGS</label><input type="text" class="ppb-input" id="ppb-eff_tags" placeholder="#degat_direct #collision"></div>
+      <div class="ppb-field ppb-form-full"><label>DESCRIPTION</label><input type="text" class="ppb-input" id="ppb-eff_desc"></div>
+    </div>
+    <div class="ppb-modal-ftr"><button class="ppb-btn ppb-btn-s" data-close="ppb-modalEffect">Annuler</button><button class="ppb-btn ppb-btn-p" id="ppb-saveEffect">Enregistrer</button></div>
+  </div>
+</div>
+
+<!-- Trigger modal -->
+<div class="ppb-modal-overlay" id="ppb-modalTrigger">
+  <div class="ppb-modal">
+    <div class="ppb-modal-hdr"><div class="ppb-modal-title" id="ppb-modalTriggerTitle">Nouveau déclencheur</div><span class="ppb-modal-close" data-close="ppb-modalTrigger">✕</span></div>
+    <div class="ppb-form-grid">
+      <div class="ppb-field"><label>ID</label><input type="text" class="ppb-input" id="ppb-tr_id" placeholder="DB-COL-01"></div>
+      <div class="ppb-field"><label>NOM</label><input type="text" class="ppb-input" id="ppb-tr_name"></div>
+      <div class="ppb-field"><label>TYPE</label><select class="ppb-input" id="ppb-tr_type"><option value="base">Base</option><option value="advanced">Avancé</option></select></div>
+      <div class="ppb-field"><label>FAMILLE</label><input type="text" class="ppb-input" id="ppb-tr_family"></div>
+      <div class="ppb-field"><label>RARETÉ</label><select class="ppb-input" id="ppb-tr_rarity"><option value="commun">Commun</option><option value="rare">Rare</option><option value="epique">Épique</option><option value="legendaire">Légendaire</option></select></div>
+      <div class="ppb-field"><label>CATÉGORIE FRÉQUENCE</label>
+        <select class="ppb-input" id="ppb-tr_freq_cat"><option value="th">Très haute (15–25×)</option><option value="h" selected>Haute (8–15×)</option><option value="m">Moyenne (4–8×)</option><option value="b">Basse (1–4×)</option><option value="r">Rare (0.5–1×)</option></select>
+      </div>
+      <div class="ppb-field"><label>FREQ ESTIMÉE/SALLE</label><input type="number" class="ppb-input" id="ppb-tr_freq" value="11" step="0.5"></div>
+      <div class="ppb-field"><label>COOLDOWN (s)</label><input type="number" class="ppb-input" id="ppb-tr_cooldown" value="0.3" step="0.05"></div>
+      <div class="ppb-field"><label>LOC TYPE</label><select class="ppb-input" id="ppb-tr_loc"><option>loc_cible</option><option>loc_point</option><option>loc_soi</option><option>loc_global</option></select></div>
+      <div class="ppb-field ppb-form-full"><label>TAGS</label><input type="text" class="ppb-input" id="ppb-tr_tags"></div>
+      <div class="ppb-field ppb-form-full"><label>CONDITION</label><input type="text" class="ppb-input" id="ppb-tr_cond"></div>
+    </div>
+    <div id="ppb-triggerPPHint" style="background:var(--ppb-bg3);border:1px solid var(--ppb-border);border-radius:var(--radius);padding:9px 12px;margin-top:6px;font-size:11px;color:var(--ppb-muted)">
+      PP cible : <span id="ppb-triggerPPVal" style="color:var(--ppb-amber);font-family:var(--font-mono);font-weight:600">—</span>
+    </div>
+    <div class="ppb-modal-ftr"><button class="ppb-btn ppb-btn-s" data-close="ppb-modalTrigger">Annuler</button><button class="ppb-btn ppb-btn-p" id="ppb-saveTrigger">Enregistrer</button></div>
+  </div>
+</div>
+
+<!-- Skill modal -->
+<div class="ppb-modal-overlay" id="ppb-modalSkill">
+  <div class="ppb-modal">
+    <div class="ppb-modal-hdr"><div class="ppb-modal-title">Nouvelle compétence</div><span class="ppb-modal-close" data-close="ppb-modalSkill">✕</span></div>
+    <div class="ppb-form-grid">
+      <div class="ppb-field"><label>ID</label><input type="text" class="ppb-input" id="ppb-sk_id"></div>
+      <div class="ppb-field"><label>NOM</label><input type="text" class="ppb-input" id="ppb-sk_name"></div>
+      <div class="ppb-field ppb-form-full"><label>DÉCLENCHEUR</label><select class="ppb-input" id="ppb-sk_trigger"></select></div>
+      <div class="ppb-field ppb-form-full"><label>EFFET</label><select class="ppb-input" id="ppb-sk_effect"></select></div>
+      <div class="ppb-field ppb-form-full"><label>CLASSES (virgule, vide = toutes)</label><input type="text" class="ppb-input" id="ppb-sk_classes"></div>
+      <div id="ppb-skillPreview" class="ppb-form-full" style="display:none">
+        <div style="background:var(--ppb-bg3);border:1px solid var(--ppb-border);border-radius:var(--radius);padding:10px">
+          <div style="font-size:10px;color:var(--ppb-muted);margin-bottom:4px;font-family:var(--font-mono)">APERÇU PP</div>
+          <div id="ppb-skillPPPreview" style="font-size:17px;font-family:var(--font-mono);color:var(--ppb-amber)">—</div>
+          <div id="ppb-skillTagsPreview" style="margin-top:6px"></div>
+        </div>
+      </div>
+    </div>
+    <div class="ppb-modal-ftr"><button class="ppb-btn ppb-btn-s" data-close="ppb-modalSkill">Annuler</button><button class="ppb-btn ppb-btn-p" id="ppb-saveSkill">Enregistrer</button></div>
+  </div>
+</div>
+
+<!-- Relic modal -->
+<div class="ppb-modal-overlay" id="ppb-modalRelic">
+  <div class="ppb-modal">
+    <div class="ppb-modal-hdr"><div class="ppb-modal-title" id="ppb-modalRelicTitle">Nouvelle relique</div><span class="ppb-modal-close" data-close="ppb-modalRelic">✕</span></div>
+    <div class="ppb-form-grid">
+      <div class="ppb-field"><label>ID</label><input type="text" class="ppb-input" id="ppb-rl_id" placeholder="RF01"></div>
+      <div class="ppb-field"><label>NOM</label><input type="text" class="ppb-input" id="ppb-rl_name"></div>
+      <div class="ppb-field"><label>TYPE</label><select class="ppb-input" id="ppb-rl_type"><option value="faible">Faible ⚪</option><option value="forte">Forte 🔴</option></select></div>
+      <div class="ppb-field"><label>VALEUR NUMÉRIQUE</label><input type="number" class="ppb-input" id="ppb-rl_value" value="0" step="0.05"></div>
+      <div class="ppb-field ppb-form-full"><label>TAGS</label><input type="text" class="ppb-input" id="ppb-rl_tags"></div>
+      <div class="ppb-field ppb-form-full"><label>DESCRIPTION</label><input type="text" class="ppb-input" id="ppb-rl_desc"></div>
+      <div class="ppb-field ppb-form-full"><label>MALUS</label><input type="text" class="ppb-input" id="ppb-rl_malus"></div>
+    </div>
+    <div class="ppb-modal-ftr"><button class="ppb-btn ppb-btn-s" data-close="ppb-modalRelic">Annuler</button><button class="ppb-btn ppb-btn-p" id="ppb-saveRelic">Enregistrer</button></div>
+  </div>
+</div>
+
+<!-- Import modal -->
+<div class="ppb-modal-overlay" id="ppb-modalImport">
+  <div class="ppb-modal">
+    <div class="ppb-modal-hdr"><div class="ppb-modal-title">Import de données</div><span class="ppb-modal-close" data-close="ppb-modalImport">✕</span></div>
+    <div class="ppb-field"><label>TYPE</label>
+      <select class="ppb-input" id="ppb-importType">
+        <option value="json">JSON (export PP Balancer)</option>
+        <option value="csv_effects">CSV — Effets</option>
+        <option value="csv_triggers">CSV — Déclencheurs</option>
+        <option value="csv_relics">CSV — Reliques</option>
+      </select>
+    </div>
+    <div class="ppb-import-zone" id="ppb-importZone">
+      <div style="font-size:28px;margin-bottom:8px">📂</div>
+      <div style="font-size:13px;font-weight:600;color:var(--ppb-text);margin-bottom:4px">Glisser un fichier ou cliquer</div>
+      <div style="font-size:10px;color:var(--ppb-muted)">JSON · CSV</div>
+    </div>
+    <input type="file" id="ppb-fileInput" style="display:none" accept=".json,.csv">
+    <div style="border-top:1px solid var(--ppb-border);padding-top:12px;margin-top:4px">
+      <div style="font-size:10px;color:var(--ppb-muted);margin-bottom:6px;font-family:var(--font-mono)">OU COLLER DU JSON</div>
+      <textarea id="ppb-pasteArea" style="width:100%;height:90px;background:var(--ppb-bg2);border:1px solid var(--ppb-border);border-radius:var(--radius);color:var(--ppb-text);font-family:var(--font-mono);font-size:10px;padding:8px;resize:vertical;outline:none" placeholder='{"effects":[], "triggers":[], ...}'></textarea>
+    </div>
+    <div class="ppb-modal-ftr"><button class="ppb-btn ppb-btn-s" data-close="ppb-modalImport">Annuler</button><button class="ppb-btn ppb-btn-p" id="ppb-processImport">Importer</button></div>
+  </div>
+</div>
+
+<!-- Chart.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
+<script>
+(function() {
+'use strict';
+
+// ── helpers DOM ──
+function g(id) { return document.getElementById(id); }
+function gv(id) { return (g(id)||{}).value || ''; }
+
+// ════════════════════════════════════════════════
+//  DATA STORE
+// ════════════════════════════════════════════════
+const DB = {
+  effects:[], triggers:[], skills:[], relics:[],
+  meta:{ dmg_mult:1.0, hp_mult:1.0, budget_pp:100 }
+};
+
+const SEED_TRIGGERS = [
+  {id:"DB-COL-01",name:"Collision Standard",type:"base",family:"Collision — Ennemi",rarity:"commun",freq_cat:"th",freq:12,cooldown:0.3,loc:"loc_cible",tags:["#collision","#mouvement"],cond:"À chaque collision avec un ennemi."},
+  {id:"DB-COL-02",name:"Premier Contact de la Salle",type:"base",family:"Collision — Ennemi",rarity:"commun",freq_cat:"r",freq:1,cooldown:0,loc:"loc_cible",tags:["#collision","#sequence"],cond:"La toute première collision dans la salle."},
+  {id:"DB-COL-03",name:"Ennemi Déjà Touché",type:"base",family:"Collision — Ennemi",rarity:"commun",freq_cat:"h",freq:10,cooldown:0.3,loc:"loc_cible",tags:["#collision","#pv_ennemi"],cond:"Quand tu touches un ennemi déjà frappé."},
+  {id:"DB-COL-04",name:"Ennemi Intact (100% PV)",type:"base",family:"Collision — Ennemi",rarity:"commun",freq_cat:"b",freq:3,cooldown:0,loc:"loc_cible",tags:["#collision","#pv_ennemi"],cond:"Quand tu touches un ennemi n'ayant reçu aucun dégât."},
+  {id:"DB-COL-05",name:"Ennemi Seul",type:"base",family:"Collision — Ennemi",rarity:"commun",freq_cat:"b",freq:4,cooldown:0,loc:"loc_cible",tags:["#collision","#trajectoire"],cond:"Ennemi sans autre ennemi proche."},
+  {id:"DB-COL-06",name:"Collision à Grande Vitesse",type:"base",family:"Collision — Ennemi",rarity:"rare",freq_cat:"m",freq:5,cooldown:0.3,loc:"loc_cible",tags:["#collision","#choc_frontal","#mouvement"],cond:"Collision si vitesse dépasse un seuil élevé."},
+  {id:"DB-COL-07",name:"Choc Frontal",type:"base",family:"Collision — Ennemi",rarity:"rare",freq_cat:"m",freq:4,cooldown:0.5,loc:"loc_cible",tags:["#collision","#choc_frontal","#risque"],cond:"Les deux entités se dirigent l'une vers l'autre."},
+  {id:"DB-COL-08",name:"Ennemi Affaibli (<50% PV)",type:"base",family:"Collision — Ennemi",rarity:"rare",freq_cat:"m",freq:5,cooldown:0,loc:"loc_cible",tags:["#collision","#pv_ennemi"],cond:"Ennemi ayant moins de 50% PV."},
+  {id:"DB-COL-09",name:"Ennemi Agonisant (<25% PV)",type:"base",family:"Collision — Ennemi",rarity:"epique",freq_cat:"b",freq:2,cooldown:0,loc:"loc_cible",tags:["#collision","#pv_ennemi"],cond:"Ennemi ayant moins de 25% PV."},
+  {id:"DB-COL-10",name:"Choc Cosmique",type:"base",family:"Collision — Ennemi",rarity:"legendaire",freq_cat:"r",freq:0.8,cooldown:0,loc:"loc_cible",tags:["#collision","#choc_frontal","#risque","#mouvement"],cond:"Choc Frontal à vitesse très élevée."},
+  {id:"DB-REB-01",name:"Rebond sur Obstacle",type:"base",family:"Rebond — Trajectoire",rarity:"commun",freq_cat:"h",freq:12,cooldown:0,loc:"loc_point",tags:["#rebond","#trajectoire"],cond:"À chaque rebond sur un mur ou obstacle."},
+  {id:"DB-REB-02",name:"Premier Rebond du Tir",type:"base",family:"Rebond — Trajectoire",rarity:"commun",freq_cat:"h",freq:9,cooldown:0,loc:"loc_point",tags:["#rebond","#trajectoire","#sequence"],cond:"Le tout premier rebond après un lancer."},
+  {id:"DB-TPS-01",name:"Minuterie Passive",type:"base",family:"Temps — Minuteries",rarity:"commun",freq_cat:"h",freq:7.5,cooldown:4,loc:"loc_soi",tags:["#temps","#compteur"],cond:"Toutes les 4 secondes en continu."},
+  {id:"DB-TPS-02",name:"Minuterie en Mouvement",type:"base",family:"Temps — Minuteries",rarity:"rare",freq_cat:"m",freq:6,cooldown:3,loc:"loc_soi",tags:["#temps","#mouvement","#compteur"],cond:"Toutes les 3s, uniquement si en déplacement."},
+  {id:"DB-KIL-01",name:"Kill",type:"base",family:"Kill",rarity:"commun",freq_cat:"m",freq:7,cooldown:0,loc:"loc_point",tags:["#kill"],cond:"À chaque fois qu'un ennemi meurt sous tes coups."},
+  {id:"DB-KIL-02",name:"Premier Kill de la Salle",type:"base",family:"Kill",rarity:"commun",freq_cat:"r",freq:1,cooldown:0,loc:"loc_point",tags:["#kill","#sequence"],cond:"Quand tu tues le premier ennemi de la salle."},
+  {id:"DB-ETA-01",name:"Seuil de PV Bas (<50%)",type:"base",family:"État et Conditions",rarity:"commun",freq_cat:"r",freq:1,cooldown:0,loc:"loc_soi",tags:["#pv_personnage","#risque"],cond:"Au moment où tu passes sous 50% PV."},
+  {id:"DB-COL-R",name:"Collecte de Ressource",type:"base",family:"Collecte",rarity:"commun",freq_cat:"h",freq:10,cooldown:0,loc:"loc_soi",tags:["#compteur","#risque"],cond:"À chaque collecte d'une ressource."},
+  {id:"DA-ENT-01",name:"Buff Appliqué",type:"advanced",family:"État de l'Entité",rarity:"commun",freq_cat:"m",freq:7,cooldown:0,loc:"loc_soi",tags:["#buff","#trigger"],cond:"Au moment où un buff de ton kit est appliqué."},
+  {id:"DA-ENT-02",name:"Buff Expiré",type:"advanced",family:"État de l'Entité",rarity:"commun",freq_cat:"m",freq:5,cooldown:0,loc:"loc_soi",tags:["#buff","#temps","#trigger"],cond:"Au moment où un buff de ton kit se termine."},
+  {id:"DA-DOT-01",name:"Ennemi Sous DoT",type:"advanced",family:"DoT & Érosion",rarity:"rare",freq_cat:"m",freq:7,cooldown:0.3,loc:"loc_cible",tags:["#collision","#dot","#synergie"],cond:"Quand tu touches un ennemi affecté par un DoT de ton kit."},
+  {id:"DA-DOT-02",name:"Fin de DoT",type:"advanced",family:"DoT & Érosion",rarity:"rare",freq_cat:"b",freq:4,cooldown:0,loc:"loc_cible",tags:["#dot","#temps","#trigger"],cond:"Au moment où un DoT de ton kit se termine sur un ennemi."},
+  {id:"DA-INV-01",name:"Invocation Posée",type:"advanced",family:"Invocations & Zones",rarity:"commun",freq_cat:"m",freq:7,cooldown:0,loc:"loc_point",tags:["#invocation","#structures","#trigger"],cond:"Au moment où tu invoques une structure ou entité alliée."},
+  {id:"DA-INV-02",name:"Piège Déclenché",type:"advanced",family:"Invocations & Zones",rarity:"commun",freq_cat:"m",freq:5,cooldown:0,loc:"loc_point",tags:["#piege","#structures","#trigger"],cond:"Au moment où un piège allié s'active."},
+  {id:"DA-CCH-01",name:"Momentum de Build",type:"advanced",family:"Chaos & Séquences",rarity:"legendaire",freq_cat:"b",freq:2,cooldown:0,loc:"loc_soi",tags:["#sequence","#trigger","#compteur","#synergie"],cond:"Quand 4 compétences se déclenchent dans les 5 dernières secondes."},
+];
+
+const SEED_EFFECTS = [
+  {id:"E01",name:"Dégâts Directs Simples",family:"Dégâts directs",rarity:"commun",effect_type:"1.0",base_damage:8,duration:0,area_radius:0,cooldown:0.3,multiplier:1.0,tags:["#degat_direct"],desc:"Inflige des dégâts directs à la cible."},
+  {id:"E02",name:"Impact Perforant",family:"Dégâts directs",rarity:"rare",effect_type:"1.0",base_damage:15,duration:0,area_radius:0,cooldown:0.5,multiplier:1.0,tags:["#degat_direct","#armure"],desc:"Ignore 30% de la défense de la cible."},
+  {id:"E03",name:"Explosion",family:"Dégâts directs",rarity:"rare",effect_type:"0.75",base_damage:18,duration:0,area_radius:3,cooldown:0.8,multiplier:1.0,tags:["#degat_direct","#zone","#aoe"],desc:"Explosion centrée sur la cible, dégâts de zone."},
+  {id:"E04",name:"Saignement",family:"DoT / Érosion",rarity:"commun",effect_type:"0.85",base_damage:4,duration:4,area_radius:0,cooldown:0.3,multiplier:1.0,tags:["#dot","#saignement"],desc:"Applique saignement : X dégâts/sec pendant Ds."},
+  {id:"E05",name:"Poison Lent",family:"DoT / Érosion",rarity:"commun",effect_type:"0.85",base_damage:3,duration:6,area_radius:0,cooldown:0.3,multiplier:1.0,tags:["#dot","#poison"],desc:"Applique poison : X dégâts/sec pendant Ds."},
+  {id:"E06",name:"Brûlure",family:"DoT / Érosion",rarity:"rare",effect_type:"0.85",base_damage:5,duration:3,area_radius:0,cooldown:0.5,multiplier:1.0,tags:["#dot","#feu"],desc:"Applique brûlure : X dégâts/sec pendant Ds."},
+  {id:"E07",name:"Sol Brûlant",family:"Contrôle terrain",rarity:"rare",effect_type:"0.75",base_damage:6,duration:5,area_radius:2,cooldown:1.0,multiplier:1.0,tags:["#zone","#feu","#structures"],desc:"Crée une zone de feu au sol."},
+  {id:"E08",name:"Stun Court",family:"Contrôle ennemis",rarity:"commun",effect_type:"0.5",base_damage:0,duration:1,area_radius:0,cooldown:0.5,multiplier:1.0,tags:["#controle","#stun"],desc:"Stun la cible pendant 1s."},
+  {id:"E09",name:"Slow",family:"Contrôle ennemis",rarity:"commun",effect_type:"0.5",base_damage:0,duration:3,area_radius:0,cooldown:0.3,multiplier:1.0,tags:["#controle","#slow"],desc:"Réduit la vitesse de la cible de 40%."},
+  {id:"E10",name:"Accélération",family:"Mobilité",rarity:"commun",effect_type:"0.6",base_damage:0,duration:2,area_radius:0,cooldown:0.5,multiplier:1.2,tags:["#buff","#mouvement","#vitesse"],desc:"Accélère le joueur de 40% pendant Ds."},
+  {id:"E11",name:"Bouclier Instantané",family:"Défense",rarity:"commun",effect_type:"0.6",base_damage:0,duration:2,area_radius:0,cooldown:1.0,multiplier:1.0,tags:["#defense","#buff"],desc:"Absorbe les X prochains dégâts."},
+  {id:"E12",name:"Vol de Vie",family:"Défense",rarity:"rare",effect_type:"0.6",base_damage:5,duration:0,area_radius:0,cooldown:0.5,multiplier:1.0,tags:["#soin","#pv_personnage"],desc:"Soigne le joueur de X PV."},
+  {id:"E13",name:"Petites Dents Bonus",family:"Économie / Chaos",rarity:"commun",effect_type:"0.6",base_damage:0,duration:0,area_radius:0,cooldown:0.3,multiplier:1.0,tags:["#meta","#ressource"],desc:"Génère X Petites Dents."},
+  {id:"E14",name:"Invocation — Sentinelle",family:"Invocations",rarity:"rare",effect_type:"0.7",base_damage:8,duration:8,area_radius:0,cooldown:2.0,multiplier:1.0,tags:["#invocation","#structures"],desc:"Invoque une sentinelle qui attaque les ennemis proches."},
+];
+
+const SEED_RELICS = [
+  {id:"RF01",name:"Galet Poli",type:"faible",value:1.0,tags:["#rebond","#mouvement"],desc:"La bille ne perd plus de vitesse au contact des murs.",malus:""},
+  {id:"RF02",name:"Dent de Lait",type:"faible",value:2.0,tags:["#collecte","#ressource"],desc:"La première ressource collectée dans chaque salle est doublée.",malus:""},
+  {id:"RF03",name:"Horloge Cassée",type:"faible",value:-1.0,tags:["#temps"],desc:"Délai entre déclencheurs #temps réduit de 1s (min 1s).",malus:""},
+  {id:"RF04",name:"Fiole de Colère",type:"faible",value:0.05,tags:["#heurt","#risque"],desc:"+5% dégâts à chaque coup reçu, max +30%.",malus:""},
+  {id:"RF05",name:"Miroir Fendu",type:"faible",value:2.0,tags:["#combo","#trigger"],desc:"La première compétence déclenchée dans chaque salle se déclenche deux fois.",malus:""},
+  {id:"RS01",name:"Couronne Inversée",type:"forte",value:2.0,tags:["#degat_direct","#risque"],desc:"Dégâts infligés ×2. Dégâts reçus ×1.5.",malus:"Dégâts reçus ×1.5"},
+  {id:"RS02",name:"Cristal de Résonance",type:"forte",value:1.0,tags:["#trigger","#combo"],desc:"Chaque fois que 2 compétences se déclenchent dans la même seconde, une 3e aléatoire se déclenche gratuitement.",malus:""},
+];
+
+DB.triggers = JSON.parse(JSON.stringify(SEED_TRIGGERS));
+DB.effects  = JSON.parse(JSON.stringify(SEED_EFFECTS));
+DB.relics   = JSON.parse(JSON.stringify(SEED_RELICS));
+
+// ════════════════════════════════════════════════
+//  CONSTANTS & HELPERS
+// ════════════════════════════════════════════════
+const FREQ_LABELS = {th:"Très haute",h:"Haute",m:"Moyenne",b:"Basse",r:"Rare"};
+const FREQ_MID    = {th:20,h:11,m:6,b:2.5,r:0.75};
+const BPP = () => DB.meta.budget_pp;
+
+function rarC(r) { return {commun:"ppb-rc",rare:"ppb-rr",epique:"ppb-re",legendaire:"ppb-rl"}[r]||"ppb-rc"; }
+function frqC(c) { return {th:"ppb-fth",h:"ppb-fh",m:"ppb-fm",b:"ppb-fb",r:"ppb-fr"}[c]||"ppb-fm"; }
+
+function renderChips(tags) {
+  return (tags||[]).map(t=>`<span class="ppb-tag-chip">${t}</span>`).join("");
+}
+
+function showToast(msg, type="ok") {
+  const el = g("ppb-toast");
+  el.textContent = msg;
+  el.className = "show " + type;
+  setTimeout(() => el.className="", 2200);
+}
+
+// ════════════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════════════
+let currentTab = "dashboard";
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll(".ppb-tab").forEach(t => t.classList.toggle("active", t.dataset.tab===tab));
+  document.querySelectorAll(".ppb-panel").forEach(p => p.classList.remove("active"));
+  g("ppb-panel-"+tab).classList.add("active");
+  updateSidebar();
+  if (tab==="effects")    renderEffects();
+  if (tab==="triggers")   renderTriggers();
+  if (tab==="skills")     { renderSkills(); populateSkillSelects(); }
+  if (tab==="relics")     renderRelics();
+  if (tab==="dashboard")  renderDashboard();
+  if (tab==="calculator") { recalculate(); renderSimChart(); }
+}
+
+document.querySelectorAll(".ppb-tab").forEach(t => {
+  t.addEventListener("click", () => switchTab(t.dataset.tab));
+});
+
+// ════════════════════════════════════════════════
+//  SIDEBAR
+// ════════════════════════════════════════════════
+function updateSidebar() {
+  const el = g("ppb-sbContent");
+  if (currentTab==="effects") {
+    const fams = [...new Set(DB.effects.map(e=>e.family))];
+    el.innerHTML = `<div class="ppb-sb-section">Familles</div>`
+      + fams.map(f=>`<div class="ppb-sb-item" data-fam="${f}" data-tab="effects">${f} <span class="ppb-sb-count">${DB.effects.filter(e=>e.family===f).length}</span></div>`).join("");
+  } else if (currentTab==="triggers") {
+    const bF=[...new Set(DB.triggers.filter(t=>t.type==="base").map(t=>t.family))];
+    const aF=[...new Set(DB.triggers.filter(t=>t.type==="advanced").map(t=>t.family))];
+    el.innerHTML = `<div class="ppb-sb-section">Base (${DB.triggers.filter(t=>t.type==="base").length})</div>`
+      + bF.map(f=>`<div class="ppb-sb-item" data-fam="${f}" data-tab="triggers">${f} <span class="ppb-sb-count">${DB.triggers.filter(t=>t.family===f).length}</span></div>`).join("")
+      + `<div class="ppb-sb-section">Avancés (${DB.triggers.filter(t=>t.type==="advanced").length})</div>`
+      + aF.map(f=>`<div class="ppb-sb-item" data-fam="${f}" data-tab="triggers">${f} <span class="ppb-sb-count">${DB.triggers.filter(t=>t.family===f).length}</span></div>`).join("");
+  } else {
+    el.innerHTML = `<div class="ppb-sb-section">Stats</div>`
+      + `<div class="ppb-sb-item">Total <span class="ppb-sb-count">${(DB[currentTab]||[]).length}</span></div>`;
+  }
+  el.querySelectorAll(".ppb-sb-item[data-fam]").forEach(item => {
+    item.addEventListener("click", () => {
+      const tab=item.dataset.tab, fam=item.dataset.fam;
+      if (tab==="effects") { g("ppb-filterEffectFamily").value=fam; renderEffects(); }
+      if (tab==="triggers") { g("ppb-searchTriggers").value=fam; renderTriggers(); }
+    });
+  });
+}
+
+// ════════════════════════════════════════════════
+//  GLOBAL SLIDERS
+// ════════════════════════════════════════════════
+function attachSlider(sliderId, valId, key, isInt) {
+  const el = g(sliderId);
+  el.addEventListener("input", function() {
+    const v = isInt ? parseInt(this.value) : parseFloat(this.value);
+    DB.meta[key] = v;
+    g(valId).textContent = isInt ? v : v.toFixed(2);
+    refreshAll();
+  });
+}
+attachSlider("ppb-sliderDmg",    "ppb-valDmg",    "dmg_mult",  false);
+attachSlider("ppb-sliderHp",     "ppb-valHp",     "hp_mult",   false);
+attachSlider("ppb-sliderBudget", "ppb-valBudget", "budget_pp", true);
+
+function refreshAll() {
+  if (currentTab==="effects")    renderEffects();
+  if (currentTab==="triggers")   renderTriggers();
+  if (currentTab==="skills")     renderSkills();
+  if (currentTab==="dashboard")  renderDashboard();
+  if (currentTab==="calculator") { recalculate(); renderSimChart(); }
+}
+
+// ════════════════════════════════════════════════
+//  EFFECTS TABLE
+// ════════════════════════════════════════════════
+function renderEffects() {
+  const s = g("ppb-searchEffects").value.toLowerCase();
+  const f = g("ppb-filterEffectFamily").value;
+  const list = DB.effects.filter(e =>
+    (!s || e.name.toLowerCase().includes(s) || e.id.toLowerCase().includes(s) || (e.tags||[]).join(" ").includes(s)) &&
+    (!f || e.family===f)
+  );
+  g("ppb-effectCount").textContent = `(${list.length}/${DB.effects.length})`;
+  const tbody = g("ppb-effectsBody");
+  if (!list.length) { tbody.innerHTML=emptyRow(11,"🔍","Aucun résultat"); return; }
+  tbody.innerHTML = list.map(e => {
+    const idx = DB.effects.indexOf(e);
+    const pp = e.base_damage>0 ? e.base_damage*parseFloat(e.effect_type||1)*DB.meta.dmg_mult : 0;
+    const ppCls = pp>200?"ppb-high":pp>0?"ppb-ok":"ppb-low";
+    return `<tr>
+      <td><span class="ppb-tag-chip">${e.id}</span></td>
+      <td style="font-weight:600">${e.name}</td>
+      <td style="font-size:10px;color:var(--ppb-muted)">${e.family}</td>
+      <td><span class="ppb-rar ${rarC(e.rarity)}">${e.rarity}</span></td>
+      <td><input class="ppb-editable" type="number" value="${e.base_damage}" step="0.5" style="width:60px" data-idx="${idx}" data-key="base_damage"></td>
+      <td><input class="ppb-editable" type="number" value="${e.duration}" step="0.5" style="width:50px" data-idx="${idx}" data-key="duration"></td>
+      <td><input class="ppb-editable" type="number" value="${e.area_radius}" step="0.5" style="width:50px" data-idx="${idx}" data-key="area_radius"></td>
+      <td><input class="ppb-editable" type="number" value="${e.cooldown}" step="0.1" style="width:50px" data-idx="${idx}" data-key="cooldown"></td>
+      <td><span class="ppb-pp ${ppCls}">${pp>0?pp.toFixed(1)+" PP":"—"}</span></td>
+      <td><span class="ppb-pp ${ppCls}">${e.base_damage>0?"✓ OK":"⚠ Vide"}</span></td>
+      <td><button class="ppb-btn ppb-btn-s ppb-btn-sm" data-edit-effect="${idx}">✏</button> <button class="ppb-btn ppb-btn-d ppb-btn-sm" data-del="effects" data-idx="${idx}">✕</button></td>
+    </tr>`;
+  }).join("");
+  tbody.querySelectorAll(".ppb-editable").forEach(inp => {
+    inp.addEventListener("change", () => { DB.effects[+inp.dataset.idx][inp.dataset.key] = parseFloat(inp.value)||0; });
+  });
+  tbody.querySelectorAll("[data-edit-effect]").forEach(btn => btn.addEventListener("click",()=>openEffectModal(+btn.dataset.editEffect)));
+  tbody.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click",()=>deleteItem(btn.dataset.del,+btn.dataset.idx)));
+  updateSidebar();
+}
+
+// ════════════════════════════════════════════════
+//  TRIGGERS TABLE
+// ════════════════════════════════════════════════
+function renderTriggers() {
+  const s = g("ppb-searchTriggers").value.toLowerCase();
+  const tp = g("ppb-filterTriggerType").value;
+  const fq = g("ppb-filterFreq").value;
+  const list = DB.triggers.filter(t =>
+    (!s  || t.name.toLowerCase().includes(s)||t.id.toLowerCase().includes(s)||t.family.toLowerCase().includes(s)) &&
+    (!tp || t.type===tp) && (!fq || t.freq_cat===fq)
+  );
+  g("ppb-triggerCount").textContent = `(${list.length}/${DB.triggers.length})`;
+  const tbody = g("ppb-triggersBody");
+  if (!list.length) { tbody.innerHTML=emptyRow(11,"🔍","Aucun résultat"); return; }
+  tbody.innerHTML = list.map(t => {
+    const idx = DB.triggers.indexOf(t);
+    const ppT = (BPP()/(t.freq||1)).toFixed(1);
+    return `<tr>
+      <td><span class="ppb-tag-chip">${t.id}</span></td>
+      <td style="font-weight:600">${t.name}</td>
+      <td><span class="${t.type==="base"?"ppb-type-b":"ppb-type-a"}">${t.type}</span></td>
+      <td style="font-size:10px;color:var(--ppb-muted);max-width:130px">${t.family}</td>
+      <td><span class="ppb-rar ${rarC(t.rarity)}">${t.rarity}</span></td>
+      <td><span class="ppb-freq ${frqC(t.freq_cat)}">${FREQ_LABELS[t.freq_cat]}</span></td>
+      <td><input class="ppb-editable" type="number" value="${t.freq}" step="0.5" style="width:50px" data-idx="${idx}" data-key="freq">×</td>
+      <td><input class="ppb-editable" type="number" value="${t.cooldown}" step="0.05" style="width:50px" data-idx="${idx}" data-key="cooldown">s</td>
+      <td><span class="ppb-pp ppb-ok">${ppT} PP</span></td>
+      <td>${renderChips(t.tags)}</td>
+      <td><button class="ppb-btn ppb-btn-s ppb-btn-sm" data-edit-trigger="${idx}">✏</button> <button class="ppb-btn ppb-btn-d ppb-btn-sm" data-del="triggers" data-idx="${idx}">✕</button></td>
+    </tr>`;
+  }).join("");
+  tbody.querySelectorAll(".ppb-editable").forEach(inp => {
+    inp.addEventListener("change", () => { DB.triggers[+inp.dataset.idx][inp.dataset.key] = parseFloat(inp.value)||0; });
+  });
+  tbody.querySelectorAll("[data-edit-trigger]").forEach(btn => btn.addEventListener("click",()=>openTriggerModal(+btn.dataset.editTrigger)));
+  tbody.querySelectorAll("[data-del]").forEach(btn => btn.addEventListener("click",()=>deleteItem(btn.dataset.del,+btn.dataset.idx)));
+  updateSidebar();
+}
+
+// ════════════════════════════════════════════════
+//  SKILLS TABLE
+// ════════════════════════════════════════════════
+function populateSkillSelects() {
+  const tSel=g("ppb-sk_trigger"), eSel=g("ppb-sk_effect");
+  tSel.innerHTML = `<option value="">— Sélectionner —</option>` + DB.triggers.map(t=>`<option value="${t.id}">[${t.type==="base"?"B":"A"}] ${t.name}</option>`).join("");
+  eSel.innerHTML = `<option value="">— Sélectionner —</option>` + DB.effects.map(e=>`<option value="${e.id}">${e.name}</option>`).join("");
+  tSel.onchange = eSel.onchange = updateSkillPreview;
+}
+
+function updateSkillPreview() {
+  const tId=gv("ppb-sk_trigger"), eId=gv("ppb-sk_effect");
+  const prev=g("ppb-skillPreview");
+  if (!tId||!eId) { prev.style.display="none"; return; }
+  const tr=DB.triggers.find(t=>t.id===tId), ef=DB.effects.find(e=>e.id===eId);
+  if (!tr||!ef) return;
+  const pp = (BPP()/tr.freq)*parseFloat(ef.effect_type||1)*DB.meta.dmg_mult;
+  const common = (tr.tags||[]).filter(t=>(ef.tags||[]).includes(t));
+  prev.style.display = "block";
+  g("ppb-skillPPPreview").textContent = pp.toFixed(1)+" PP/salle estimé";
+  g("ppb-skillTagsPreview").innerHTML = `<span style="font-size:10px;color:var(--ppb-muted)">Tags communs : </span>`+(common.length?renderChips(common):`<span style="color:var(--ppb-muted);font-size:10px">aucun</span>`);
+}
+
+function renderSkills() {
+  const s = g("ppb-searchSkills").value.toLowerCase();
+  const list = DB.skills.filter(sk=>!s||sk.name.toLowerCase().includes(s));
+  const tbody = g("ppb-skillsBody");
+  if (!list.length) { tbody.innerHTML=emptyRow(8,"⚔️","Aucune compétence — clique sur + pour assembler un déclencheur et un effet"); return; }
+  tbody.innerHTML = list.map(sk => {
+    const tr=DB.triggers.find(t=>t.id===sk.trigger_id), ef=DB.effects.find(e=>e.id===sk.effect_id);
+    const pp = tr&&ef?(BPP()/tr.freq)*parseFloat(ef.effect_type||1)*DB.meta.dmg_mult:0;
+    const common = tr&&ef?(tr.tags||[]).filter(t=>(ef.tags||[]).includes(t)):[];
+    const cls = pp>BPP()*2?"ppb-high":pp>BPP()*0.5?"ppb-ok":"ppb-low";
+    const idx=DB.skills.indexOf(sk);
+    return `<tr>
+      <td><span class="ppb-tag-chip">${sk.id}</span></td>
+      <td style="font-weight:600">${sk.name}</td>
+      <td style="font-size:10px">${tr?`<span class="${tr.type==="base"?"ppb-type-b":"ppb-type-a"}">${tr.type}</span> ${tr.name}`:`<span style="color:#e07070">?${sk.trigger_id}</span>`}</td>
+      <td style="font-size:10px">${ef?ef.name:`<span style="color:#e07070">?${sk.effect_id}</span>`}</td>
+      <td><span class="ppb-pp ${cls}">${pp>0?pp.toFixed(1)+" PP":"—"}</span></td>
+      <td><div class="ppb-bar-bg"><div class="ppb-bar-fill" style="width:${Math.min(100,pp/BPP()*100)}%;background:${pp>BPP()*2?"var(--ppb-red)":pp>BPP()*0.5?"var(--ppb-green)":"var(--ppb-muted)"}"></div></div></td>
+      <td>${renderChips(common)}</td>
+      <td><button class="ppb-btn ppb-btn-d ppb-btn-sm" data-del="skills" data-idx="${idx}">✕</button></td>
+    </tr>`;
+  }).join("");
+  tbody.querySelectorAll("[data-del]").forEach(btn=>btn.addEventListener("click",()=>deleteItem(btn.dataset.del,+btn.dataset.idx)));
+}
+
+// ════════════════════════════════════════════════
+//  RELICS TABLE
+// ════════════════════════════════════════════════
+function renderRelics() {
+  const s=g("ppb-searchRelics").value.toLowerCase(), tp=g("ppb-filterRelicType").value;
+  const list=DB.relics.filter(r=>(!s||r.name.toLowerCase().includes(s)||r.id.toLowerCase().includes(s))&&(!tp||r.type===tp));
+  const tbody=g("ppb-relicsBody");
+  if (!list.length) { tbody.innerHTML=emptyRow(7,"💎","Aucune relique"); return; }
+  tbody.innerHTML = list.map(r => {
+    const idx=DB.relics.indexOf(r);
+    return `<tr>
+      <td><span class="ppb-tag-chip">${r.id}</span></td>
+      <td style="font-weight:600">${r.name}</td>
+      <td>${r.type==="forte"?"🔴":"⚪"} <span style="font-size:10px;color:var(--ppb-muted)">${r.type}</span></td>
+      <td style="font-size:11px;color:var(--ppb-muted);max-width:260px">${r.desc}${r.malus?`<br><span style="color:#e07070;font-size:10px">Malus: ${r.malus}</span>`:""}</td>
+      <td>${renderChips(r.tags)}</td>
+      <td><input class="ppb-editable" type="number" value="${r.value}" step="0.05" style="width:65px" data-idx="${idx}" data-key="value"></td>
+      <td><button class="ppb-btn ppb-btn-s ppb-btn-sm" data-edit-relic="${idx}">✏</button> <button class="ppb-btn ppb-btn-d ppb-btn-sm" data-del="relics" data-idx="${idx}">✕</button></td>
+    </tr>`;
+  }).join("");
+  tbody.querySelectorAll(".ppb-editable").forEach(inp=>inp.addEventListener("change",()=>{DB.relics[+inp.dataset.idx][inp.dataset.key]=parseFloat(inp.value)||0;}));
+  tbody.querySelectorAll("[data-edit-relic]").forEach(btn=>btn.addEventListener("click",()=>openRelicModal(+btn.dataset.editRelic)));
+  tbody.querySelectorAll("[data-del]").forEach(btn=>btn.addEventListener("click",()=>deleteItem(btn.dataset.del,+btn.dataset.idx)));
+}
+
+function emptyRow(cols, icon, title) {
+  return `<tr><td colspan="${cols}"><div class="ppb-empty"><div class="ppb-empty-icon">${icon}</div><div class="ppb-empty-title">${title}</div></div></td></tr>`;
+}
+
+// ════════════════════════════════════════════════
+//  CALCULATOR
+// ════════════════════════════════════════════════
+function recalculate() {
+  const budget=parseFloat(gv("ppb-calcBudget"))||100;
+  const freq=parseFloat(gv("ppb-calcFreq"))||1;
+  const coeff=parseFloat(gv("ppb-calcType"))||1;
+  const mult=DB.meta.dmg_mult;
+  const pp=budget/freq*coeff;
+  g("ppb-calcResult").textContent = pp.toFixed(2)+" PP";
+  g("ppb-calcSub").textContent = `budget ${budget} PP · freq ${freq}× · coeff ${coeff}`;
+  g("ppb-calcDamage").textContent = (pp/mult).toFixed(2);
+  g("ppb-calcMult").textContent = mult.toFixed(2);
+  [20,11,6,2.5,0.75].forEach((f,i)=>{
+    g(["ppb-refTH","ppb-refH","ppb-refM","ppb-refB","ppb-refR"][i]).textContent=(budget/f*coeff).toFixed(1)+" PP";
+  });
+  renderSimChart();
+}
+
+g("ppb-calcFreqCat").addEventListener("change",function(){ if(this.value){g("ppb-calcFreq").value=this.value;} recalculate(); });
+g("ppb-calcBudget").addEventListener("input",recalculate);
+g("ppb-calcFreq").addEventListener("input",recalculate);
+g("ppb-calcType").addEventListener("change",recalculate);
+
+let ppbSimChart;
+function renderSimChart() {
+  const budget=parseFloat(gv("ppb-calcBudget"))||100;
+  const freq=parseFloat(gv("ppb-calcFreq"))||1;
+  const coeff=parseFloat(gv("ppb-calcType"))||1;
+  const ppPer=budget/freq*coeff*DB.meta.dmg_mult;
+  const labels=Array.from({length:12},(_,i)=>i+1);
+  const ctx=g("ppb-chartSim").getContext("2d");
+  if (ppbSimChart) ppbSimChart.destroy();
+  ppbSimChart=new Chart(ctx,{type:"line",data:{labels,datasets:[
+    {label:"PP total (N compétences)",data:labels.map(n=>n*ppPer),borderColor:"#F2B749",backgroundColor:"rgba(242,183,73,0.08)",fill:true,tension:0.3,pointRadius:2},
+    {label:"Courbe cible",data:[200,200,250,300,350,400,450,600,750,900,1000,1200],borderColor:"rgba(74,124,89,0.5)",borderDash:[5,5],fill:false,pointRadius:0}
+  ]},options:{responsive:true,plugins:{legend:{labels:{color:"#7a6040",font:{size:10}}}},scales:{x:{ticks:{color:"#5a4030"},grid:{color:"rgba(255,255,255,0.03)"}},y:{ticks:{color:"#5a4030"},grid:{color:"rgba(255,255,255,0.03)"}}}}});
+}
+
+// ════════════════════════════════════════════════
+//  DASHBOARD
+// ════════════════════════════════════════════════
+let ppbProgChart, ppbFreqChart;
+function renderDashboard() {
+  g("ppb-statsGrid").innerHTML = [
+    {n:DB.effects.length,l:"Effets"},{n:DB.triggers.length,l:"Déclencheurs"},
+    {n:DB.skills.length,l:"Compétences"},{n:DB.relics.length,l:"Reliques"}
+  ].map(s=>`<div class="ppb-stat-card"><div class="ppb-stat-num">${s.n}</div><div class="ppb-stat-lbl">${s.l}</div></div>`).join("");
+
+  const avgPP = DB.skills.length ? DB.skills.reduce((a,sk)=>{
+    const tr=DB.triggers.find(t=>t.id===sk.trigger_id),ef=DB.effects.find(e=>e.id===sk.effect_id);
+    return a+(tr&&ef?(BPP()/tr.freq)*parseFloat(ef.effect_type||1)*DB.meta.dmg_mult:80);
+  },0)/DB.skills.length : 85;
+
+  const labels=Array.from({length:12},(_,i)=>i+1);
+  const ctx1=g("ppb-chartProgress").getContext("2d");
+  if (ppbProgChart) ppbProgChart.destroy();
+  ppbProgChart=new Chart(ctx1,{type:"line",data:{labels,datasets:[
+    {label:"PP estimé (build)",data:labels.map(n=>n*avgPP),borderColor:"#40c8a0",backgroundColor:"rgba(64,200,160,0.07)",fill:true,tension:0.3},
+    {label:"Courbe cible",data:[200,200,250,300,350,400,450,600,750,900,1000,1200],borderColor:"rgba(242,183,73,0.4)",borderDash:[5,5],fill:false,pointRadius:0}
+  ]},options:{responsive:true,plugins:{legend:{labels:{color:"#7a6040",font:{size:10}}}},scales:{x:{ticks:{color:"#5a4030"},grid:{color:"rgba(255,255,255,0.03)"}},y:{ticks:{color:"#5a4030"},grid:{color:"rgba(255,255,255,0.03)"}}}}});
+
+  const fC={th:0,h:0,m:0,b:0,r:0};
+  DB.triggers.forEach(t=>fC[t.freq_cat]++);
+  const ctx2=g("ppb-chartFreq").getContext("2d");
+  if (ppbFreqChart) ppbFreqChart.destroy();
+  ppbFreqChart=new Chart(ctx2,{type:"bar",data:{labels:["Très haute","Haute","Moyenne","Basse","Rare"],datasets:[{label:"Déclencheurs",data:Object.values(fC),backgroundColor:["rgba(139,26,26,0.6)","rgba(166,85,38,0.6)","rgba(46,91,138,0.6)","rgba(74,124,89,0.6)","rgba(107,63,160,0.6)"],borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:"#5a4030"},grid:{display:false}},y:{ticks:{color:"#5a4030"},grid:{color:"rgba(255,255,255,0.03)"}}}}});
+}
+
+// ════════════════════════════════════════════════
+//  MODALS
+// ════════════════════════════════════════════════
+function openModal(id) { g(id).classList.add("open"); }
+function closeModal(id) { g(id).classList.remove("open"); }
+
+document.querySelectorAll(".ppb-modal-close, [data-close]").forEach(el => {
+  el.addEventListener("click", () => closeModal(el.dataset.close || el.closest(".ppb-modal-overlay").id));
+});
+document.querySelectorAll(".ppb-modal-overlay").forEach(o => {
+  o.addEventListener("click", e => { if (e.target===o) o.classList.remove("open"); });
+});
+
+// ── Effect modal ──
+let ppbEffIdx=-1;
+function openEffectModal(idx) {
+  ppbEffIdx = idx??-1;
+  const e = idx!==undefined ? DB.effects[idx] : null;
+  g("ppb-modalEffectTitle").textContent = e?"Modifier l'effet":"Nouvel effet";
+  g("ppb-eff_id").value=e?.id||""; g("ppb-eff_name").value=e?.name||"";
+  g("ppb-eff_family").value=e?.family||"Dégâts directs"; g("ppb-eff_rarity").value=e?.rarity||"commun";
+  g("ppb-eff_type").value=e?.effect_type||"1.0"; g("ppb-eff_damage").value=e?.base_damage||0;
+  g("ppb-eff_duration").value=e?.duration||0; g("ppb-eff_radius").value=e?.area_radius||0;
+  g("ppb-eff_cooldown").value=e?.cooldown||0.5; g("ppb-eff_mult").value=e?.multiplier||1.0;
+  g("ppb-eff_tags").value=(e?.tags||[]).join(" "); g("ppb-eff_desc").value=e?.desc||"";
+  openModal("ppb-modalEffect");
+}
+g("ppb-btnNewEffect").addEventListener("click",()=>openEffectModal());
+g("ppb-saveEffect").addEventListener("click",()=>{
+  const obj={id:gv("ppb-eff_id"),name:gv("ppb-eff_name"),family:gv("ppb-eff_family"),rarity:gv("ppb-eff_rarity"),effect_type:gv("ppb-eff_type"),base_damage:parseFloat(gv("ppb-eff_damage"))||0,duration:parseFloat(gv("ppb-eff_duration"))||0,area_radius:parseFloat(gv("ppb-eff_radius"))||0,cooldown:parseFloat(gv("ppb-eff_cooldown"))||0.5,multiplier:parseFloat(gv("ppb-eff_mult"))||1.0,tags:gv("ppb-eff_tags").split(/\s+/).filter(Boolean),desc:gv("ppb-eff_desc")};
+  if (!obj.id||!obj.name){showToast("ID et Nom requis","err");return;}
+  if (ppbEffIdx>=0) DB.effects[ppbEffIdx]=obj; else DB.effects.push(obj);
+  closeModal("ppb-modalEffect"); renderEffects(); updateSidebar();
+  showToast(ppbEffIdx>=0?"Effet mis à jour":"Effet ajouté");
+});
+
+// ── Trigger modal ──
+let ppbTrIdx=-1;
+function openTriggerModal(idx) {
+  ppbTrIdx=idx??-1;
+  const t=idx!==undefined?DB.triggers[idx]:null;
+  g("ppb-modalTriggerTitle").textContent=t?"Modifier le déclencheur":"Nouveau déclencheur";
+  g("ppb-tr_id").value=t?.id||""; g("ppb-tr_name").value=t?.name||"";
+  g("ppb-tr_type").value=t?.type||"base"; g("ppb-tr_family").value=t?.family||"";
+  g("ppb-tr_rarity").value=t?.rarity||"commun"; g("ppb-tr_freq_cat").value=t?.freq_cat||"h";
+  g("ppb-tr_freq").value=t?.freq||11; g("ppb-tr_cooldown").value=t?.cooldown||0.3;
+  g("ppb-tr_loc").value=t?.loc||"loc_cible";
+  g("ppb-tr_tags").value=(t?.tags||[]).join(" "); g("ppb-tr_cond").value=t?.cond||"";
+  updateTrHint();
+  openModal("ppb-modalTrigger");
+}
+function updateTrHint() {
+  const freq=parseFloat(gv("ppb-tr_freq"))||11;
+  g("ppb-triggerPPVal").textContent=(BPP()/freq).toFixed(1)+" PP/activation";
+}
+g("ppb-tr_freq").addEventListener("input",updateTrHint);
+g("ppb-btnNewTrigger").addEventListener("click",()=>openTriggerModal());
+g("ppb-saveTrigger").addEventListener("click",()=>{
+  const obj={id:gv("ppb-tr_id"),name:gv("ppb-tr_name"),type:gv("ppb-tr_type"),family:gv("ppb-tr_family"),rarity:gv("ppb-tr_rarity"),freq_cat:gv("ppb-tr_freq_cat"),freq:parseFloat(gv("ppb-tr_freq"))||11,cooldown:parseFloat(gv("ppb-tr_cooldown"))||0.3,loc:gv("ppb-tr_loc"),tags:gv("ppb-tr_tags").split(/\s+/).filter(Boolean),cond:gv("ppb-tr_cond")};
+  if (!obj.id||!obj.name){showToast("ID et Nom requis","err");return;}
+  if (ppbTrIdx>=0) DB.triggers[ppbTrIdx]=obj; else DB.triggers.push(obj);
+  closeModal("ppb-modalTrigger"); renderTriggers(); updateSidebar();
+  showToast(ppbTrIdx>=0?"Déclencheur mis à jour":"Déclencheur ajouté");
+});
+
+// ── Skill modal ──
+g("ppb-btnNewSkill").addEventListener("click",()=>{
+  populateSkillSelects();
+  g("ppb-sk_id").value=`SK-${String(DB.skills.length+1).padStart(3,"0")}`;
+  g("ppb-sk_name").value=""; g("ppb-sk_classes").value="";
+  g("ppb-skillPreview").style.display="none";
+  openModal("ppb-modalSkill");
+});
+g("ppb-saveSkill").addEventListener("click",()=>{
+  const obj={id:gv("ppb-sk_id"),name:gv("ppb-sk_name"),trigger_id:gv("ppb-sk_trigger"),effect_id:gv("ppb-sk_effect"),classes:gv("ppb-sk_classes").split(",").map(s=>s.trim()).filter(Boolean)};
+  if (!obj.id||!obj.name||!obj.trigger_id||!obj.effect_id){showToast("Tous les champs requis","err");return;}
+  DB.skills.push(obj); closeModal("ppb-modalSkill"); renderSkills();
+  showToast("Compétence ajoutée");
+});
+
+// ── Relic modal ──
+let ppbRlIdx=-1;
+function openRelicModal(idx) {
+  ppbRlIdx=idx??-1;
+  const r=idx!==undefined?DB.relics[idx]:null;
+  g("ppb-modalRelicTitle").textContent=r?"Modifier la relique":"Nouvelle relique";
+  g("ppb-rl_id").value=r?.id||""; g("ppb-rl_name").value=r?.name||"";
+  g("ppb-rl_type").value=r?.type||"faible"; g("ppb-rl_value").value=r?.value||0;
+  g("ppb-rl_tags").value=(r?.tags||[]).join(" "); g("ppb-rl_desc").value=r?.desc||"";
+  g("ppb-rl_malus").value=r?.malus||"";
+  openModal("ppb-modalRelic");
+}
+g("ppb-btnNewRelic").addEventListener("click",()=>openRelicModal());
+g("ppb-saveRelic").addEventListener("click",()=>{
+  const obj={id:gv("ppb-rl_id"),name:gv("ppb-rl_name"),type:gv("ppb-rl_type"),value:parseFloat(gv("ppb-rl_value"))||0,tags:gv("ppb-rl_tags").split(/\s+/).filter(Boolean),desc:gv("ppb-rl_desc"),malus:gv("ppb-rl_malus")};
+  if (!obj.id||!obj.name){showToast("ID et Nom requis","err");return;}
+  if (ppbRlIdx>=0) DB.relics[ppbRlIdx]=obj; else DB.relics.push(obj);
+  closeModal("ppb-modalRelic"); renderRelics();
+  showToast(ppbRlIdx>=0?"Relique mise à jour":"Relique ajoutée");
+});
+
+// ── Delete ──
+function deleteItem(col, idx) {
+  if (!confirm("Supprimer cet élément ?")) return;
+  DB[col].splice(idx,1);
+  if (col==="effects")  renderEffects();
+  if (col==="triggers") renderTriggers();
+  if (col==="skills")   renderSkills();
+  if (col==="relics")   renderRelics();
+  updateSidebar(); showToast("Supprimé");
+}
+
+// ════════════════════════════════════════════════
+//  IMPORT / EXPORT
+// ════════════════════════════════════════════════
+g("ppb-btnImport").addEventListener("click",()=>openModal("ppb-modalImport"));
+g("ppb-importZone").addEventListener("click",()=>g("ppb-fileInput").click());
+g("ppb-importZone").addEventListener("dragover",e=>{e.preventDefault();g("ppb-importZone").classList.add("drag");});
+g("ppb-importZone").addEventListener("dragleave",()=>g("ppb-importZone").classList.remove("drag"));
+g("ppb-importZone").addEventListener("drop",e=>{e.preventDefault();g("ppb-importZone").classList.remove("drag");const f=e.dataTransfer.files[0];if(f)readImportFile(f);});
+g("ppb-fileInput").addEventListener("change",e=>{if(e.target.files[0])readImportFile(e.target.files[0]);});
+
+function readImportFile(file) {
+  const r=new FileReader();
+  r.onload=ev=>{g("ppb-pasteArea").value=ev.target.result;};
+  r.readAsText(file);
+}
+
+g("ppb-processImport").addEventListener("click",()=>{
+  const type=gv("ppb-importType"), raw=g("ppb-pasteArea").value.trim();
+  if (!raw){showToast("Aucune donnée","err");return;}
+  try {
+    if (type==="json") {
+      const d=JSON.parse(raw);
+      if(d.effects) DB.effects=d.effects; if(d.triggers) DB.triggers=d.triggers;
+      if(d.skills) DB.skills=d.skills; if(d.relics) DB.relics=d.relics;
+      if(d.meta) DB.meta={...DB.meta,...d.meta};
+    } else {
+      const col={csv_effects:"effects",csv_triggers:"triggers",csv_relics:"relics"}[type];
+      if (col) importCSV(raw,col);
+    }
+    closeModal("ppb-modalImport"); refreshAll(); showToast("Import réussi ✓");
+  } catch(err) { showToast("Erreur : "+err.message,"err"); }
+});
+
+function importCSV(raw, col) {
+  const lines=raw.trim().split("\n");
+  const headers=lines[0].split(",").map(h=>h.trim().replace(/^"|"$/g,""));
+  const numKeys=["base_damage","duration","area_radius","cooldown","multiplier","freq","value"];
+  const items=lines.slice(1).map(line=>{
+    const vals=line.split(",").map(v=>v.trim().replace(/^"|"$/g,""));
+    const obj={};
+    headers.forEach((h,i)=>{
+      const v=vals[i]||"";
+      obj[h]=h==="tags"?v.split(" ").filter(Boolean):numKeys.includes(h)?parseFloat(v)||0:v;
+    });
+    return obj;
+  }).filter(o=>o.id);
+  DB[col]=[...DB[col],...items];
+}
+
+g("ppb-btnExport").addEventListener("click",()=>{
+  const payload={_meta:{tool:"PP Balancer — Dethroned",exported:new Date().toISOString(),balance:DB.meta},effects:DB.effects,triggers:DB.triggers,skills:DB.skills,relics:DB.relics};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download="dethroned_balance_data.json"; a.click();
+  URL.revokeObjectURL(url); showToast("Export JSON téléchargé ✓");
+});
+
+// ── Search listeners ──
+g("ppb-searchEffects").addEventListener("input",renderEffects);
+g("ppb-filterEffectFamily").addEventListener("change",renderEffects);
+g("ppb-searchTriggers").addEventListener("input",renderTriggers);
+g("ppb-filterTriggerType").addEventListener("change",renderTriggers);
+g("ppb-filterFreq").addEventListener("change",renderTriggers);
+g("ppb-searchSkills").addEventListener("input",renderSkills);
+g("ppb-searchRelics").addEventListener("input",renderRelics);
+g("ppb-filterRelicType").addEventListener("change",renderRelics);
+
+// ════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════
+function init() {
+  renderDashboard();
+  updateSidebar();
+  recalculate();
+}
+
+init();
+
+// ── Search entries ──
+if (typeof window.registerSearchEntries === 'function') {
+  window.registerSearchEntries([
+    { title: 'PP Balancer', page: 'pp-balancer', section: 'Outils', content: 'équilibrage balance points puissance effets déclencheurs compétences reliques export JSON Godot' },
+    { title: 'Calculateur PP', page: 'pp-balancer', section: 'Outils', content: 'calculateur formule budget fréquence activation dégâts cooldown' },
+  ]);
+}
+
+})();
+</script>
+
+</div><!-- /data-fullwidth -->

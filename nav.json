@@ -107,6 +107,11 @@
         "id": "terrain-shader-studio",
         "icon": "🏔️",
         "label": "Terrain Shader Studio"
+      },
+      {
+        "id": "pp-balancer",
+        "icon": "👊",
+        "label": "Power Point Balancer"
       }
     ]
   }
