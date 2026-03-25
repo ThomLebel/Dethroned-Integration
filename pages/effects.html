@@ -1,7 +1,31 @@
 <div class="page-hero">
   <h1>Effets & EffectBehaviour</h1>
-  <p class="lead">~140 effets assemblés depuis ~25 blocs stateless. Chaque effet est une EffectData.tres avec une liste ordonnée de behaviours. Le pipeline ctx circule de bloc en bloc.</p>
+  <p class="lead">~100 effets (+ 14 légendaires) assemblés depuis ~25 blocs stateless. Chaque effet est une <code>EffectData.tres</code> avec une liste ordonnée de behaviours. Le pipeline ctx circule de bloc en bloc.</p>
+  <div class="tags">
+    <span class="tag tag-or">~25 blocs</span>
+    <span class="tag tag-vert">8 familles</span>
+    <span class="tag tag-bleu">14 légendaires</span>
+    <span class="tag tag-violet">5 niveaux de complexité</span>
+  </div>
 </div>
+
+<div class="callout callout-or"><strong>Règle cardinale :</strong> les EffectBehaviour lisent les managers depuis ctx — jamais en statique. CombatManager est l'unique point d'injection du ctx initial. Les effets sont purs : <strong>aucune condition dans un effet</strong> — les conditions appartiennent aux déclencheurs.</div>
+
+<h2 class="section">Les 8 familles d'effets</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Famille</th><th>Code</th><th>Effets</th><th>Fantasme</th></tr></thead>
+  <tbody>
+    <tr><td>Dégâts directs</td><td>DD</td><td>CàC-D01–12 · Dist-D01–10</td><td>Frappe instantanée, physique ou élémentaire</td></tr>
+    <tr><td>DoT / Érosion</td><td>T</td><td>CàC-T01–08 · Dist-T01–06</td><td>Dégâts dans le temps, stacks, propagation</td></tr>
+    <tr><td>Contrôle d'ennemis</td><td>SCE</td><td>SCE-01–08</td><td>Stun, slow, knockback, confusion, aspiration</td></tr>
+    <tr><td>Mobilité</td><td>SMO</td><td>SMO-01–07</td><td>Dash, téléportation, accélération, traînées</td></tr>
+    <tr><td>Défense</td><td>SDE</td><td>SDE-01–05</td><td>Boucliers, carapace, renvoi élémentaire</td></tr>
+    <tr><td>Soin</td><td>SSO</td><td>SSO-01–05</td><td>Soin instantané, HoT, vol de vie, cleanse</td></tr>
+    <tr><td>Buff / Debuff</td><td>SBU · SDB</td><td>SBU-01–05 · SDB-01–05</td><td>Modifieurs de stats, marques, fragilisation</td></tr>
+    <tr><td>Terrain — Pièges &amp; Zones · Invocations</td><td>PZ · Inv</td><td>PZ-01–12 · Inv-01–08</td><td>Structures persistantes, entités alliées</td></tr>
+    <tr><td>Ressources · Chaos</td><td>RES · CHA</td><td>RES-01–05 · CHA-01–04</td><td>Économie de combat, aléatoire, meta-run</td></tr>
+  </tbody>
+</table></div>
 
 <h2 class="section">Le pipeline EffectRunner</h2>
 <div class="code-wrap">
@@ -12,41 +36,67 @@
         <span class="kw">if</span> c.get(<span class="st">"pipeline_stopped"</span>, <span class="kw">false</span>):
             <span class="kw">break</span>
         c = behaviour.<span class="fn">apply</span>(c, effect_data)
-    <span class="cm"># VFX et Audio notifiés après le pipeline complet — jamais pendant</span>
+    <span class="cm"># VFX et Audio notifiés APRÈS le pipeline complet — jamais pendant</span>
     <span class="tp">VFXManager</span>.<span class="fn">on_effect_executed</span>(c)
     <span class="tp">AudioManager</span>.<span class="fn">on_effect_executed</span>(c)</pre>
 </div>
 
-<div class="callout callout-or"><strong>Règle :</strong> les EffectBehaviour lisent les managers depuis ctx — jamais en statique. CombatManager est l'unique point d'injection du ctx.</div>
-
-<h2 class="section">Bibliothèque de behaviours</h2>
+<h2 class="section">Bibliothèque de behaviours (~25 blocs)</h2>
 <div class="table-wrap"><table>
   <thead><tr><th>Catégorie</th><th>Bloc</th><th>Rôle</th></tr></thead>
   <tbody>
-    <tr><td rowspan="4" style="vertical-align:middle;color:var(--or)"><strong>Calcul</strong></td>
+    <tr><td rowspan="5" style="vertical-align:middle;color:var(--or)"><strong>Calcul</strong></td>
       <td><code>ComputeBaseDamage</code></td><td>ctx["damage"] = data.base_damage</td></tr>
-    <tr><td><code>ComputeAccRatio</code></td><td>ctx["damage"] = ctx["acc_value"] × coeff</td></tr>
+    <tr><td><code>ComputeAccRatio</code></td><td>ctx["damage"] = ctx["acc_value"] × coeff (lecture seule C1)</td></tr>
     <tr><td><code>MultiplyIfTagOnTarget</code></td><td>ctx["damage"] × multiplier si tag présent sur cible</td></tr>
+    <tr><td><code>MultiplyByStackCount</code></td><td>ctx["damage"] × ctx["dot_stack_count"] — pour saignement</td></tr>
     <tr><td><code>IncrementCounter</code></td><td>Incrémente compteur persistant sur la bille</td></tr>
-    <tr><td rowspan="5" style="vertical-align:middle;color:var(--rouge)"><strong>Application</strong></td>
+    <tr><td rowspan="7" style="vertical-align:middle;color:var(--rouge)"><strong>Application</strong></td>
       <td><code>ApplyDirectDamage</code></td><td>ctx["health_manager"].take_damage(target, dmg, tags)</td></tr>
     <tr><td><code>ApplyAoe</code></td><td>Dégâts dans un rayon via PhysicsManager.query_radius()</td></tr>
-    <tr><td><code>ApplyDotStatus</code></td><td>ctx["status_manager"].apply(target, "dot_…")</td></tr>
+    <tr><td><code>ApplyDotStatus</code></td><td>ctx["status_manager"].apply(target, "dot_…", duration, damage_per_tick)</td></tr>
+    <tr><td><code>ApplyElementalState</code></td><td>ctx["status_manager"].apply_elemental(target, state_id) + résolution synergies</td></tr>
     <tr><td><code>ApplyKnockback</code></td><td>receive_impulse() + ctx["knockback_applied"] = true</td></tr>
     <tr><td><code>ApplyBuff</code></td><td>Buff sur le joueur via StatusManager</td></tr>
-    <tr><td rowspan="3" style="vertical-align:middle;color:var(--vert)"><strong>Spawn</strong></td>
-      <td><code>SpawnZone</code></td><td>ctx["pool_manager"].get("zone_…") + placement</td></tr>
+    <tr><td><code>ApplyDebuff</code></td><td>Debuff sur la cible (armure, vitesse, etc.)</td></tr>
+    <tr><td rowspan="4" style="vertical-align:middle;color:var(--vert)"><strong>Spawn</strong></td>
+      <td><code>SpawnZone</code></td><td>ctx["pool_manager"].get("zone_…") + placement au point cible</td></tr>
     <tr><td><code>SpawnInvocation</code></td><td>Pool + EnemyManager.register_ally()</td></tr>
-    <tr><td><code>SpawnProjectile</code></td><td>Pool + trajectoire analytique</td></tr>
-    <tr><td rowspan="4" style="vertical-align:middle;color:var(--violet)"><strong>Flux</strong></td>
+    <tr><td><code>SpawnProjectile</code></td><td>Pool + trajectoire analytique (direction actuelle ou homing)</td></tr>
+    <tr><td><code>SpawnTrap</code></td><td>Pool + enregistrement dans PhysicsManager.ZoneTracker</td></tr>
+    <tr><td rowspan="6" style="vertical-align:middle;color:var(--violet)"><strong>Flux &amp; Spéciaux</strong></td>
       <td><code>ConditionalThreshold</code></td><td>ctx["pipeline_stopped"] = true si condition échoue</td></tr>
     <tr><td><code>RetargetNearest</code></td><td>Remplace ctx["target"] par l'ennemi le plus proche</td></tr>
-    <tr><td><code>PropagateOnExpiry</code></td><td>Callback dans StatusManager.on_expiry()</td></tr>
-    <tr><td><code>RepeatDelayed</code></td><td>Enregistre dans SkillManager.schedule_repeated_effect()</td></tr>
+    <tr><td><code>PropagateOnExpiry</code></td><td>Callback dans StatusManager.on_expiry() — pour DoT propagation</td></tr>
+    <tr><td><code>RepeatDelayed</code></td><td>SkillManager.schedule_repeated_effect() — pour Tempête de Cendres etc.</td></tr>
+    <tr><td><code>HealPlayer</code></td><td>ctx["health_manager"].heal(player, amount) — soin + vol de vie</td></tr>
+    <tr><td><code>CleansePlayer</code></td><td>ctx["status_manager"].remove_all_negative(player)</td></tr>
   </tbody>
 </table></div>
 
-<h2 class="section">Exemple — ApplyDirectDamage (Manager Graph)</h2>
+<div class="callout callout-bleu"><strong>États élémentaires :</strong> <code>ApplyElementalState</code> est le seul bloc qui appelle la résolution de synergies. Après chaque application d'état, il vérifie la table de synergies dans StatusManager et déclenche l'effet automatique si une paire est détectée. Le déclencheur Avancé "Synergie Élémentaire" est ensuite notifié via <code>process_event("elemental_synergy", ctx)</code>.</div>
+
+<h2 class="section">Exemple — ApplyElementalState (nouveau v4)</h2>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">GDScript — apply_elemental_state.gd</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="kw">extends</span> <span class="tp">EffectBehaviour</span>
+
+<span class="kw">func</span> <span class="fn">apply</span>(ctx: <span class="tp">Dictionary</span>, data: <span class="tp">EffectData</span>) -> <span class="tp">Dictionary</span>:
+    <span class="kw">var</span> target = ctx.get(<span class="st">"target"</span>)
+    <span class="kw">if not</span> target: <span class="kw">return</span> ctx
+    <span class="kw">var</span> state_id: <span class="tp">String</span> = data.get(<span class="st">"elemental_state"</span>, <span class="st">""</span>)  <span class="cm"># ex: "chauffe"</span>
+    <span class="kw">var</span> sm = ctx[<span class="st">"status_manager"</span>]
+    <span class="kw">var</span> synergy = sm.<span class="fn">apply_elemental</span>(target, state_id)
+    <span class="cm"># synergy = { triggered: bool, type: String, effect: ... }</span>
+    <span class="kw">if</span> synergy.triggered:
+        ctx[<span class="st">"elemental_synergy"</span>] = synergy
+        ctx[<span class="st">"is_elemental_state"</span>] = <span class="kw">true</span>
+        <span class="cm"># Notifie TriggerRunner pour "Synergie Élémentaire" (DA avancé)</span>
+        ctx[<span class="st">"skill_manager"</span>].<span class="fn">process_event</span>(<span class="st">"elemental_synergy"</span>, ctx)
+    <span class="kw">return</span> ctx</pre>
+</div>
+
+<h2 class="section">Exemple — ApplyDirectDamage</h2>
 <div class="code-wrap">
   <div class="code-header"><span class="code-lang">GDScript — apply_direct_damage.gd</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
   <pre><span class="kw">extends</span> <span class="tp">EffectBehaviour</span>
@@ -55,41 +105,73 @@
     <span class="kw">var</span> target = ctx.get(<span class="st">"target"</span>)
     <span class="kw">var</span> dmg    = ctx.get(<span class="st">"damage"</span>, <span class="nm">0.0</span>)
     <span class="kw">if</span> target <span class="kw">and</span> dmg > <span class="nm">0</span>:
-        <span class="cm"># Manager depuis ctx — jamais get_node()</span>
+        <span class="cm"># Manager depuis ctx — jamais get_node() ou statique</span>
         ctx[<span class="st">"health_manager"</span>].<span class="fn">take_damage</span>(target, dmg, data.tags)
-        <span class="cm"># Pas d'EventBus ici — VFXManager notifié après le pipeline</span>
+        <span class="cm"># VFXManager notifié après le pipeline complet, pas ici</span>
     <span class="kw">return</span> ctx</pre>
 </div>
 
 <h2 class="section">Niveaux de complexité</h2>
 <div class="table-wrap"><table>
-  <thead><tr><th>Niveau</th><th>Pipeline</th><th>Effets couverts</th></tr></thead>
+  <thead><tr><th>Niveau</th><th>Pipeline type</th><th>Exemples du catalogue v4</th></tr></thead>
   <tbody>
-    <tr><td>1 — Stateless</td><td>ComputeBaseDamage → ApplyDirectDamage</td><td>E-DD-01, E-CE-01…03</td></tr>
-    <tr><td>2 — Lecture C1</td><td>ComputeAccRatio → ApplyDirectDamage</td><td>E-DD-08, E-DD-14…16</td></tr>
-    <tr><td>3 — Condition</td><td>Compute → MultiplyIfTag → Apply → ConditionalThreshold</td><td>E-DD-05, E-DOT-10</td></tr>
-    <tr><td>4 — DoT différé</td><td>ApplyDotStatus → PropagateOnExpiry</td><td>E-DOT-09, E-CE-14</td></tr>
-    <tr><td>5 — Compteur</td><td>IncrementCounter → ConditionalThreshold → Apply → ResetCounter</td><td>E-DD-17, E-DEF-07</td></tr>
+    <tr><td>1 — Stateless simple</td><td>ComputeBaseDamage → ApplyDirectDamage</td><td>CàC-D01, SCE-01, SCE-02</td></tr>
+    <tr><td>2 — État élémentaire</td><td>ComputeBaseDamage → ApplyDirectDamage → ApplyElementalState</td><td>CàC-D03, CàC-D04, CàC-D05, Dist-D01–05</td></tr>
+    <tr><td>3 — Condition + multiplicateur</td><td>Compute → MultiplyIfTagOnTarget → Apply → ConditionalThreshold</td><td>CàC-D07, CàC-D08, Dist-D06, SDB-03</td></tr>
+    <tr><td>4 — DoT différé / propagation</td><td>ApplyDotStatus → PropagateOnExpiry</td><td>CàC-T07, CàC-T08, RES-02</td></tr>
+    <tr><td>5 — Pipeline asynchrone / spawn</td><td>SpawnZone / SpawnInvocation + RepeatDelayed</td><td>PZ-11, PZ-12, Inv-07, Inv-08, CHA-03, CHA-04</td></tr>
   </tbody>
 </table></div>
+
+<h2 class="section">Les 14 légendaires — patterns spéciaux</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Effet</th><th>Pattern</th><th>Mécanisme clé</th></tr></thead>
+  <tbody>
+    <tr><td>CàC-D11 — Loi du Marteau</td><td>Buff temporaire de masse</td><td><code>ApplyBuff</code> → modifier coeff_ACC via StatusManager pendant 5s</td></tr>
+    <tr><td>CàC-D12 — Noyau Incandescent</td><td>Observateur enregistré</td><td>SkillManager._active_observers — chaque collision pendant 4s déclenche explosion</td></tr>
+    <tr><td>CàC-T07 — Thrombose</td><td>Suspension de DoT + burst</td><td>StatusManager.suspend_dot(target) + PropagateOnExpiry pour libération</td></tr>
+    <tr><td>CàC-T08 — Gangrène</td><td>Compteur de Corruption</td><td>IncrementCounter sur chaque tick DoT → ConditionalThreshold → SpawnZone propagation</td></tr>
+    <tr><td>Dist-D10 — Foudre Absolue</td><td>Observateur enregistré</td><td>SkillManager._active_observers — redirige Décharges actives vers bille pendant 5s</td></tr>
+    <tr><td>Inv-08 — Le Symbiote</td><td>Observateur enregistré</td><td>SymbioteNode.on_effect_executed() — copie chaque effet à 50% puissance</td></tr>
+    <tr><td>CHA-04 — Entropie Absolue</td><td>Pipeline asynchrone</td><td>RepeatDelayed — 1 effet Épique aléatoire/seconde pendant 8s</td></tr>
+    <tr><td>PZ-11 — Vortex Aquatique</td><td>Zone avec force croissante</td><td>SpawnZone + StatusManager tick d'aspiration progressive</td></tr>
+    <tr><td>PZ-12 — Nexus Foudroyant</td><td>Connexions persistantes</td><td>SpawnTrap + SkillManager._active_observers pour maintenir les arcs</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">Règles de conception — checklist</h2>
+<ul class="list">
+  <li><strong>Effets purs :</strong> aucune condition dans un effet. Toute phrase "si", "quand", "lorsque" → appartient au déclencheur.</li>
+  <li><strong>C1 en lecture seule :</strong> les effets <code>#degat_direct</code> ne réécrivent pas l'ACC — ils ajoutent ou modulent via ctx["damage"].</li>
+  <li><strong>États vs DoT distincts :</strong> un état élémentaire (Chauffé, Intoxiqué…) n'inflige pas de dégâts. Un DoT n'applique pas d'état élémentaire sauf mention explicite.</li>
+  <li><strong>Marques permanentes :</strong> disparaissent uniquement à la mort de la cible ou au remplacement. Une seule marque active à la fois.</li>
+  <li><strong>Atténuation boss/mini-boss :</strong> stun/immobilisation ×0,3 · états élémentaires ×0,5 · déplacements forcés ×0,4 · chaos comportemental ×0,4.</li>
+  <li><strong>Nouveau behaviour si et seulement si :</strong> réutilisable par ≥ 3 effets distincts ET non exprimable en configurant un bloc existant.</li>
+</ul>
 
 <div class="sources">
   <div class="sources-title">Sources</div>
   <div class="source-list">
     <div class="source-item">
-      <span class="source-badge badge-repo">REPO</span>
+      <span class="source-badge badge-docs">DOCS</span>
       <div class="source-content">
-        <div class="source-title">Game Programming Patterns — Component</div>
-        <div class="source-desc">Base conceptuelle des EffectBehaviour — blocs indépendants composés sans héritage.</div>
-        <a class="source-link" href="https://gameprogrammingpatterns.com/component.html" target="_blank">gameprogrammingpatterns.com/component.html</a>
+        <div class="source-title">Catalogue complet des effets</div>
+        <div class="source-desc">Source de vérité — <code>effets_catalogue_v4.md</code> — 100 effets + 14 légendaires, valeurs PP, batches de déploiement.</div>
       </div>
     </div>
     <div class="source-item">
       <span class="source-badge badge-docs">DOCS</span>
       <div class="source-content">
-        <div class="source-title">Godot — Resources (custom)</div>
-        <div class="source-desc">EffectData.tres — assembler des behaviours dans l'inspecteur sans écrire de code.</div>
-        <a class="source-link" href="https://docs.godotengine.org/en/stable/tutorials/scripting/resources.html" target="_blank">docs.godotengine.org — Resources</a>
+        <div class="source-title">Règles de conception des effets</div>
+        <div class="source-desc">Familles globales, archétypes, système PP, cibles requises — <code>Règles_de_conception_des_effets.md</code>.</div>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-repo">REPO</span>
+      <div class="source-content">
+        <div class="source-title">Game Programming Patterns — Component</div>
+        <div class="source-desc">Base conceptuelle des EffectBehaviour — blocs indépendants composés sans héritage.</div>
+        <a class="source-link" href="https://gameprogrammingpatterns.com/component.html" target="_blank">gameprogrammingpatterns.com</a>
       </div>
     </div>
   </div>
@@ -97,9 +179,11 @@
 
 <script>
 window.registerSearchEntries([
-  { title: 'Effets — EffectBehaviour pipeline', page: 'effects', section: 'Compétences', content: 'effectbehaviour pipeline ctx compute apply spawn flow conditionnel stateless' },
-  { title: 'ApplyDirectDamage', page: 'effects', section: 'Compétences', content: 'apply direct damage health_manager take_damage ctx manager injecté' },
-  { title: 'PropagateOnExpiry', page: 'effects', section: 'Compétences', content: 'propagate on expiry status manager callback dot expiration contamination' },
-  { title: 'Niveaux de complexité des effets', page: 'effects', section: 'Compétences', content: 'niveau complexité pipeline stateless compteur dot différé condition' },
+  { title: 'Effets — 8 familles catalogue v4', page: 'effects', section: 'Compétences', content: 'dégâts directs DoT contrôle mobilité défense soin buff debuff terrain invocation ressource chaos légendaires' },
+  { title: 'EffectBehaviour pipeline ctx', page: 'effects', section: 'Compétences', content: 'effectbehaviour pipeline ctx compute apply spawn flux conditionnel stateless' },
+  { title: 'ApplyElementalState — états élémentaires', page: 'effects', section: 'Compétences', content: 'apply elemental state chauffé intoxiqué électrifié mouillé brisé synergie statusmanager' },
+  { title: 'PropagateOnExpiry — DoT propagation', page: 'effects', section: 'Compétences', content: 'propagate on expiry statusmanager callback dot expiration thrombose gangrène' },
+  { title: 'Légendaires — patterns spéciaux', page: 'effects', section: 'Compétences', content: 'légendaire observateur enregistré pipeline asynchrone symbiote entropie absolue nexus vortex' },
+  { title: 'Niveaux de complexité effets', page: 'effects', section: 'Compétences', content: 'niveau complexité pipeline stateless état élémentaire condition multiplicateur dot spawn asynchrone' },
 ]);
 </script>

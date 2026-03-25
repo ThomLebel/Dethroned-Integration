@@ -1,92 +1,212 @@
 <div class="page-hero">
   <h1>Déclencheurs</h1>
-  <p class="lead">~114 déclencheurs assemblés depuis ~20 blocs TriggerCondition. Chaque déclencheur est une TriggerData.tres — aucun code par déclencheur.</p>
+  <p class="lead">75 déclencheurs (45 De Base + 30 Avancés) assemblés depuis ~20 blocs <code>TriggerCondition</code>. Chaque déclencheur est une <code>TriggerData.tres</code> — aucun code par déclencheur.</p>
+  <div class="tags">
+    <span class="tag tag-or">45 De Base</span>
+    <span class="tag tag-vert">30 Avancés</span>
+    <span class="tag tag-bleu">~20 blocs</span>
+  </div>
 </div>
 
-<div class="callout callout-or"><strong>Principe :</strong> un déclencheur ne va jamais chercher l'information lui-même. Tout lui arrive dans le ctx. Les conditions lisent ctx, elles ne font pas de get_node().</div>
+<div class="callout callout-or"><strong>Principe :</strong> un déclencheur ne va jamais chercher l'information lui-même. Tout lui arrive dans le ctx enrichi par CombatManager + SkillManager. Les conditions lisent ctx, elles ne font pas de <code>get_node()</code>.</div>
+
+<h2 class="section">Les deux pools</h2>
+
+<div class="table-wrap"><table>
+  <thead><tr><th>Pool</th><th>Compte</th><th>Règle fondamentale</th><th>Peut être Set de Base ?</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Déclencheurs de Base</strong></td><td>45</td><td>Gameplay brut uniquement — mouvement, tir, timer, collision physique, état brut des ennemis. Aucune condition issue d'un effet ou d'un passif de classe.</td><td>✅ Oui</td></tr>
+    <tr><td><strong>Déclencheurs Avancés</strong></td><td>30</td><td>Réagissent obligatoirement à ce que le kit du joueur génère (buff, DoT, invocation, état élémentaire…). Doivent partager ≥1 tag avec le build existant.</td><td>❌ Non</td></tr>
+  </tbody>
+</table></div>
 
 <h2 class="section">Structure d'un déclencheur</h2>
 <div class="code-wrap">
-  <div class="code-header"><span class="code-lang">GDScript — TriggerData (Resource)</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <div class="code-header"><span class="code-lang">GDScript — trigger_data.gd</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
   <pre><span class="kw">extends</span> <span class="tp">Resource</span>
 <span class="kw">class_name</span> <span class="tp">TriggerData</span>
 
 @export <span class="kw">var</span> id: <span class="tp">String</span> = <span class="st">""</span>
-@export <span class="kw">var</span> event_ids: <span class="tp">Array</span>[<span class="tp">String</span>] = []   <span class="cm"># ex: ["enemy_hit"]</span>
-@export <span class="kw">var</span> loc_type: <span class="tp">String</span> = <span class="st">"loc_soi"</span>     <span class="cm"># loc_cible / loc_point / loc_soi / loc_global</span>
+@export <span class="kw">var</span> trigger_type: <span class="tp">String</span> = <span class="st">"base"</span>      <span class="cm"># "base" | "advanced"</span>
+@export <span class="kw">var</span> event_ids: <span class="tp">Array</span>[<span class="tp">String</span>] = []       <span class="cm"># ex: ["enemy_hit"]</span>
+@export <span class="kw">var</span> loc_type: <span class="tp">String</span> = <span class="st">"loc_soi"</span>       <span class="cm"># loc_cible / loc_point / loc_soi</span>
 @export <span class="kw">var</span> cooldown: <span class="tp">float</span> = <span class="nm">0.3</span>
 @export <span class="kw">var</span> tags: <span class="tp">Array</span>[<span class="tp">String</span>] = []
 @export <span class="kw">var</span> conditions: <span class="tp">Array</span>[<span class="tp">TriggerCondition</span>] = []
 
-<span class="cm"># Paramètres partagés entre les conditions</span>
+<span class="cm"># Paramètres partagés lus par les conditions</span>
 @export <span class="kw">var</span> threshold_value: <span class="tp">float</span> = <span class="nm">0.0</span>
 @export <span class="kw">var</span> threshold_count: <span class="tp">int</span> = <span class="nm">0</span>
 @export <span class="kw">var</span> time_window: <span class="tp">float</span> = <span class="nm">0.0</span>
 @export <span class="kw">var</span> required_tag: <span class="tp">String</span> = <span class="st">""</span></pre>
 </div>
 
-<h2 class="section">Bibliothèque de TriggerCondition</h2>
+<h2 class="section">Bibliothèque de TriggerCondition (~20 blocs)</h2>
 <div class="table-wrap"><table>
-  <thead><tr><th>Bloc</th><th>Vérifie</th><th>Exemples d'usage</th></tr></thead>
+  <thead><tr><th>Bloc</th><th>Vérifie</th><th>Déclencheurs couverts</th></tr></thead>
   <tbody>
-    <tr><td><code>CheckThresholdBelow</code></td><td>ctx[key] ≤ seuil</td><td>Ennemi Agonisant (&lt;25% PV), Seuil de Vitesse</td></tr>
-    <tr><td><code>CheckThresholdBetween</code></td><td>min ≤ ctx[key] ≤ max</td><td>Tir à Mi-Charge (40–60%), Virage Serré</td></tr>
-    <tr><td><code>CheckTimeSince</code></td><td>Événement dans une fenêtre temporelle</td><td>Enchaînement Rapide (&lt;0.5s), Kill en Rafale</td></tr>
-    <tr><td><code>CheckTimeWithout</code></td><td>Événement absent depuis N secondes</td><td>Sans Dégâts Reçus (&gt;5s), Ligne Droite</td></tr>
-    <tr><td><code>CheckCounter</code></td><td>Compteur ≥ N</td><td>Compteur de Rebonds (×4), Compteur de Collisions</td></tr>
-    <tr><td><code>CheckTargetTag</code></td><td>Tag présent sur la cible</td><td>Ennemi Sous DoT, Ennemi Marqué</td></tr>
-    <tr><td><code>CheckTargetStatus</code></td><td>Statut précis sur la cible</td><td>Ennemi Sous Brûlure, Marque de Mort Active</td></tr>
-    <tr><td><code>CheckBoolFlag</code></td><td>Flag booléen dans ctx</td><td>Choc Frontal, Ennemi Déjà Touché</td></tr>
-    <tr><td><code>CheckBuildTag</code></td><td>Tag présent dans ctx["build_tags"]</td><td>Compatibilité Déclencheurs Avancés</td></tr>
-    <tr><td><code>IncrementTriggerCounter</code></td><td>Toujours vrai — incrémente</td><td>Tête de tout pipeline à compteur</td></tr>
-    <tr><td><code>RecordTimestamp</code></td><td>Toujours vrai — enregistre timestamp</td><td>Fin de pipeline temporel</td></tr>
-    <tr><td><code>CheckSequenceOrder</code></td><td>N dernières compétences dans l'ordre</td><td>Séquence Parfaite</td></tr>
+    <tr><td><code>CheckThresholdBelow</code></td><td>ctx[key] ≤ seuil</td><td>Ennemi Agonisant (&lt;25% PV), Seuil de PV Critique</td></tr>
+    <tr><td><code>CheckThresholdAbove</code></td><td>ctx[key] ≥ seuil</td><td>Collision à Grande Vitesse, Tir en Plein Élan</td></tr>
+    <tr><td><code>CheckThresholdBetween</code></td><td>min ≤ ctx[key] ≤ max</td><td>Changement Brusque de Direction</td></tr>
+    <tr><td><code>CheckTimeSince</code></td><td>Événement dans une fenêtre temporelle</td><td>Enchaînement Rapide (&lt;0,5s), Kill en Rafale</td></tr>
+    <tr><td><code>CheckTimeWithout</code></td><td>Événement absent depuis N secondes</td><td>Refus de Mourir, Terrain Vivant</td></tr>
+    <tr><td><code>CheckCounter</code></td><td>Compteur ≥ N</td><td>Compteur de Rebonds (×4), Compteur de Collisions (×5)</td></tr>
+    <tr><td><code>CheckCounterInWindow</code></td><td>N occurrences dans une fenêtre temporelle</td><td>Collecte Rapide (3 en 3s)</td></tr>
+    <tr><td><code>CheckTargetTag</code></td><td>Tag présent sur la cible</td><td>Ennemi Sous DoT, Ennemi Marqué, Ennemi Corrodé</td></tr>
+    <tr><td><code>CheckTargetStatus</code></td><td>Statut précis actif sur la cible</td><td>Ennemi Sous État (élémentaire), État Saturé</td></tr>
+    <tr><td><code>CheckTargetDifference</code></td><td>Cible différente de la précédente</td><td>Enchaînement Rapide</td></tr>
+    <tr><td><code>CheckTargetCount</code></td><td>Nombre d'ennemis dans un rayon</td><td>Ennemi Seul</td></tr>
+    <tr><td><code>CheckBoolFlag</code></td><td>Flag booléen dans ctx</td><td>Choc Frontal, Heurt Consécutif</td></tr>
+    <tr><td><code>CheckBuildTag</code></td><td>Tag présent dans ctx["build_tags"]</td><td>Compatibilité des Déclencheurs Avancés</td></tr>
+    <tr><td><code>CheckPlayerTag</code></td><td>Tag d'état actif sur le joueur</td><td>Bouclier Actif, Collision Amplifiée</td></tr>
+    <tr><td><code>CheckDotStackCount</code></td><td>Nombre de stacks DoT sur la cible</td><td>Accumulation de DoT</td></tr>
+    <tr><td><code>CheckAlliedCount</code></td><td>Nombre d'invocations alliées actives</td><td>Terrain Vivant, Réseau</td></tr>
+    <tr><td><code>CheckContinuousState</code></td><td>État continu depuis N secondes</td><td>Refus de Mourir, Marionnettiste</td></tr>
+    <tr><td><code>IncrementTriggerCounter</code></td><td>Toujours vrai — incrémente un compteur</td><td>Tête de tout pipeline à compteur</td></tr>
+    <tr><td><code>RecordTimestamp</code></td><td>Toujours vrai — enregistre un timestamp</td><td>Fin de pipeline temporel</td></tr>
+    <tr><td><code>CheckSequenceOrder</code></td><td>N compétences déclenchées dans l'ordre</td><td>Séquence Parfaite (Légendaire)</td></tr>
   </tbody>
 </table></div>
 
-<h2 class="section">Exemples de déclencheurs assemblés</h2>
+<h2 class="section">Familles de Déclencheurs de Base</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Famille</th><th>Déclencheurs</th><th>loc_type fourni</th></tr></thead>
+  <tbody>
+    <tr><td>Collision — Ennemi</td><td>Collision Standard · Premier Contact · Ennemi Déjà Touché · Ennemi Intact · Ennemi Seul · Grande Vitesse · Choc Frontal · Ennemi Affaibli · Enchaînement Rapide · Ennemi Agonisant</td><td><code>loc_cible</code></td></tr>
+    <tr><td>Heurt — Être Touché</td><td>Heurt par un Ennemi · Heurt par un Projectile · Heurt Consécutif</td><td><code>loc_cible</code> / <code>loc_soi</code></td></tr>
+    <tr><td>Rebond — Trajectoire</td><td>Rebond sur Obstacle · Premier Rebond du Tir · Rebond Consécutif · Rebond ×6</td><td><code>loc_point</code></td></tr>
+    <tr><td>Mouvement — Trajectoire</td><td>Trajectoire Libre · Arrêt Complet · Changement Brusque de Direction · Haute Vitesse Soutenue</td><td><code>loc_soi</code></td></tr>
+    <tr><td>Tir — Charge</td><td>Tir Relâché · Charge Minimale · Tir à Charge Maximale · Tir dans l'Axe · Tir en Arrière · Tir Immédiat Post-Impact · Tir en Plein Élan</td><td><code>loc_soi</code></td></tr>
+    <tr><td>Temps — Minuteries</td><td>Minuterie Passive · Minuterie en Mouvement · Minuterie à l'Arrêt · Compteur de Collisions · Compteur de Rebonds</td><td><code>loc_soi</code></td></tr>
+    <tr><td>État et Conditions</td><td>État Appliqué · Ennemi Multi-États · Seuil de PV Bas · Seuil de PV Critique · Coup Critique · Refus de Mourir</td><td><code>loc_cible</code> / <code>loc_soi</code></td></tr>
+    <tr><td>Kill</td><td>Kill · Premier Kill de la Salle · Kill en Rafale · Rupture</td><td><code>loc_point</code></td></tr>
+    <tr><td>Collecte</td><td>Collecte de Ressource · Ressource Détruite · Collecte Rapide</td><td><code>loc_soi</code> / <code>loc_point</code></td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">Familles de Déclencheurs Avancés</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Famille</th><th>Déclencheurs</th></tr></thead>
+  <tbody>
+    <tr><td>État de l'Entité</td><td>Buff Appliqué · Buff Expiré · Première Activation de la Salle · Bouclier Actif · Bouclier Brisé · Après une Compétence Déclenchée · Survie à un Coup Fatal</td></tr>
+    <tr><td>État de l'Ennemi — DoT</td><td>Ennemi Sous État · Synergie Élémentaire · État Saturé · Ennemi Sous DoT · Ennemi Corrodé · Accumulation de DoT · Métronome</td></tr>
+    <tr><td>État de l'Ennemi — Contrôle</td><td>Ennemi Marqué · Ennemi Sous Contrôle · Ennemi sur Zone · Marionnettiste</td></tr>
+    <tr><td>Invocations & Zones Alliées</td><td>Invocation Posée · Piège Déclenché · Mort d'une Invocation · Zone Alliée Active · Terrain Vivant · Réseau · Projectile Allié · Impact de Zone · Kill par Invocation · Saturation de Terrain</td></tr>
+    <tr><td>Déplacement & Collisions Avancées</td><td>Déplacement Ennemi · Déviation Tactique · Projection Alliée · Écrasement · Grand Billard · Impact Mural · Collision Amplifiée · Tir Post-Dash</td></tr>
+    <tr><td>Kill & Économie Avancés</td><td>Kill Indirect · Kill sous Contrôle · Sniper Absolu</td></tr>
+    <tr><td>Chaos & Séquences Complexes</td><td>Effet Aléatoire Déclenché · Séquence Parfaite</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">TriggerRunner — évaluation dans le Manager Graph</h2>
+<div class="callout callout-bleu"><strong>Architecture v2 :</strong> le TriggerRunner ne s'abonne plus aux signaux EventBus. C'est CombatManager qui appelle <code>SkillManager.process_event(type, ctx)</code> directement après chaque événement physique. Le ctx arrive déjà enrichi.</div>
+
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">GDScript — trigger_runner.gd (sous-système SkillManager)</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="cm"># Appelé par SkillManager.process_event() — jamais en autonome</span>
+<span class="kw">class_name</span> <span class="tp">TriggerRunner</span>
+
+<span class="kw">func</span> <span class="fn">evaluate_all</span>(event_type: <span class="tp">String</span>, ctx: <span class="tp">Dictionary</span>, build: <span class="tp">Array</span>[<span class="tp">SkillSlot</span>]) -> <span class="tp">Array</span>[<span class="tp">SkillSlot</span>]:
+    <span class="kw">var</span> fired: <span class="tp">Array</span>[<span class="tp">SkillSlot</span>] = []
+    <span class="kw">for</span> slot <span class="kw">in</span> build:
+        <span class="kw">var</span> trigger = slot.trigger_data
+        <span class="kw">if not</span> event_type <span class="kw">in</span> trigger.event_ids: <span class="kw">continue</span>
+        <span class="kw">if not</span> _cooldown_ok(trigger, ctx): <span class="kw">continue</span>
+        <span class="kw">if</span> _all_conditions_pass(trigger, ctx):
+            fired.<span class="fn">append</span>(slot)
+            _update_cooldown(trigger, ctx)
+    <span class="kw">return</span> fired
+
+<span class="kw">func</span> <span class="fn">_all_conditions_pass</span>(trigger: <span class="tp">TriggerData</span>, ctx: <span class="tp">Dictionary</span>) -> <span class="tp">bool</span>:
+    <span class="kw">for</span> condition <span class="kw">in</span> trigger.conditions:
+        <span class="kw">if not</span> condition.<span class="fn">check</span>(ctx, trigger): <span class="kw">return false</span>
+    <span class="kw">return true</span></pre>
+</div>
+
+<h2 class="section">Exemples assemblés</h2>
 
 <h3 class="subsection">Collision Standard (0 condition)</h3>
 <div class="code-wrap">
-  <div class="code-header"><span class="code-lang">TriggerData.tres — DB-COL-01</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <div class="code-header"><span class="code-lang">TriggerData.tres — Collision Standard</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
   <pre>TriggerData {
-    id: <span class="st">"DB-COL-01"</span>  event_ids: [<span class="st">"enemy_hit"</span>]
-    loc_type: <span class="st">"loc_cible"</span>  cooldown: <span class="nm">0.3</span>
-    conditions: []  <span class="cm"># tout signal enemy_hit passe</span>
+    id: <span class="st">"DB-COL-01"</span>   trigger_type: <span class="st">"base"</span>
+    event_ids: [<span class="st">"enemy_hit"</span>]
+    loc_type: <span class="st">"loc_cible"</span>   cooldown: <span class="nm">0.3</span>
+    tags: [<span class="st">"#collision"</span>, <span class="st">"#mouvement"</span>]
+    conditions: []   <span class="cm"># tout signal enemy_hit passe</span>
 }</pre>
 </div>
 
 <h3 class="subsection">Enchaînement Rapide (3 conditions)</h3>
 <div class="code-wrap">
-  <div class="code-header"><span class="code-lang">TriggerData.tres — DB-COL-12</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <div class="code-header"><span class="code-lang">TriggerData.tres — Enchaînement Rapide</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
   <pre>TriggerData {
-    id: <span class="st">"DB-COL-12"</span>  event_ids: [<span class="st">"enemy_hit"</span>]
-    loc_type: <span class="st">"loc_cible"</span>  time_window: <span class="nm">0.5</span>
+    id: <span class="st">"DB-COL-09"</span>   trigger_type: <span class="st">"base"</span>
+    event_ids: [<span class="st">"enemy_hit"</span>]
+    loc_type: <span class="st">"loc_cible"</span>   time_window: <span class="nm">0.5</span>
+    tags: [<span class="st">"#collision"</span>, <span class="st">"#sequence"</span>, <span class="st">"#trajectoire"</span>]
     conditions: [
-        CheckTargetDifference {},             <span class="cm"># cible différente de la précédente</span>
-        CheckTimeSince {                       <span class="cm"># last hit il y a moins de 0.5s</span>
-            event_key: <span class="st">"last_enemy_hit"</span>,
+        CheckTargetDifference {},         <span class="cm"># cible ≠ précédente</span>
+        CheckTimeSince {                   <span class="cm"># dernier hit &lt; 0,5s</span>
+            event_key: <span class="st">"last_enemy_hit_time"</span>,
             time_window: <span class="nm">0.5</span>
         },
-        RecordTimestamp {                      <span class="cm"># met à jour (toujours vrai)</span>
-            event_key: <span class="st">"last_enemy_hit"</span>
+        RecordTimestamp {                  <span class="cm"># met à jour (toujours vrai)</span>
+            event_key: <span class="st">"last_enemy_hit_time"</span>
         }
     ]
 }</pre>
 </div>
 
-<h3 class="subsection">Compteur de Rebonds (2 conditions + état)</h3>
+<h3 class="subsection">État Appliqué — Déclencheur de Base élémentaire</h3>
 <div class="code-wrap">
-  <div class="code-header"><span class="code-lang">TriggerData.tres — DB-REB-05</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <div class="code-header"><span class="code-lang">TriggerData.tres — État Appliqué</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
   <pre>TriggerData {
-    id: <span class="st">"DB-REB-05"</span>  event_ids: [<span class="st">"wall_hit"</span>]
-    loc_type: <span class="st">"loc_soi"</span>  threshold_count: <span class="nm">4</span>
+    id: <span class="st">"DB-ETAT-01"</span>   trigger_type: <span class="st">"base"</span>
+    event_ids: [<span class="st">"status_applied"</span>]   <span class="cm"># émis par StatusManager</span>
+    loc_type: <span class="st">"loc_cible"</span>   cooldown: <span class="nm">0.1</span>
+    tags: [<span class="st">"#etat_elementaire"</span>, <span class="st">"#collision"</span>]
     conditions: [
-        IncrementTriggerCounter {             <span class="cm"># incrémente (toujours vrai)</span>
+        CheckBoolFlag {                    <span class="cm"># ctx["is_elemental_state"] = true</span>
+            flag_key: <span class="st">"is_elemental_state"</span>
+        }
+    ]
+}</pre>
+</div>
+
+<h3 class="subsection">Ennemi Sous État — Déclencheur Avancé</h3>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">TriggerData.tres — Ennemi Sous État</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre>TriggerData {
+    id: <span class="st">"DA-ETAT-01"</span>   trigger_type: <span class="st">"advanced"</span>
+    event_ids: [<span class="st">"enemy_hit"</span>]
+    loc_type: <span class="st">"loc_cible"</span>   cooldown: <span class="nm">0.5</span>
+    tags: [<span class="st">"#collision"</span>, <span class="st">"#etat_elementaire"</span>, <span class="st">"#synergie"</span>]
+    conditions: [
+        CheckTargetStatus {                <span class="cm"># au moins un état élémentaire actif</span>
+            check_any_elemental: <span class="kw">true</span>
+        },
+        CheckBuildTag {                    <span class="cm"># build contient #etat_elementaire</span>
+            required_tag: <span class="st">"#etat_elementaire"</span>
+        }
+    ]
+}</pre>
+</div>
+
+<h3 class="subsection">Compteur de Rebonds (2 conditions)</h3>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">TriggerData.tres — Compteur de Rebonds</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre>TriggerData {
+    id: <span class="st">"DB-REB-05"</span>   trigger_type: <span class="st">"base"</span>
+    event_ids: [<span class="st">"wall_hit"</span>]
+    loc_type: <span class="st">"loc_soi"</span>   threshold_count: <span class="nm">4</span>
+    tags: [<span class="st">"#compteur"</span>, <span class="st">"#rebond"</span>]
+    conditions: [
+        IncrementTriggerCounter {          <span class="cm"># incrémente (toujours vrai)</span>
             counter_key: <span class="st">"wall_bounce_count"</span>,
             reset_on_room: <span class="kw">true</span>
         },
-        CheckCounter {                         <span class="cm"># déclenche au 4e rebond</span>
+        CheckCounter {                     <span class="cm"># déclenche au 4e</span>
             counter_key: <span class="st">"wall_bounce_count"</span>,
             threshold_count: <span class="nm">4</span>
         }
@@ -94,23 +214,55 @@
 }</pre>
 </div>
 
+<h2 class="section">Règles de décision</h2>
+<div class="table-wrap"><table>
+  <thead><tr><th>Situation</th><th>Décision</th></tr></thead>
+  <tbody>
+    <tr><td>Seuil numérique dans ctx</td><td><code>CheckThresholdAbove/Below/Between</code> avec <code>ctx_key</code> configuré</td></tr>
+    <tr><td>Flag booléen dans ctx</td><td><code>CheckBoolFlag</code> avec <code>flag_key</code></td></tr>
+    <tr><td>État sur la cible</td><td><code>CheckTargetTag</code> ou <code>CheckTargetStatus</code></td></tr>
+    <tr><td>État élémentaire actif sur la cible</td><td><code>CheckTargetStatus { check_any_elemental: true }</code></td></tr>
+    <tr><td>Compatibilité Déclencheur Avancé</td><td><code>CheckBuildTag { required_tag }</code> en dernière condition</td></tr>
+    <tr><td>Temps depuis un événement</td><td><code>CheckTimeSince</code> + <code>RecordTimestamp</code> en fin</td></tr>
+    <tr><td>N occurrences</td><td><code>IncrementTriggerCounter</code> + <code>CheckCounter</code></td></tr>
+    <tr><td>Continuité temporelle (X secondes)</td><td><code>CheckContinuousState</code></td></tr>
+    <tr><td>Condition unique → nouvelle TriggerCondition ?</td><td>Uniquement si réutilisable par ≥ 3 déclencheurs distincts</td></tr>
+  </tbody>
+</table></div>
+
+<h2 class="section">Ordre d'implémentation recommandé</h2>
+<ul class="list">
+  <li><strong>Sprint 1 — Infrastructure :</strong> <code>TriggerCondition</code>, <code>TriggerData</code>, <code>TriggerRunner</code>, <code>TriggerStateComponent</code></li>
+  <li><strong>Sprint 2 — Blocs de base :</strong> <code>CheckThresholdAbove/Below/Between</code>, <code>CheckBoolFlag</code>, <code>CheckTimeSince/Without</code></li>
+  <li><strong>Sprint 3 — Compteurs &amp; séquences :</strong> <code>IncrementTriggerCounter</code>, <code>CheckCounter</code>, <code>CheckCounterInWindow</code>, <code>RecordTimestamp</code></li>
+  <li><strong>Sprint 4 — Cibles &amp; build :</strong> <code>CheckTargetTag</code>, <code>CheckTargetStatus</code>, <code>CheckTargetCount</code>, <code>CheckTargetDifference</code>, <code>CheckPlayerTag</code>, <code>CheckBuildTag</code></li>
+  <li><strong>Sprint 5 — .tres De Base communs :</strong> créer les 45 TriggerData De Base (commencer par les Communs)</li>
+  <li><strong>Sprint 6 — Avancés :</strong> <code>CheckDotStackCount</code>, <code>CheckAlliedCount</code>, <code>CheckContinuousState</code>, <code>CheckSequenceOrder</code> puis les 30 Avancés</li>
+</ul>
+
 <div class="sources">
   <div class="sources-title">Sources</div>
   <div class="source-list">
     <div class="source-item">
       <span class="source-badge badge-docs">DOCS</span>
       <div class="source-content">
-        <div class="source-title">Godot — Resources (custom)</div>
-        <div class="source-desc">Utilisation des Resources Godot 4 pour les TriggerData.tres — données sans code.</div>
-        <a class="source-link" href="https://docs.godotengine.org/en/stable/tutorials/scripting/resources.html" target="_blank">docs.godotengine.org — Resources</a>
+        <div class="source-title">Catalogue complet des déclencheurs</div>
+        <div class="source-desc">Sources de vérité — <code>declencheurs_de_base_v2.md</code> (45 triggers) et <code>declencheurs_avances_v2.md</code> (30 triggers).</div>
+      </div>
+    </div>
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">Système de ciblage loc_ / req_</div>
+        <div class="source-desc">Compatibilité localisation ↔ cible requise — <code>systeme_ciblage_v1.md</code>.</div>
       </div>
     </div>
     <div class="source-item">
       <span class="source-badge badge-repo">REPO</span>
       <div class="source-content">
         <div class="source-title">Game Programming Patterns — Interpreter</div>
-        <div class="source-desc">Pattern Interpréteur — proche du système de TriggerCondition composées.</div>
-        <a class="source-link" href="https://gameprogrammingpatterns.com/interpreter.html" target="_blank">gameprogrammingpatterns.com/interpreter.html</a>
+        <div class="source-desc">Pattern Interpréteur — base du système de TriggerCondition composées.</div>
+        <a class="source-link" href="https://gameprogrammingpatterns.com/interpreter.html" target="_blank">gameprogrammingpatterns.com</a>
       </div>
     </div>
   </div>
@@ -118,9 +270,10 @@
 
 <script>
 window.registerSearchEntries([
-  { title: 'Déclencheurs — TriggerData', page: 'triggers', section: 'Compétences', content: 'triggerdata event_ids loc_type cooldown conditions resource tres assembly' },
-  { title: 'Bibliothèque TriggerCondition', page: 'triggers', section: 'Compétences', content: 'checkthreshold checktimesince checkbuildtag incrementcounter recordtimestamp séquence' },
-  { title: 'Enchaînement Rapide', page: 'triggers', section: 'Compétences', content: 'enchaînement rapide collision target difference timestamp window' },
-  { title: 'Compteur de Rebonds', page: 'triggers', section: 'Compétences', content: 'compteur rebonds wall_hit incrementcounter checkcounter reset_on_room' },
+  { title: 'Déclencheurs — De Base vs Avancés', page: 'triggers', section: 'Compétences', content: 'déclencheurs base avancés pool commun kit joueur état élémentaire synergie' },
+  { title: 'TriggerData — Resource assemblée', page: 'triggers', section: 'Compétences', content: 'triggerdata event_ids loc_type cooldown conditions resource tres assembly inspecteur' },
+  { title: 'Bibliothèque TriggerCondition', page: 'triggers', section: 'Compétences', content: 'checkthreshold checktimesince checkbuildtag incrementcounter recordtimestamp séquence état élémentaire allié' },
+  { title: 'TriggerRunner — Manager Graph', page: 'triggers', section: 'Compétences', content: 'triggerrunner evaluate_all skillmanager process_event ctx cooldown fired' },
+  { title: 'Ordre d\'implémentation déclencheurs', page: 'triggers', section: 'Compétences', content: 'sprint ordre implémentation infrastructure blocs compteurs cibles tres' },
 ]);
 </script>

@@ -1,9 +1,32 @@
 <div class="page-hero">
   <h1>Flux d'un événement de jeu</h1>
-  <p class="lead">De la collision physique à l'exécution d'un effet — comment l'information circule entre CombatManager, SkillManager, TriggerRunner et EffectRunner.</p>
+  <p class="lead">De la collision physique à l'exécution d'un effet — comment l'information circule entre CombatManager, SkillManager, TriggerRunner et EffectRunner dans l'architecture Manager Graph.</p>
 </div>
 
-<div class="callout callout-bleu"><strong>Résumé :</strong> CombatManager construit le paquet brut. SkillManager l'enrichit de façon systématique et fixe. TriggerRunner distribue le paquet final sans le modifier. Les déclencheurs lisent, ils ne cherchent pas.</div>
+<div class="callout callout-bleu"><strong>Résumé :</strong> CombatManager construit le ctx brut et l'enrichit. SkillManager coordonne TriggerRunner et EffectRunner. Le ctx circule sans jamais déclencher de get_node(). VFX et Audio sont notifiés <em>après</em> le pipeline, jamais pendant.</div>
+
+<h2 class="section">Flux complet — collision joueur → ennemi</h2>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">Séquence d'appels — appels directs uniquement</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="cm"># 1. PhysicsManager détecte la collision (CollisionResolver)</span>
+<span class="tp">PhysicsManager</span>.<span class="fn">on_collision</span>(bille, ennemi)
+
+<span class="cm"># 2. CombatManager résout la séquence C1→C5</span>
+<span class="tp">CombatManager</span>.<span class="fn">resolve_hit</span>(bille, ennemi)
+  <span class="cm"># C1 : ACC calculé et infligé</span>
+  <span class="cm"># C2 : défenses passives appliquées</span>
+  <span class="cm"># C3 → appel direct SkillManager</span>
+  <span class="tp">SkillManager</span>.<span class="fn">process_event</span>(<span class="st">"enemy_hit"</span>, ctx)
+    <span class="cm"># TriggerRunner évalue les déclencheurs du build</span>
+    <span class="cm"># Pour chaque déclencheur satisfait : EffectRunner.execute()</span>
+    <span class="cm"># Pipeline ctx circule de behaviour en behaviour</span>
+    <span class="cm"># Après le pipeline : VFXManager + AudioManager notifiés</span>
+  <span class="cm"># C4 : compétences de réaction de l'ennemi</span>
+  <span class="cm"># C5 : effets persistants (DoT, zones)</span>
+
+<span class="cm"># 3. Signaux EventBus résiduels (Couche 4 uniquement)</span>
+<span class="tp">EventBus</span>.enemy_hit.<span class="fn">emit</span>(ctx)   <span class="cm"># → AudioManager, RunMetricsCollector</span></pre>
+</div>
 
 <h2 class="section">Simulateur de flux</h2>
 <div class="simulator">
@@ -13,79 +36,117 @@
       <option value="enemy_hit">Collision bille → ennemi</option>
       <option value="wall_hit">Rebond sur mur</option>
       <option value="kill">Kill d'un ennemi</option>
-      <option value="damage_received">Dégâts reçus par le joueur</option>
+      <option value="damage_received">Dégâts reçus (heurt)</option>
       <option value="timer">Timer interne (minuterie)</option>
-      <option value="zone_entered">Entrée dans une zone</option>
+      <option value="status_applied">État élémentaire appliqué</option>
+      <option value="elemental_synergy">Synergie élémentaire déclenchée</option>
+      <option value="buff_applied">Buff appliqué sur le joueur</option>
+      <option value="invocation_placed">Invocation posée</option>
     </select>
     <button class="sim-btn" onclick="runSimFlow()">▶ Simuler</button>
   </div>
   <div id="sim-flow-display" class="sim-flow"></div>
-  <div id="sim-ctx-display" class="sim-output" style="margin-top:12px">← Lance la simulation pour voir le ctx construit.</div>
+  <div id="sim-ctx-display" class="sim-output" style="margin-top:12px">← Lance la simulation pour voir le ctx et les managers impliqués.</div>
 </div>
 
 <h2 class="section">Le dictionnaire ctx — Blackboard complet</h2>
-<p class="text">Le ctx est enrichi couche par couche. CombatManager fournit les données physiques. SkillManager ajoute les données de contexte. Les blocs lisent et écrivent dans le ctx sans jamais appeler get_node().</p>
+<p class="text">Le ctx est enrichi couche par couche. CombatManager fournit les données physiques. SkillManager.ContextBuilder ajoute les données de build et injecte les managers. Les behaviours lisent et écrivent sans jamais appeler get_node().</p>
 <div class="code-wrap">
   <div class="code-header"><span class="code-lang">GDScript — ctx type enemy_hit (complet)</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
   <pre>{
-    <span class="cm"># ── Données physiques (CombatManager)</span>
-    <span class="st">"event_type"</span>:        <span class="st">"enemy_hit"</span>,
-    <span class="st">"initiator"</span>:         bille,        <span class="cm"># Node entité initiateur</span>
-    <span class="st">"receiver"</span>:          fennec,       <span class="cm"># Node entité receveur</span>
-    <span class="st">"position"</span>:          <span class="tp">Vector3</span>(<span class="nm">12</span>,<span class="nm">0</span>,<span class="nm">-4</span>),
-    <span class="st">"speed"</span>:             <span class="nm">340.0</span>,
-    <span class="st">"acc_damage"</span>:        <span class="nm">28.5</span>,         <span class="cm"># vitesse × masse × coeff_ACC</span>
+    <span class="cm"># ── Données physiques (CombatManager — C1)</span>
+    <span class="st">"event_type"</span>:           <span class="st">"enemy_hit"</span>,
+    <span class="st">"initiator"</span>:            bille,
+    <span class="st">"receiver"</span>:             ennemi,
+    <span class="st">"position"</span>:             <span class="tp">Vector3</span>(<span class="nm">12</span>, <span class="nm">0</span>, <span class="nm">-4</span>),
+    <span class="st">"speed"</span>:                <span class="nm">340.0</span>,
+    <span class="st">"acc_damage"</span>:           <span class="nm">28.5</span>,       <span class="cm"># vitesse × masse × coeff_ACC</span>
+    <span class="st">"is_frontal"</span>:           <span class="kw">false</span>,
+    <span class="st">"hit_count_this_room"</span>:  <span class="nm">3</span>,
 
-    <span class="cm"># ── Enrichissement SkillManager (via interface entité)</span>
-    <span class="st">"timestamp"</span>:         <span class="nm">142.34</span>,
-    <span class="st">"target_hp_ratio"</span>:   <span class="nm">0.85</span>,
-    <span class="st">"target_has_dot"</span>:    <span class="kw">false</span>,
-    <span class="st">"target_tags"</span>:       [<span class="st">"#ennemi"</span>, <span class="st">"#normal"</span>],
-    <span class="st">"build_tags"</span>:        [<span class="st">"#collision"</span>, <span class="st">"#dot"</span>],
-    <span class="st">"trigger_state"</span>:     trigger_state,  <span class="cm"># carnet de bord</span>
+    <span class="cm"># ── Enrichissement ContextBuilder (SkillManager)</span>
+    <span class="st">"timestamp"</span>:            <span class="nm">142.34</span>,
+    <span class="st">"target_hp_ratio"</span>:      <span class="nm">0.85</span>,
+    <span class="st">"target_has_dot"</span>:       <span class="kw">false</span>,
+    <span class="st">"target_elemental_states"</span>: [],    <span class="cm"># états actifs sur la cible</span>
+    <span class="st">"target_tags"</span>:          [<span class="st">"#ennemi"</span>, <span class="st">"#normal"</span>],
+    <span class="st">"build_tags"</span>:           [<span class="st">"#collision"</span>, <span class="st">"#dot"</span>, <span class="st">"#poison"</span>],
+    <span class="st">"trigger_state"</span>:        trigger_state,  <span class="cm"># carnet de bord cooldowns</span>
+    <span class="st">"room_first_hit"</span>:       <span class="kw">false</span>,
 
     <span class="cm"># ── Managers injectés (utilisés par les behaviours)</span>
-    <span class="st">"health_manager"</span>:    HealthManager,
-    <span class="st">"status_manager"</span>:    StatusManager,
-    <span class="st">"pool_manager"</span>:      PoolManager,
-    <span class="st">"physics_manager"</span>:   PhysicsManager,
+    <span class="st">"health_manager"</span>:       HealthManager,
+    <span class="st">"status_manager"</span>:       StatusManager,
+    <span class="st">"pool_manager"</span>:         PoolManager,
+    <span class="st">"physics_manager"</span>:      PhysicsManager,
+    <span class="st">"skill_manager"</span>:        SkillManager,    <span class="cm"># pour process_event secondaires</span>
 
     <span class="cm"># ── Enrichi par le pipeline d'effets</span>
-    <span class="st">"damage"</span>:            <span class="nm">0.0</span>,          <span class="cm"># modifié par ComputeBaseDamage</span>
-    <span class="st">"pipeline_stopped"</span>:  <span class="kw">false</span>,
-    <span class="st">"knockback_applied"</span>: <span class="kw">false</span>,        <span class="cm"># posé par ApplyKnockback</span>
+    <span class="st">"damage"</span>:               <span class="nm">0.0</span>,
+    <span class="st">"pipeline_stopped"</span>:     <span class="kw">false</span>,
+    <span class="st">"knockback_applied"</span>:    <span class="kw">false</span>,
+    <span class="st">"elemental_synergy"</span>:    {},             <span class="cm"># rempli par ApplyElementalState</span>
+    <span class="st">"is_elemental_state"</span>:   <span class="kw">false</span>,
 }</pre>
 </div>
 
-<h2 class="section">Sources des événements</h2>
+<h2 class="section">Sources des événements → managers source</h2>
 <div class="table-wrap"><table>
-  <thead><tr><th>Type</th><th>Source</th><th>Événements générés</th></tr></thead>
+  <thead><tr><th>Type d'événement</th><th>Source</th><th>Clé ctx ajoutée</th></tr></thead>
   <tbody>
-    <tr><td>Collision / rebond</td><td>CombatManager → SkillManager</td><td>"enemy_hit", "wall_hit", "frontal_collision"</td></tr>
-    <tr><td>État du joueur</td><td>Managers C2 → SkillManager</td><td>"damage_received", "buff_applied", "resource_collected"</td></tr>
-    <tr><td>Temporel</td><td>SkillManager (timer ~10fps)</td><td>"timer"</td></tr>
-    <tr><td>Spatial continu</td><td>PhysicsManager.SpatialHash → SkillManager</td><td>"enemy_nearby", "resource_nearby"</td></tr>
-    <tr><td>Entrée/sortie zone</td><td>PhysicsManager.ZoneTracker (Area3D)</td><td>"zone_entered", "zone_exited"</td></tr>
-    <tr><td>Build</td><td>BuildManager → SkillManager</td><td>"skill_triggered" (séquences)</td></tr>
+    <tr><td><code>"enemy_hit"</code></td><td>CombatManager → SkillManager</td><td>initiator, receiver, acc_damage, speed, is_frontal</td></tr>
+    <tr><td><code>"wall_hit"</code></td><td>CombatManager → SkillManager</td><td>position, speed, bounce_normal</td></tr>
+    <tr><td><code>"kill"</code></td><td>HealthManager → EnemyManager → SkillManager</td><td>killed_entity, kill_source</td></tr>
+    <tr><td><code>"damage_received"</code></td><td>HealthManager → SkillManager</td><td>damage_amount, source_tags, new_hp_ratio</td></tr>
+    <tr><td><code>"status_applied"</code></td><td>StatusManager → SkillManager</td><td>target, status_id, is_elemental_state</td></tr>
+    <tr><td><code>"elemental_synergy"</code></td><td>ApplyElementalState behaviour → SkillManager</td><td>elemental_synergy { type, effect }</td></tr>
+    <tr><td><code>"buff_applied"</code></td><td>StatusManager → SkillManager</td><td>target, buff_id, duration</td></tr>
+    <tr><td><code>"buff_expired"</code></td><td>StatusManager → SkillManager</td><td>target, buff_id</td></tr>
+    <tr><td><code>"invocation_placed"</code></td><td>EffectRunner (SpawnInvocation) → SkillManager</td><td>invocation_node, position</td></tr>
+    <tr><td><code>"invocation_died"</code></td><td>EnemyManager → SkillManager</td><td>invocation_node, position</td></tr>
+    <tr><td><code>"timer"</code></td><td>SkillManager (timer interne ~10fps)</td><td>timestamp</td></tr>
+    <tr><td><code>"resource_collected"</code></td><td>ResourceManager → SkillManager</td><td>resource_type, amount</td></tr>
+    <tr><td><code>"critical_hit"</code></td><td>HealthManager → SkillManager</td><td>target, damage_amount</td></tr>
   </tbody>
 </table></div>
 
-<h2 class="section">Symétrie initiateur/receveur</h2>
-<p class="text">resolve_hit ne type jamais ses paramètres. L'interface commune garantit que les mêmes méthodes sont disponibles quelle que soit la combinaison.</p>
+<h2 class="section">Symétrie initiateur / receveur</h2>
 <div class="table-wrap"><table>
   <thead><tr><th>Combinaison</th><th>C3 (offensive)</th><th>C4 (réaction)</th></tr></thead>
   <tbody>
-    <tr><td>joueur → ennemi</td><td>Slots du joueur</td><td>Compétences réaction ennemi</td></tr>
-    <tr><td>ennemi → joueur</td><td>Compétences contact ennemi</td><td>Déclencheurs Heurt du joueur</td></tr>
-    <tr><td>invoc. alliée → ennemi</td><td>Effets propres à l'invocation</td><td>Compétences réaction ennemi</td></tr>
-    <tr><td>invoc. ennemie → joueur</td><td>Effets propres à l'invocation</td><td>Déclencheurs Heurt du joueur</td></tr>
+    <tr><td>joueur → ennemi</td><td>Slots du joueur (TriggerRunner)</td><td>Compétences réaction ennemi</td></tr>
+    <tr><td>ennemi → joueur</td><td>Compétences contact ennemi</td><td>Déclencheurs "Heurt" du joueur</td></tr>
     <tr><td>choc frontal</td><td>Les deux en C3 (plus rapide en premier)</td><td>Les deux en C4</td></tr>
+    <tr><td>invocation alliée → ennemi</td><td>Effets propres à l'invocation + "Projection Alliée" si applicable</td><td>Compétences réaction ennemi</td></tr>
+    <tr><td>ennemi projeté → mur</td><td>"Impact Mural" (Déclencheur Avancé) si présent dans le build</td><td>Compétences de mur de l'ennemi</td></tr>
+    <tr><td>ennemi projeté → invocation</td><td>"Écrasement" (Déclencheur Avancé) si applicable</td><td>Effets propres à l'invocation</td></tr>
   </tbody>
 </table></div>
+
+<h2 class="section">Règle des compétences avancées — tag matching</h2>
+<div class="callout callout-or"><strong>Compatibilité Avancés :</strong> un Déclencheur Avancé n'est proposé au joueur que si son build contient déjà au moins un tag compatible. CheckBuildTag est systématiquement la dernière condition de tout TriggerData de type "advanced".</div>
+<div class="code-wrap">
+  <div class="code-header"><span class="code-lang">GDScript — vérification dans ContextBuilder</span><button class="copy-btn" onclick="copyCode(this)">📋 Copier</button></div>
+  <pre><span class="cm"># Lors de la construction du ctx, ContextBuilder expose les tags du build</span>
+<span class="kw">func</span> <span class="fn">_enrich_build_tags</span>(ctx: <span class="tp">Dictionary</span>) -> <span class="tp">void</span>:
+    <span class="kw">var</span> tags: <span class="tp">Array</span>[<span class="tp">String</span>] = []
+    <span class="kw">for</span> slot <span class="kw">in</span> <span class="tp">BuildManager</span>.<span class="fn">get_active_slots</span>():
+        tags.<span class="fn">append_array</span>(slot.trigger_data.tags)
+        tags.<span class="fn">append_array</span>(slot.effect_data.tags)
+    <span class="cm"># CheckBuildTag lit ctx["build_tags"] pour valider la compatibilité</span>
+    ctx[<span class="st">"build_tags"</span>] = tags</pre>
+</div>
 
 <div class="sources">
   <div class="sources-title">Sources</div>
   <div class="source-list">
+    <div class="source-item">
+      <span class="source-badge badge-docs">DOCS</span>
+      <div class="source-content">
+        <div class="source-title">Séquence de résolution des collisions</div>
+        <div class="source-desc">Couches C1→C5, formule ACC, choc frontal, projections — <code>collisions.md</code>.</div>
+      </div>
+    </div>
     <div class="source-item">
       <span class="source-badge badge-repo">REPO</span>
       <div class="source-content">
@@ -93,21 +154,68 @@
         <a class="source-link" href="https://gameprogrammingpatterns.com/event-queue.html" target="_blank">gameprogrammingpatterns.com/event-queue.html</a>
       </div>
     </div>
-    <div class="source-item">
-      <span class="source-badge badge-repo">REPO</span>
-      <div class="source-content">
-        <div class="source-title">Game Programming Patterns — Bytecode (pipeline pattern)</div>
-        <a class="source-link" href="https://gameprogrammingpatterns.com/bytecode.html" target="_blank">gameprogrammingpatterns.com/bytecode.html</a>
-      </div>
-    </div>
   </div>
 </div>
 
 <script>
 window.registerSearchEntries([
-  { title: 'Flux d\'un événement de jeu', page: 'skills-flow', section: 'Compétences', content: 'combatmanager skillmanager triggerrunner ctx paquet enrichissement distribution pipeline' },
-  { title: 'Dictionnaire ctx — Blackboard', page: 'skills-flow', section: 'Compétences', content: 'ctx context blackboard timestamp managers injectés initiator receiver acc_damage' },
-  { title: 'Sources des événements', page: 'skills-flow', section: 'Compétences', content: 'enemy_hit wall_hit kill timer damage_received zone_entered skill_triggered' },
-  { title: 'Symétrie initiateur receveur', page: 'skills-flow', section: 'Compétences', content: 'joueur ennemi invocation choc frontal C3 C4 collision' },
+  { title: 'Flux événement — Manager Graph', page: 'skills-flow', section: 'Compétences', content: 'combatmanager skillmanager triggerrunner ctx paquet enrichissement distribution pipeline appel direct' },
+  { title: 'Dictionnaire ctx — Blackboard complet', page: 'skills-flow', section: 'Compétences', content: 'ctx context blackboard managers injectés initiator receiver acc_damage états élémentaires build_tags' },
+  { title: 'Sources des événements', page: 'skills-flow', section: 'Compétences', content: 'enemy_hit wall_hit kill timer damage_received status_applied elemental_synergy buff invocation resource' },
+  { title: 'Symétrie initiateur receveur projections', page: 'skills-flow', section: 'Compétences', content: 'joueur ennemi invocation choc frontal projection mural écrasement C3 C4' },
+  { title: 'CheckBuildTag — compatibilité Avancés', page: 'skills-flow', section: 'Compétences', content: 'checkbuildtag build_tags compatibilité avancés tag matching contextbuilder' },
 ]);
+
+window.runSimFlow = function() {
+  const type = document.getElementById('evt-type').value;
+  const flows = {
+    enemy_hit: {
+      steps: ['PhysicsManager détecte la collision', 'CombatManager.resolve_hit(bille, ennemi)', 'C1 : ACC calculé et infligé', 'C2 : défenses passives de l\'ennemi', 'C3 : SkillManager.process_event("enemy_hit", ctx)', 'TriggerRunner évalue les déclencheurs du build', 'EffectRunner.execute() pour chaque slot satisfait', 'Pipeline ctx : Compute → Apply → (Elemental)', 'VFXManager + AudioManager notifiés après pipeline', 'C4 : compétences réaction ennemi', 'C5 : effets persistants (DoT, zones)'],
+      ctx: 'event_type: "enemy_hit" · initiator: bille · receiver: ennemi\nacc_damage: calculé · speed: actuelle · is_frontal: false\ntarget_hp_ratio · target_elemental_states · build_tags\nManagers injectés : health · status · pool · physics · skill'
+    },
+    wall_hit: {
+      steps: ['PhysicsManager détecte le rebond mural', 'CombatManager.on_wall_hit(bille, normal)', 'C1 : rebond physique appliqué (velocity.bounce)', 'C3 : SkillManager.process_event("wall_hit", ctx)', 'TriggerRunner → déclencheurs Rebond (DB-REB-01–05)', 'EffectRunner.execute() si déclencheur satisfait', 'VFXManager + AudioManager notifiés'],
+      ctx: 'event_type: "wall_hit" · position: point de contact\nspeed: vitesse au moment du rebond · bounce_normal: Vector3\nbuild_tags · trigger_state'
+    },
+    kill: {
+      steps: ['HealthManager.take_damage() → PV tombent à 0', 'HealthManager._process_death(ennemi)', 'EnemyManager.on_enemy_dead(ennemi) — appel direct', 'SkillManager.process_event("kill", ctx)', 'TriggerRunner → Kill, Premier Kill, Kill en Rafale, Rupture…', 'EffectRunner.execute() pour chaque slot satisfait', 'ResourceManager.drop_loot(ennemi) — appel direct', 'EventBus.enemy_died.emit() → AudioManager, EncyclopediaManager'],
+      ctx: 'event_type: "kill" · killed_entity: ennemi\nkill_source: "player_direct" | "dot" | "invocation" | "zone"\nposition · build_tags'
+    },
+    damage_received: {
+      steps: ['HealthManager.take_damage(joueur, …)', 'HealthManager vérifie les immunités et réduit les PV', 'HealthManager → SkillManager.process_event("damage_received", ctx)', 'TriggerRunner → Heurt par un Ennemi, Heurt par Projectile, Heurt Consécutif', 'TriggerRunner → Seuil de PV Bas/Critique si seuil franchi', 'EffectRunner.execute() pour chaque slot satisfait'],
+      ctx: 'event_type: "damage_received" · damage_amount: float\nnew_hp_ratio: float · source_tags: Array\nbuild_tags · trigger_state'
+    },
+    timer: {
+      steps: ['SkillManager._timer_tick() toutes les ~0,1s', 'process_event("timer", ctx) avec timestamp actuel', 'TriggerRunner → Minuterie Passive, en Mouvement, à l\'Arrêt', 'TriggerRunner → Refus de Mourir (CheckContinuousState)', 'EffectRunner.execute() si déclencheur satisfait'],
+      ctx: 'event_type: "timer" · timestamp: float\nplayer_is_moving: bool · player_speed: float\nbuild_tags · trigger_state'
+    },
+    status_applied: {
+      steps: ['StatusManager.apply_elemental(target, "chauffe")', 'StatusManager vérifie si synergie avec état existant', 'StatusManager → SkillManager.process_event("status_applied", ctx)', 'TriggerRunner → État Appliqué (Base)', 'Si synergie → SkillManager.process_event("elemental_synergy", ctx)', 'TriggerRunner → Synergie Élémentaire (Avancé)'],
+      ctx: 'event_type: "status_applied" · target: ennemi\nstatus_id: "chauffe" · is_elemental_state: true\nprev_states: ["intoxique"] → synergie Stun détectée'
+    },
+    elemental_synergy: {
+      steps: ['ApplyElementalState behaviour détecte la synergie', 'ctx["elemental_synergy"] = { type: "stun_intox_feu", duration: 0.6 }', 'SkillManager.process_event("elemental_synergy", ctx)', 'TriggerRunner → Synergie Élémentaire (Avancé, si #etat_elementaire dans build)', 'TriggerRunner → État Saturé (Avancé, si 2 réactions sur la cible en 4s)'],
+      ctx: 'event_type: "elemental_synergy"\nelemental_synergy: { type, duration }\ntarget · build_tags (doit contenir #etat_elementaire pour Avancé)'
+    },
+    buff_applied: {
+      steps: ['StatusManager.apply_buff(joueur, "bouclier_force", duration, value)', 'StatusManager → SkillManager.process_event("buff_applied", ctx)', 'TriggerRunner → Buff Appliqué (Avancé)', 'EffectRunner.execute() si slot satisfait'],
+      ctx: 'event_type: "buff_applied" · target: joueur\nbuff_id: "bouclier_force" · duration: 8.0\nbuild_tags (doit contenir #buff ou #defense pour Avancé)'
+    },
+    invocation_placed: {
+      steps: ['SpawnInvocation behaviour s\'exécute dans le pipeline', 'EnemyManager.register_ally(invocation_node)', 'SkillManager.process_event("invocation_placed", ctx)', 'TriggerRunner → Invocation Posée (Avancé)', 'EffectRunner.execute() si slot satisfait'],
+      ctx: 'event_type: "invocation_placed" · invocation_node: Node\nposition: Vector3 · invocation_type: "tourelle" | "larve" | "orbe"…\nbuild_tags (doit contenir #invocation)'
+    }
+  };
+  const flow = flows[type];
+  const display = document.getElementById('sim-flow-display');
+  const ctxDisplay = document.getElementById('sim-ctx-display');
+  display.innerHTML = flow.steps.map((s, i) => `<div class="sim-step"><span class="sim-step-n">${i+1}</span>${s}</div>`).join('');
+  ctxDisplay.textContent = '📦 ctx enrichi :\n' + flow.ctx;
+};
 </script>
+
+<style>
+.sim-flow { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.sim-step { display: flex; align-items: flex-start; gap: 10px; padding: 8px 12px; background: var(--noir2); border-radius: var(--radius); font-family: var(--font-mono); font-size: 12px; color: var(--blanc); }
+.sim-step-n { background: var(--or); color: var(--noir); border-radius: 3px; padding: 1px 6px; font-weight: 700; font-size: 11px; flex-shrink: 0; margin-top: 1px; }
+</style>
