@@ -112,6 +112,11 @@
         "id": "pp-balancer",
         "icon": "👊",
         "label": "Power Point Balancer"
+      },
+      {
+        "id": "mockups-ecrans",
+        "icon": "🖼️",
+        "label": "Mockup écrans"
       }
     ]
   }
