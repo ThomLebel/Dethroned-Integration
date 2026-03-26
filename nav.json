@@ -61,6 +61,16 @@
     ]
   },
   {
+    "section": "Systèmes divers",
+    "items": [
+      {
+        "id": "tags-ressources",
+        "icon": "🏷️",
+        "label": "Tags dynamiques"
+      }
+    ]
+  },
+  {
     "section": "Intégration Godot 4.6",
     "items": [
       {
@@ -127,16 +137,6 @@
         "id": "pp-balancer",
         "icon": "👊",
         "label": "Power Point Balancer"
-      }
-    ]
-  },
-  {
-    "section": "Systèmes divers",
-    "items": [
-      {
-        "id": "tags--ressources",
-        "icon": "🏷️",
-        "label": "Tags dynamiques"
       }
     ]
   }
