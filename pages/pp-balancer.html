@@ -976,8 +976,178 @@ g('ppb-sr').addEventListener('input',renderR); g('ppb-fr').addEventListener('cha
 // ── INIT ──
 renderD(); updateSB(); recalc();
 
-if(typeof window.registerSearchEntries==='function'){
-  window.registerSearchEntries([
+if(typeof <script>
+(function(){var s=document.createElement('script');s.src='gamedata.js';s.onload=function(){document.dispatchEvent(new CustomEvent('gamedata:ready'));initPPBFromGamedata();};s.onerror=function(){console.error('[gamedata] Impossible de charger gamedata.js');};(document.head||document.body).appendChild(s);})();
+</script>
+<script>
+/* Initialisation de DB depuis gamedata.js */
+function initPPBFromGamedata() {
+  if(typeof GD_TRIGGERS === 'undefined' || typeof GD_EFFECTS === 'undefined') return;
+
+  // Mapper GD_TRIGGERS → format DB.triggers attendu par pp-balancer
+  DB.triggers = GD_TRIGGERS.map(function(t) {
+    // Estimer la fréquence selon le type et la rareté
+    var freqMap = {'Commun':10,'Rare':5,'Épique':2.5,'Légendaire':1};
+    var freq = freqMap[t.r] || 5;
+    // Ajuster par loc : loc_soi (passif) = plus fréquent
+    if(t.loc === '#loc_soi') freq = freq * 1.5;
+    var freq_cat = freq >= 12 ? 'th' : freq >= 7 ? 'h' : freq >= 4 ? 'm' : freq >= 1.5 ? 'b' : 'r';
+    return {
+      id: 'DB-' + t.nom.replace(/[^a-zA-Z0-9]/g,'').substr(0,8).toUpperCase(),
+      name: t.nom,
+      type: t.type,
+      family: t.tags && t.tags[0] ? t.tags[0].replace('#','') : 'divers',
+      rarity: t.r === 'Épique' ? 'epique' : t.r === 'Légendaire' ? 'legendaire' : t.r.toLowerCase(),
+      freq_cat: freq_cat,
+      freq: Math.round(freq * 10) / 10,
+      loc: t.loc ? t.loc.replace('#','') : 'loc_cible',
+      tags: t.tags || [],
+      cond: t.cond || ''
+    };
+  });
+
+  // Mapper GD_EFFECTS → format DB.effects
+  DB.effects = GD_EFFECTS.map(function(e) {
+    // Estimer base_damage depuis la rareté
+    var dmgMap = {'Commun':8,'Rare':15,'Épique':25,'Légendaire':40};
+    var isCaC = e.id && e.id.startsWith('CàC');
+    var isDot = (e.tags||[]).includes('#dot');
+    var isCtrl = (e.tags||[]).includes('#controle') || (e.tags||[]).includes('#stun');
+    var isSupport = (e.tags||[]).includes('#soin') || (e.tags||[]).includes('#buff') || (e.tags||[]).includes('#defense');
+    var isZone = (e.tags||[]).includes('#zone') || (e.tags||[]).includes('#structures') || (e.tags||[]).includes('#invocation');
+    var et = isDot ? 0.85 : isCtrl||isSupport ? 0.6 : isZone ? 0.75 : 1.0;
+    var baseDmg = isCaC ? Math.round((dmgMap[e.r]||8) * 1.3 * 10)/10 : (dmgMap[e.r]||8);
+    var dur = isDot ? 4 : isCtrl ? 2 : 0;
+    var rad = isZone ? 2 : 0;
+    var cdNum = e.cd ? parseFloat(e.cd.replace('s','')) : 5;
+
+    return {
+      id: e.id,
+      name: e.nom.split(' — ')[1] || e.nom,
+      family: isDot ? 'DoT / Érosion' : isCtrl ? 'Contrôle ennemis' : isSupport ? 'Défense / Soin' : isZone ? 'Terrain / Invocations' : 'Dégâts directs',
+      rarity: e.r === 'Épique' ? 'epique' : e.r === 'Légendaire' ? 'legendaire' : e.r.toLowerCase(),
+      effect_type: et.toString(),
+      req: e.req ? e.req.replace('#','') : 'req_cible',
+      base_damage: baseDmg,
+      duration: dur,
+      area_radius: rad,
+      multiplier: 1.0,
+      cooldown: cdNum,
+      tags: e.tags || [],
+      desc: e.desc || ''
+    };
+  });
+
+  // Mapper GD_RELIQUES → format DB.relics
+  DB.relics = GD_RELIQUES.map(function(r) {
+    return {
+      id: r.id,
+      name: r.nom,
+      type: r.type,
+      value: r.type === 'forte' ? 2.0 : 1.0,
+      tags: r.tags ? r.tags.split(' ').filter(Boolean) : [],
+      desc: r.desc || r.bonus || '',
+      malus: r.malus || ''
+    };
+  });
+
+  // Relancer le rendu
+  if(typeof renderE === 'function') renderE();
+  if(typeof renderT === 'function') renderT();
+  if(typeof renderSK === 'function') renderSK();
+  if(typeof renderRL === 'function') renderRL();
+  if(typeof updateSB === 'function') updateSB();
+  console.log('[gamedata] DB initialisé:', DB.effects.length, 'effets,', DB.triggers.length, 'triggers,', DB.relics.length, 'reliques');
+}
+</script>
+
+window.registerSearchEntries==='function'){
+  <script>
+(function(){var s=document.createElement('script');s.src='gamedata.js';s.onload=function(){document.dispatchEvent(new CustomEvent('gamedata:ready'));initPPBFromGamedata();};s.onerror=function(){console.error('[gamedata] Impossible de charger gamedata.js');};(document.head||document.body).appendChild(s);})();
+</script>
+<script>
+/* Initialisation de DB depuis gamedata.js */
+function initPPBFromGamedata() {
+  if(typeof GD_TRIGGERS === 'undefined' || typeof GD_EFFECTS === 'undefined') return;
+
+  // Mapper GD_TRIGGERS → format DB.triggers attendu par pp-balancer
+  DB.triggers = GD_TRIGGERS.map(function(t) {
+    // Estimer la fréquence selon le type et la rareté
+    var freqMap = {'Commun':10,'Rare':5,'Épique':2.5,'Légendaire':1};
+    var freq = freqMap[t.r] || 5;
+    // Ajuster par loc : loc_soi (passif) = plus fréquent
+    if(t.loc === '#loc_soi') freq = freq * 1.5;
+    var freq_cat = freq >= 12 ? 'th' : freq >= 7 ? 'h' : freq >= 4 ? 'm' : freq >= 1.5 ? 'b' : 'r';
+    return {
+      id: 'DB-' + t.nom.replace(/[^a-zA-Z0-9]/g,'').substr(0,8).toUpperCase(),
+      name: t.nom,
+      type: t.type,
+      family: t.tags && t.tags[0] ? t.tags[0].replace('#','') : 'divers',
+      rarity: t.r === 'Épique' ? 'epique' : t.r === 'Légendaire' ? 'legendaire' : t.r.toLowerCase(),
+      freq_cat: freq_cat,
+      freq: Math.round(freq * 10) / 10,
+      loc: t.loc ? t.loc.replace('#','') : 'loc_cible',
+      tags: t.tags || [],
+      cond: t.cond || ''
+    };
+  });
+
+  // Mapper GD_EFFECTS → format DB.effects
+  DB.effects = GD_EFFECTS.map(function(e) {
+    // Estimer base_damage depuis la rareté
+    var dmgMap = {'Commun':8,'Rare':15,'Épique':25,'Légendaire':40};
+    var isCaC = e.id && e.id.startsWith('CàC');
+    var isDot = (e.tags||[]).includes('#dot');
+    var isCtrl = (e.tags||[]).includes('#controle') || (e.tags||[]).includes('#stun');
+    var isSupport = (e.tags||[]).includes('#soin') || (e.tags||[]).includes('#buff') || (e.tags||[]).includes('#defense');
+    var isZone = (e.tags||[]).includes('#zone') || (e.tags||[]).includes('#structures') || (e.tags||[]).includes('#invocation');
+    var et = isDot ? 0.85 : isCtrl||isSupport ? 0.6 : isZone ? 0.75 : 1.0;
+    var baseDmg = isCaC ? Math.round((dmgMap[e.r]||8) * 1.3 * 10)/10 : (dmgMap[e.r]||8);
+    var dur = isDot ? 4 : isCtrl ? 2 : 0;
+    var rad = isZone ? 2 : 0;
+    var cdNum = e.cd ? parseFloat(e.cd.replace('s','')) : 5;
+
+    return {
+      id: e.id,
+      name: e.nom.split(' — ')[1] || e.nom,
+      family: isDot ? 'DoT / Érosion' : isCtrl ? 'Contrôle ennemis' : isSupport ? 'Défense / Soin' : isZone ? 'Terrain / Invocations' : 'Dégâts directs',
+      rarity: e.r === 'Épique' ? 'epique' : e.r === 'Légendaire' ? 'legendaire' : e.r.toLowerCase(),
+      effect_type: et.toString(),
+      req: e.req ? e.req.replace('#','') : 'req_cible',
+      base_damage: baseDmg,
+      duration: dur,
+      area_radius: rad,
+      multiplier: 1.0,
+      cooldown: cdNum,
+      tags: e.tags || [],
+      desc: e.desc || ''
+    };
+  });
+
+  // Mapper GD_RELIQUES → format DB.relics
+  DB.relics = GD_RELIQUES.map(function(r) {
+    return {
+      id: r.id,
+      name: r.nom,
+      type: r.type,
+      value: r.type === 'forte' ? 2.0 : 1.0,
+      tags: r.tags ? r.tags.split(' ').filter(Boolean) : [],
+      desc: r.desc || r.bonus || '',
+      malus: r.malus || ''
+    };
+  });
+
+  // Relancer le rendu
+  if(typeof renderE === 'function') renderE();
+  if(typeof renderT === 'function') renderT();
+  if(typeof renderSK === 'function') renderSK();
+  if(typeof renderRL === 'function') renderRL();
+  if(typeof updateSB === 'function') updateSB();
+  console.log('[gamedata] DB initialisé:', DB.effects.length, 'effets,', DB.triggers.length, 'triggers,', DB.relics.length, 'reliques');
+}
+</script>
+
+window.registerSearchEntries([
     {title:'PP Balancer',page:'pp-balancer',section:'Outils',content:'équilibrage balance points puissance effets déclencheurs compétences reliques export JSON Godot'},
     {title:'Calculateur PP',page:'pp-balancer',section:'Outils',content:'calculateur formule budget fréquence activation dégâts cooldown auto-calcul'},
   ]);

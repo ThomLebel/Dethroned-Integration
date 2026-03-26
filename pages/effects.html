@@ -178,6 +178,66 @@
 </div>
 
 <script>
+/* ── Chargement gamedata.js (fetch + cache navigateur) ── */
+(function(){
+  var s=document.createElement('script');
+  s.src='gamedata.js';
+  s.onload=function(){document.dispatchEvent(new CustomEvent('gamedata:ready'));};
+  s.onerror=function(){console.error('[gamedata] Impossible de charger gamedata.js');};
+  (document.head||document.body).appendChild(s);
+})();
+</script>
+<h2 class="section">Catalogue interactif — Recherche &amp; filtre</h2>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+  <input id="eff-search" placeholder="Nom, ID, tag…" style="background:var(--noir2);border:1px solid #333;color:var(--blanc);padding:7px 10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;width:200px" oninput="effRender()">
+  <select id="eff-req" style="background:var(--noir2);border:1px solid #333;color:var(--blanc);padding:7px 10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:12px" onchange="effRender()">
+    <option value="">Tous ciblages</option>
+    <option value="#req_cible">req_cible</option>
+    <option value="#req_point">req_point</option>
+    <option value="#req_soi">req_soi</option>
+    <option value="#req_global">req_global</option>
+  </select>
+  <select id="eff-rar" style="background:var(--noir2);border:1px solid #333;color:var(--blanc);padding:7px 10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:12px" onchange="effRender()">
+    <option value="">Toutes raretés</option>
+    <option>Commun</option><option>Rare</option><option>Épique</option><option>Légendaire</option>
+  </select>
+  <span id="eff-count" style="font-size:11px;color:var(--gris)">— effets</span>
+</div>
+<div class="table-wrap"><table id="eff-table">
+  <thead><tr><th>ID</th><th>Nom</th><th>Rareté</th><th>Req.</th><th>Cooldown</th><th>Tags</th><th>Description</th></tr></thead>
+  <tbody id="eff-tbody"></tbody>
+</table></div>
+
+<script>
+document.addEventListener('gamedata:ready', function() {
+  window.effRender = function() {
+    const s = document.getElementById('eff-search').value.toLowerCase();
+    const req = document.getElementById('eff-req').value;
+    const rar = document.getElementById('eff-rar').value;
+    const list = GD_EFFECTS.filter(e =>
+      (!s || e.nom.toLowerCase().includes(s) || e.id.toLowerCase().includes(s) || (e.tags||[]).join(' ').includes(s)) &&
+      (!req || e.req === req) &&
+      (!rar || e.r === rar)
+    );
+    document.getElementById('eff-count').textContent = list.length + ' effets';
+    document.getElementById('eff-tbody').innerHTML = list.map(e => {
+      const tagHtml = (e.tags||[]).map(t => `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#1e1e1e;color:var(--gris);margin:1px">${t}</span>`).join('');
+      return `<tr>
+        <td><code>${e.id}</code></td>
+        <td style="font-weight:600">${e.nom.split(' — ')[1]||e.nom}</td>
+        <td><span style="color:${rarityColor(e.r)};font-size:11px">${e.r}</span></td>
+        <td><code style="font-size:10px">${e.req.replace('#','')}</code></td>
+        <td style="font-size:11px">${e.cd}</td>
+        <td style="min-width:140px">${tagHtml}</td>
+        <td style="font-size:11px;color:var(--gris)">${e.desc}</td>
+      </tr>`;
+    }).join('');
+  };
+  effRender();
+});
+</script>
+
+<script>
 window.registerSearchEntries([
   { title: 'Effets — 8 familles catalogue v4', page: 'effects', section: 'Compétences', content: 'dégâts directs DoT contrôle mobilité défense soin buff debuff terrain invocation ressource chaos légendaires' },
   { title: 'EffectBehaviour pipeline ctx', page: 'effects', section: 'Compétences', content: 'effectbehaviour pipeline ctx compute apply spawn flux conditionnel stateless' },

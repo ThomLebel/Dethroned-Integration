@@ -269,6 +269,61 @@
 </div>
 
 <script>
+(function(){var s=document.createElement('script');s.src='gamedata.js';s.onload=function(){document.dispatchEvent(new CustomEvent('gamedata:ready'));};s.onerror=function(){console.error('[gamedata] Impossible de charger gamedata.js');};(document.head||document.body).appendChild(s);})();
+</script>
+<h2 class="section">Catalogue interactif — Recherche &amp; filtre</h2>
+<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+  <input id="tr-search" placeholder="Nom, tag…" style="background:var(--noir2);border:1px solid #333;color:var(--blanc);padding:7px 10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;width:200px" oninput="trRender()">
+  <select id="tr-type" style="background:var(--noir2);border:1px solid #333;color:var(--blanc);padding:7px 10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:12px" onchange="trRender()">
+    <option value="">Base + Avancés</option><option value="base">Base uniquement</option><option value="advanced">Avancés uniquement</option>
+  </select>
+  <select id="tr-loc" style="background:var(--noir2);border:1px solid #333;color:var(--blanc);padding:7px 10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:12px" onchange="trRender()">
+    <option value="">Toutes localisations</option>
+    <option value="#loc_cible">loc_cible</option><option value="#loc_point">loc_point</option><option value="#loc_soi">loc_soi</option>
+  </select>
+  <select id="tr-rar" style="background:var(--noir2);border:1px solid #333;color:var(--blanc);padding:7px 10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:12px" onchange="trRender()">
+    <option value="">Toutes raretés</option><option>Commun</option><option>Rare</option><option>Épique</option><option>Légendaire</option>
+  </select>
+  <span id="tr-count" style="font-size:11px;color:var(--gris)">— triggers</span>
+</div>
+<div class="table-wrap"><table>
+  <thead><tr><th>Nom</th><th>Type</th><th>Rareté</th><th>Loc.</th><th>Condition</th><th>Tags</th></tr></thead>
+  <tbody id="tr-tbody"></tbody>
+</table></div>
+
+<script>
+document.addEventListener('gamedata:ready', function() {
+  window.trRender = function() {
+    const s = document.getElementById('tr-search').value.toLowerCase();
+    const type = document.getElementById('tr-type').value;
+    const loc = document.getElementById('tr-loc').value;
+    const rar = document.getElementById('tr-rar').value;
+    const list = GD_TRIGGERS.filter(t =>
+      (!s || t.nom.toLowerCase().includes(s) || (t.tags||[]).join(' ').includes(s)) &&
+      (!type || t.type === type) &&
+      (!loc || t.loc === loc) &&
+      (!rar || t.r === rar)
+    );
+    document.getElementById('tr-count').textContent = list.length + ' déclencheurs';
+    const locColor = {'#loc_cible':'var(--rouge)','#loc_point':'var(--bleu)','#loc_soi':'var(--vert)','#loc_global':'var(--or)'};
+    document.getElementById('tr-tbody').innerHTML = list.map(t => {
+      const tagHtml = (t.tags||[]).map(x => `<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#1e1e1e;color:var(--gris);margin:1px">${x}</span>`).join('');
+      const typeColor = t.type==='base'?'var(--bleu)':'#9a8aff';
+      return `<tr>
+        <td style="font-weight:600">${t.nom}</td>
+        <td><span style="color:${typeColor};font-size:10px">${t.type}</span></td>
+        <td><span style="color:${rarityColor(t.r)};font-size:11px">${t.r}</span></td>
+        <td><code style="color:${locColor[t.loc]||'#888'};font-size:10px">${(t.loc||'').replace('#loc_','')}</code></td>
+        <td style="font-size:11px;color:var(--gris);max-width:200px">${t.cond||''}</td>
+        <td>${tagHtml}</td>
+      </tr>`;
+    }).join('');
+  };
+  trRender();
+});
+</script>
+
+<script>
 window.registerSearchEntries([
   { title: 'Déclencheurs — De Base vs Avancés', page: 'triggers', section: 'Compétences', content: 'déclencheurs base avancés pool commun kit joueur état élémentaire synergie' },
   { title: 'TriggerData — Resource assemblée', page: 'triggers', section: 'Compétences', content: 'triggerdata event_ids loc_type cooldown conditions resource tres assembly inspecteur' },
