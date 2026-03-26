@@ -1,123 +1,158 @@
+<!DOCTYPE html>
 <div data-fullwidth="true">
 <div class="page-hero">
   <h1>Simulateur de Build</h1>
-  <p class="lead">Simulation pas-à-pas d'une run complète, ou construction libre d'un build de A à Z.</p>
+  <p class="lead">Simulation pas-à-pas d'une run complète avec taux de rareté progressifs, ou construction libre d'un build de A à Z.</p>
 </div>
+
 <style>
-#bsim{font-family:var(--font-mono)}
-.bs-tabs{display:flex;border-bottom:2px solid var(--noir2);margin-bottom:20px}
-.bs-tab{padding:10px 24px;background:none;border:none;color:var(--gris);font-family:var(--font-mono);font-size:12px;cursor:pointer;text-transform:uppercase;letter-spacing:1px;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .18s}
-.bs-tab.on{color:var(--or);border-bottom-color:var(--or)}
-.bsh{display:none!important}
-/* CONFIG */
-.bs-cfg{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:16px}
-.bs-fld{display:flex;flex-direction:column;gap:4px}
-.bs-lbl{font-size:10px;color:var(--gris);text-transform:uppercase;letter-spacing:1px}
-.bs-sel,.bs-inp{background:var(--noir2);border:1px solid #333;color:var(--blanc);padding:7px 10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;width:100%;box-sizing:border-box}
-.bs-sel:focus,.bs-inp:focus{outline:none;border-color:var(--or)}
-/* MODS PANEL */
-.bs-mods{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
-.bs-mod-panel{background:var(--noir2);border-radius:var(--radius);padding:12px}
-.bs-mod-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
-.bs-mod-title.fv{color:var(--vert)}.bs-mod-title.ml{color:var(--rouge)}
-.bs-mod-row{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:4px;background:rgba(255,255,255,.02);margin-bottom:3px;cursor:pointer;transition:background .12s}
-.bs-mod-row:hover{background:rgba(255,255,255,.06)}
-.bs-mod-row.on.fv{background:rgba(74,124,89,.2);border-left:3px solid var(--vert)}
-.bs-mod-row.on.ml{background:rgba(139,26,26,.2);border-left:3px solid var(--rouge)}
-.bs-mod-name{flex:1;font-size:11px;color:var(--blanc)}
-.bs-mod-desc{font-size:10px;color:var(--gris);flex:2}
-.bs-mod-cost{font-size:10px;white-space:nowrap}
-.bs-mod-cost.fv{color:var(--vert)}.bs-mod-cost.ml{color:var(--rouge)}
-.bs-cost-total{font-size:11px;margin-top:6px;color:var(--gris)}
-/* BOUTONS */
-.bs-btn{padding:9px 20px;background:var(--or);color:var(--noir);border:none;border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;font-weight:700;cursor:pointer;text-transform:uppercase;letter-spacing:1px}
-.bs-btn:hover{opacity:.85}
-.bs-btn.sec{background:var(--noir2);color:var(--or);border:1px solid var(--or)}
-.bs-btn-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px}
-/* BUILD DISPLAY */
-.bs-build-box{background:var(--noir2);border-radius:var(--radius);padding:14px;margin-bottom:14px}
-.bs-build-title{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris);margin-bottom:10px}
-.bs-slots-wrap{display:flex;flex-wrap:wrap;gap:6px}
-.bs-slot{padding:5px 9px;border-radius:4px;font-size:10px;border:1px solid}
-.bs-slot.id{border-color:var(--or);background:rgba(242,183,73,.08);color:var(--or)}
-.bs-slot.base{border-color:#444;color:var(--blanc)}
-.bs-slot.advanced{border-color:#4a3a8a;color:#9a8aff}
-.bs-slot.empty{border-color:#2a2a2a;color:var(--gris);border-style:dashed}
-/* SYNERGIES */
-.bs-syns{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
-.bs-syn{padding:4px 9px;border-radius:4px;font-size:10px;border-left:3px solid}
-.bs-syn.t1{border-color:var(--vert);background:rgba(74,124,89,.1);color:var(--vert)}
-.bs-syn.t2{border-color:var(--ocre);background:rgba(166,85,38,.1);color:var(--ocre)}
-.bs-syn.t3{border-color:var(--rouge);background:rgba(139,26,26,.15);color:#ff7777}
-/* RUN LOG */
-.bs-room-card{background:var(--noir2);border-radius:var(--radius);margin-bottom:8px;overflow:hidden}
-.bs-room-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;cursor:pointer}
-.bs-room-num{font-size:10px;color:var(--gris);min-width:56px}
-.bs-room-type{font-size:11px;font-weight:700;flex:1}
-.bs-room-type.n{color:var(--blanc)}.bs-room-type.e{color:var(--ocre)}.bs-room-type.mb{color:var(--rouge)}.bs-room-type.r{color:var(--vert)}.bs-room-type.b{color:#ff4444}
-.bs-room-bdy{padding:10px 14px 14px;border-top:1px solid #1e1e1e}
-.bs-room-bdy.collapsed{display:none}
-/* POP-IN overlay */
-.bs-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px}
-.bs-popup{background:var(--noir2);border:1px solid #333;border-radius:8px;width:min(900px,100%);max-height:90vh;overflow-y:auto;padding:20px}
-.bs-popup-title{font-size:14px;font-family:var(--font-display);color:var(--or);margin-bottom:4px}
-.bs-popup-sub{font-size:11px;color:var(--gris);margin-bottom:16px}
-.bs-cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-bottom:14px}
-.bs-card{border:1px solid #333;border-radius:6px;overflow:hidden;cursor:pointer;transition:border-color .15s,box-shadow .15s}
-.bs-card:hover{border-color:var(--or)}
-.bs-card.picked{border-color:var(--or);box-shadow:0 0 12px rgba(242,183,73,.25)}
-.bs-card.picked.adv{border-color:#9a8aff;box-shadow:0 0 12px rgba(154,138,255,.2)}
-.bs-card.picked.wc{border-color:var(--vert)}
-.bs-card-effect{padding:8px;background:rgba(0,0,0,.3)}
-.bs-card-trigger{padding:8px;border-top:1px solid #1e1e1e}
-.bs-card-label{font-size:9px;text-transform:uppercase;letter-spacing:1px;margin-bottom:3px}
-.bs-card-label.e{color:var(--rouge)}.bs-card-label.t{color:var(--bleu)}
-.bs-card-name{font-size:11px;font-weight:700;color:var(--blanc);margin-bottom:2px}
-.bs-card-desc{font-size:10px;color:var(--gris);line-height:1.4;margin-bottom:4px}
-.bs-card-tags{display:flex;flex-wrap:wrap;gap:3px}
-.bs-card-tag{font-size:9px;padding:1px 5px;border-radius:3px;background:#1a1a1a;color:var(--gris2)}
-.bs-card-cd{font-size:9px;color:var(--gris);margin-top:3px}
-.bs-rarity-pill{display:inline-block;font-size:9px;padding:1px 6px;border-radius:3px;margin-bottom:3px}
-.rp-Commun{background:rgba(74,124,89,.2);color:var(--vert)}
-.rp-Rare{background:rgba(46,91,138,.2);color:var(--bleu)}
-.rp-Epique{background:rgba(107,63,160,.2);color:#b08aff}
-.rp-Legendaire{background:rgba(242,183,73,.15);color:var(--or)}
-/* Marchand */
-.bs-march-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:12px}
-.bs-march-item{border:1px solid #333;border-radius:5px;padding:8px;cursor:pointer;transition:all .15s}
-.bs-march-item:hover{border-color:var(--or)}
-.bs-march-item.bought{border-color:var(--or);background:rgba(242,183,73,.08)}
-.bs-march-item.slot-item{border-color:var(--bleu)}
-.bs-march-item.slot-item.bought{background:rgba(46,91,138,.15)}
-.bs-march-type{font-size:9px;text-transform:uppercase;letter-spacing:1px;color:var(--gris);margin-bottom:3px}
-.bs-march-name{font-size:11px;color:var(--blanc);margin-bottom:2px}
-.bs-march-price{font-size:10px;color:var(--or)}
-/* Repos */
-.bs-repos-opts{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-.bs-repos-opt{padding:10px 16px;border:1px solid #333;border-radius:5px;cursor:pointer;font-size:11px;transition:all .15s}
-.bs-repos-opt:hover,.bs-repos-opt.on{border-color:var(--or);color:var(--or)}
-/* FREE */
-#bs-free-wrap{display:grid;grid-template-columns:300px 1fr;gap:16px}
-.bs-free-panel{background:var(--noir2);border-radius:var(--radius);padding:14px}
-.bs-free-sec{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--gris);margin:12px 0 7px;border-bottom:1px solid #2a2a2a;padding-bottom:3px}
-.bs-free-sec:first-child{margin-top:0}
-.bs-free-slot{display:flex;align-items:center;gap:6px;padding:7px 8px;background:rgba(255,255,255,.02);border-radius:4px;margin-bottom:4px}
-.bs-free-slot-n{font-size:10px;color:var(--gris);min-width:22px}
-.bs-free-slot-content{flex:1;font-size:10px;color:var(--blanc)}
-.bs-free-slot-del{background:none;border:none;color:var(--rouge);cursor:pointer;font-size:12px;padding:0 4px;opacity:.5}
-.bs-free-slot-del:hover{opacity:1}
-.bs-comp-builder{display:flex;flex-direction:column;gap:8px;margin-bottom:10px;background:#0d0a07;padding:12px;border-radius:var(--radius)}
-.bs-comp-builder-title{font-size:10px;color:var(--or);margin-bottom:4px}
-.bs-relics-wrap{display:flex;flex-wrap:wrap;gap:5px}
-.bs-relic-badge{padding:3px 8px;border-radius:3px;font-size:10px;cursor:pointer;border:1px solid #333;transition:all .15s}
-.bs-relic-badge:hover{border-color:var(--or)}
-.bs-relic-badge.f.on{border-color:var(--vert);background:rgba(74,124,89,.15);color:var(--vert)}
-.bs-relic-badge.s.on{border-color:var(--rouge);background:rgba(139,26,26,.15);color:#ff7777}
-.bs-export-box{background:var(--noir2);border-radius:var(--radius);padding:14px;margin-top:14px}
-.bs-export-txt{font-size:10px;color:var(--gris);white-space:pre-wrap;max-height:140px;overflow-y:auto;line-height:1.6}
-.bs-stat-row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid #1e1e1e}
-.bs-stat-lbl{color:var(--gris)}.bs-stat-val{color:var(--blanc)}
-@media(max-width:700px){.bs-mods{grid-template-columns:1fr}#bs-free-wrap{grid-template-columns:1fr}}
+/* ══ BASE ══ */
+#bsim { font-family: var(--font-mono); }
+.bs-tabs { display:flex; border-bottom:2px solid var(--noir2); margin-bottom:20px; }
+.bs-tab { padding:10px 24px; background:none; border:none; color:var(--gris); font-family:var(--font-mono); font-size:12px; cursor:pointer; text-transform:uppercase; letter-spacing:1px; border-bottom:2px solid transparent; margin-bottom:-2px; transition:all .18s; }
+.bs-tab.on { color:var(--or); border-bottom-color:var(--or); }
+.bsh { display:none!important; }
+
+/* ══ FORM ELEMENTS ══ */
+.bs-cfg { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; margin-bottom:16px; }
+.bs-fld { display:flex; flex-direction:column; gap:4px; }
+.bs-lbl { font-size:10px; color:var(--gris); text-transform:uppercase; letter-spacing:1px; }
+.bs-sel, .bs-inp { background:var(--noir2); border:1px solid #333; color:var(--blanc); padding:7px 10px; border-radius:var(--radius); font-family:var(--font-mono); font-size:12px; width:100%; box-sizing:border-box; }
+.bs-sel:focus, .bs-inp:focus { outline:none; border-color:var(--or); }
+
+/* ══ MOD ROWS ══ */
+.bs-mods { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:16px; }
+.bs-mod-panel { background:var(--noir2); border-radius:var(--radius); padding:12px; max-height:220px; overflow-y:auto; }
+.bs-mod-title { font-size:10px; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px; position:sticky; top:0; background:var(--noir2); padding-bottom:4px; }
+.bs-mod-title.fv { color:var(--vert); }
+.bs-mod-title.ml { color:var(--rouge); }
+.bs-mod-row { display:flex; align-items:flex-start; gap:8px; padding:6px 8px; border-radius:4px; background:rgba(255,255,255,.02); margin-bottom:3px; cursor:pointer; transition:background .12s; }
+.bs-mod-row:hover { background:rgba(255,255,255,.06); }
+.bs-mod-row.on.fv { background:rgba(74,124,89,.2); border-left:3px solid var(--vert); }
+.bs-mod-row.on.ml { background:rgba(139,26,26,.2); border-left:3px solid var(--rouge); }
+.bs-mod-info { flex:1; }
+.bs-mod-name { font-size:11px; color:var(--blanc); font-weight:600; }
+.bs-mod-desc { font-size:10px; color:var(--gris); margin-top:1px; line-height:1.4; }
+.bs-mod-cost { font-size:10px; white-space:nowrap; margin-top:2px; }
+.bs-mod-cost.fv { color:var(--vert); }
+.bs-mod-cost.ml { color:var(--rouge); }
+.bs-cost-line { font-size:11px; margin-top:6px; color:var(--gris); }
+
+/* ══ BOUTONS ══ */
+.bs-btn { padding:9px 20px; background:var(--or); color:var(--noir); border:none; border-radius:var(--radius); font-family:var(--font-mono); font-size:12px; font-weight:700; cursor:pointer; text-transform:uppercase; letter-spacing:1px; }
+.bs-btn:hover { opacity:.85; }
+.bs-btn.sec { background:var(--noir2); color:var(--or); border:1px solid var(--or); }
+.bs-btn:disabled { opacity:.4; cursor:default; }
+.bs-btn-row { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+
+/* ══ BUILD DISPLAY ══ */
+.bs-build-box { background:var(--noir2); border-radius:var(--radius); padding:14px; margin-bottom:14px; }
+.bs-build-title { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--gris); margin-bottom:8px; }
+.bs-slots-wrap { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+.bs-slot { padding:5px 9px; border-radius:4px; font-size:10px; border:1px solid; }
+.bs-slot.id { border-color:var(--or); background:rgba(242,183,73,.08); color:var(--or); }
+.bs-slot.base { border-color:#444; color:var(--blanc); }
+.bs-slot.advanced { border-color:#4a3a8a; color:#9a8aff; }
+.bs-slot.wildcard { border-color:#3a6a4a; color:var(--vert); }
+.bs-slot.empty { border-color:#2a2a2a; color:var(--gris); border-style:dashed; }
+.bs-syns { display:flex; flex-wrap:wrap; gap:6px; }
+.bs-syn { padding:4px 9px; border-radius:4px; font-size:10px; border-left:3px solid; }
+.bs-syn.t1 { border-color:var(--vert); background:rgba(74,124,89,.1); color:var(--vert); }
+.bs-syn.t2 { border-color:var(--ocre); background:rgba(166,85,38,.1); color:var(--ocre); }
+.bs-syn.t3 { border-color:var(--rouge); background:rgba(139,26,26,.15); color:#ff7777; }
+
+/* ══ RUN PROGRESS ══ */
+.bs-progress { display:flex; gap:3px; margin-bottom:16px; flex-wrap:wrap; }
+.bs-prog-dot { width:22px; height:22px; border-radius:3px; border:1px solid #333; font-size:9px; display:flex; align-items:center; justify-content:center; cursor:default; }
+.bs-prog-dot.done { background:rgba(74,124,89,.3); border-color:var(--vert); color:var(--vert); }
+.bs-prog-dot.current { background:rgba(242,183,73,.2); border-color:var(--or); color:var(--or); }
+.bs-prog-dot.elite { border-color:var(--ocre); }
+.bs-prog-dot.miniboss { border-color:var(--rouge); }
+.bs-prog-dot.repos { border-color:var(--bleu); }
+.bs-prog-dot.boss { border-color:#ff4444; }
+.bs-prog-dot.locked { opacity:.35; }
+
+/* ══ STEP AREA ══ */
+.bs-step-area { background:var(--noir2); border-radius:var(--radius); padding:16px; min-height:200px; }
+.bs-step-title { font-size:13px; font-family:var(--font-display); color:var(--or); margin-bottom:4px; }
+.bs-step-sub { font-size:11px; color:var(--gris); margin-bottom:14px; }
+.bs-step-note { font-size:11px; color:var(--vert); margin-bottom:10px; padding:8px 12px; border-left:3px solid var(--vert); background:rgba(74,124,89,.08); }
+.bs-step-note.ml { color:var(--ocre); border-color:var(--ocre); background:rgba(166,85,38,.08); }
+
+/* ══ CARDS GRID ══ */
+.bs-cards-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(155px,1fr)); gap:10px; margin-bottom:14px; }
+.bs-card { border:1px solid #333; border-radius:6px; overflow:hidden; cursor:pointer; transition:border-color .15s, box-shadow .15s; position:relative; }
+.bs-card:hover { border-color:#666; }
+.bs-card.picked { border-color:var(--or); box-shadow:0 0 14px rgba(242,183,73,.2); }
+.bs-card.picked.advanced { border-color:#9a8aff; box-shadow:0 0 14px rgba(154,138,255,.2); }
+.bs-card.picked.wildcard { border-color:var(--vert); }
+.bs-card-top { padding:9px; background:rgba(0,0,0,.25); }
+.bs-card-bot { padding:9px; border-top:1px solid #1e1e1e; background:rgba(0,0,0,.1); }
+.bs-card-section-lbl { font-size:9px; text-transform:uppercase; letter-spacing:1px; margin-bottom:3px; }
+.bs-card-section-lbl.e { color:#ff6b6b; }
+.bs-card-section-lbl.t { color:var(--bleu); }
+.bs-card-rarity { font-size:9px; margin-bottom:2px; font-weight:600; }
+.bs-card-name { font-size:11px; font-weight:700; color:var(--blanc); margin-bottom:3px; line-height:1.3; }
+.bs-card-desc { font-size:10px; color:var(--gris); line-height:1.4; margin-bottom:4px; }
+.bs-card-cd { font-size:9px; color:var(--gris2); margin-bottom:3px; }
+.bs-card-tags { display:flex; flex-wrap:wrap; gap:3px; }
+.bs-card-tag { font-size:9px; padding:1px 5px; border-radius:3px; background:#1e1e1e; color:var(--gris); }
+.bs-card-type-badge { position:absolute; top:6px; right:6px; font-size:8px; padding:1px 5px; border-radius:3px; text-transform:uppercase; letter-spacing:.5px; }
+.bs-card-type-badge.base { background:rgba(68,68,68,.8); color:#aaa; }
+.bs-card-type-badge.advanced { background:rgba(74,56,138,.8); color:#9a8aff; }
+.bs-card-type-badge.wildcard { background:rgba(56,100,68,.8); color:var(--vert); }
+
+/* ══ RARITY COLORS ══ */
+.rc-Commun { color:#6DB33F; }
+.rc-Rare { color:var(--bleu); }
+.rc-Epique { color:#b08aff; }
+.rc-Legendaire { color:var(--or); }
+
+/* ══ MARCHAND ══ */
+.bs-march-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(140px,1fr)); gap:8px; }
+.bs-march-item { border:1px solid #333; border-radius:5px; padding:9px; cursor:pointer; transition:all .15s; }
+.bs-march-item:hover { border-color:#666; }
+.bs-march-item.bought { border-color:var(--or); background:rgba(242,183,73,.07); }
+.bs-march-item.slot-t { border-color:var(--bleu); }
+.bs-march-item.slot-t.bought { background:rgba(46,91,138,.15); }
+.bs-march-cat { font-size:9px; text-transform:uppercase; letter-spacing:1px; color:var(--gris); margin-bottom:3px; }
+.bs-march-name { font-size:11px; color:var(--blanc); margin-bottom:2px; line-height:1.3; }
+.bs-march-price { font-size:10px; color:var(--or); }
+.bs-march-rarity { font-size:9px; margin-bottom:2px; }
+
+/* ══ REPOS ══ */
+.bs-repos-opts { display:flex; gap:10px; flex-wrap:wrap; }
+.bs-repos-opt { padding:10px 16px; border:1px solid #333; border-radius:5px; cursor:pointer; font-size:11px; color:var(--gris); transition:all .15s; }
+.bs-repos-opt:hover, .bs-repos-opt.on { border-color:var(--or); color:var(--or); background:rgba(242,183,73,.06); }
+
+/* ══ FREE ══ */
+#bs-free-wrap { display:grid; grid-template-columns:300px 1fr; gap:16px; }
+.bs-free-panel { background:var(--noir2); border-radius:var(--radius); padding:14px; }
+.bs-free-sec { font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--gris); margin:12px 0 7px; border-bottom:1px solid #2a2a2a; padding-bottom:3px; }
+.bs-free-sec:first-child { margin-top:0; }
+.bs-free-slot { display:flex; align-items:center; gap:6px; padding:7px 8px; background:rgba(255,255,255,.02); border-radius:4px; margin-bottom:4px; }
+.bs-free-slot-n { font-size:10px; color:var(--gris); min-width:22px; }
+.bs-free-slot-content { flex:1; font-size:10px; }
+.bs-free-slot-del { background:none; border:none; color:var(--rouge); cursor:pointer; font-size:12px; padding:0 4px; opacity:.5; }
+.bs-free-slot-del:hover { opacity:1; }
+.bs-comp-builder { background:#0d0a07; border-radius:var(--radius); padding:12px; margin-bottom:10px; }
+.bs-comp-builder-lbl { font-size:10px; color:var(--or); margin-bottom:8px; }
+.bs-relics-wrap { display:flex; flex-wrap:wrap; gap:5px; }
+.bs-relic-badge { padding:3px 8px; border-radius:3px; font-size:10px; cursor:pointer; border:1px solid #333; transition:all .15s; }
+.bs-relic-badge:hover { border-color:var(--or); }
+.bs-relic-badge.f.on { border-color:var(--vert); background:rgba(74,124,89,.15); color:var(--vert); }
+.bs-relic-badge.s.on { border-color:var(--rouge); background:rgba(139,26,26,.15); color:#ff7777; }
+.bs-export-box { background:var(--noir2); border-radius:var(--radius); padding:14px; margin-top:14px; }
+.bs-export-txt { font-size:10px; color:var(--gris); white-space:pre-wrap; max-height:130px; overflow-y:auto; line-height:1.6; }
+.bs-stat-row { display:flex; justify-content:space-between; font-size:11px; padding:3px 0; border-bottom:1px solid #1e1e1e; }
+.bs-stat-lbl { color:var(--gris); }
+.bs-stat-val { color:var(--blanc); }
+
+@media(max-width:700px) {
+  .bs-mods { grid-template-columns:1fr; }
+  #bs-free-wrap { grid-template-columns:1fr; }
+  .bs-cards-grid { grid-template-columns:repeat(2,1fr); }
+}
 </style>
 
 <div id="bsim">
@@ -126,7 +161,7 @@
   <button class="bs-tab" onclick="bsTab('free')">🔧 Création Libre</button>
 </div>
 
-<!-- ═══ RUN ═══ -->
+<!-- ═══════ TAB RUN ═══════ -->
 <div id="bs-run">
   <div class="bs-cfg">
     <div class="bs-fld">
@@ -139,37 +174,38 @@
       </select>
     </div>
   </div>
-
   <div class="bs-mods">
     <div class="bs-mod-panel">
       <div class="bs-mod-title fv">✨ Faveurs (max 2)</div>
       <div id="r-fav-list"></div>
-      <div class="bs-cost-total" id="r-fav-cost">0 💀</div>
+      <div class="bs-cost-line" id="r-fav-cost">Coût : 0 💀</div>
     </div>
     <div class="bs-mod-panel">
       <div class="bs-mod-title ml">💀 Malédictions</div>
       <div id="r-mal-list"></div>
-      <div class="bs-cost-total" id="r-mal-cost">0 💀</div>
+      <div class="bs-cost-line" id="r-mal-cost">Coût : 0 💀</div>
     </div>
   </div>
-
   <div class="bs-btn-row">
-    <button class="bs-btn" onclick="bsStartRun()">▶ Lancer la Run</button>
-    <button class="bs-btn sec" onclick="bsResetRun()">↺ Reset</button>
+    <button class="bs-btn" id="r-start-btn" onclick="bsStartRun()">▶ Lancer la Run</button>
+    <button class="bs-btn sec" id="r-reset-btn" onclick="bsResetRun()">↺ Reset</button>
   </div>
 
+  <!-- Build en cours -->
   <div id="r-build" class="bsh">
     <div class="bs-build-box">
-      <div class="bs-build-title">Build en cours</div>
-      <div class="bs-syns" id="r-syns"></div>
+      <div class="bs-build-title">Build — <span id="r-build-label"></span></div>
+      <div class="bs-syns" id="r-syns" style="margin-bottom:8px"></div>
       <div class="bs-slots-wrap" id="r-slots"></div>
     </div>
+    <!-- Progress bar -->
+    <div class="bs-progress" id="r-progress"></div>
+    <!-- Step actuel -->
+    <div class="bs-step-area" id="r-step"></div>
   </div>
-
-  <div id="r-log"></div>
 </div>
 
-<!-- ═══ FREE ═══ -->
+<!-- ═══════ TAB FREE ═══════ -->
 <div id="bs-free" class="bsh">
 <div id="bs-free-wrap">
   <div>
@@ -188,72 +224,57 @@
         <span class="bs-lbl">Slots standards</span>
         <input type="number" class="bs-inp" id="f-slots-n" value="4" min="3" max="11" onchange="fRender()" style="width:80px">
       </div>
-
       <div class="bs-free-sec">Faveurs (max 2)</div>
       <div id="f-fav-list"></div>
-      <div class="bs-cost-total" id="f-fav-cost">0 💀</div>
-
+      <div class="bs-cost-line" id="f-fav-cost">0 💀</div>
       <div class="bs-free-sec">Malédictions</div>
       <div id="f-mal-list"></div>
-      <div class="bs-cost-total" id="f-mal-cost">0 💀</div>
-
+      <div class="bs-cost-line" id="f-mal-cost">0 💀</div>
       <div class="bs-free-sec">Reliques</div>
       <div class="bs-relics-wrap" id="f-relics"></div>
-
       <div class="bs-free-sec">Récap</div>
-      <div id="f-stats">
-        <div class="bs-stat-row"><span class="bs-stat-lbl">Slots totaux</span><span class="bs-stat-val" id="f-total-slots">6</span></div>
-        <div class="bs-stat-row"><span class="bs-stat-lbl">Compétences actives</span><span class="bs-stat-val" id="f-active-n">2</span></div>
-        <div class="bs-stat-row"><span class="bs-stat-lbl">Tags dominants</span><span class="bs-stat-val" id="f-top-tags">—</span></div>
-        <div class="bs-stat-row"><span class="bs-stat-lbl">Coût âmes</span><span class="bs-stat-val" id="f-souls">0 💀</span></div>
-      </div>
+      <div class="bs-stat-row"><span class="bs-stat-lbl">Slots totaux</span><span class="bs-stat-val" id="f-total-slots">6</span></div>
+      <div class="bs-stat-row"><span class="bs-stat-lbl">Compétences</span><span class="bs-stat-val" id="f-active-n">2</span></div>
+      <div class="bs-stat-row"><span class="bs-stat-lbl">Tags dominants</span><span class="bs-stat-val" id="f-top-tags">—</span></div>
+      <div class="bs-stat-row"><span class="bs-stat-lbl">Coût âmes</span><span class="bs-stat-val" id="f-souls">0 💀</span></div>
     </div>
   </div>
-
   <div>
     <div class="bs-free-panel">
       <div class="bs-free-sec">Compétences</div>
       <div id="f-comp-list"></div>
-
-      <div class="bs-comp-builder" id="f-builder">
-        <div class="bs-comp-builder-title">+ Ajouter une compétence</div>
-        <div class="bs-fld">
-          <span class="bs-lbl">Type</span>
-          <select class="bs-sel" id="f-add-type" onchange="fUpdateBuilder()" style="margin-bottom:4px">
-            <option value="base">Compétence de Base</option>
-            <option value="advanced">Compétence Avancée</option>
-          </select>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+      <div class="bs-comp-builder">
+        <div class="bs-comp-builder-lbl">+ Nouvelle compétence</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="bs-fld">
+            <span class="bs-lbl">Type</span>
+            <select class="bs-sel" id="f-add-type" onchange="fUpdateBuilder()" style="font-size:11px">
+              <option value="base">Base</option>
+              <option value="advanced">Avancée</option>
+            </select>
+          </div>
           <div class="bs-fld">
             <span class="bs-lbl">Déclencheur</span>
-            <select class="bs-sel" id="f-add-trig" onchange="fOnTrigSelect()" style="font-size:11px"></select>
-          </div>
-          <div class="bs-fld">
-            <span class="bs-lbl">Effet</span>
-            <select class="bs-sel" id="f-add-eff" onchange="fOnEffSelect()" style="font-size:11px"></select>
+            <select class="bs-sel" id="f-add-trig" onchange="fOnTrigSel()" style="font-size:11px"></select>
           </div>
         </div>
-        <button class="bs-btn" style="margin-top:8px;padding:7px 14px;font-size:11px" onclick="fAddComp()">Ajouter</button>
+        <div class="bs-fld" style="margin-bottom:8px">
+          <span class="bs-lbl">Effet <span id="f-eff-compat" style="color:var(--vert);font-size:9px"></span></span>
+          <select class="bs-sel" id="f-add-eff" style="font-size:11px"></select>
+        </div>
+        <button class="bs-btn" style="padding:7px 14px;font-size:11px" onclick="fAddComp()">Ajouter</button>
       </div>
-
-      <div class="bs-free-sec">Synergies</div>
-      <div class="bs-syns" id="f-syns"><span style="font-size:11px;color:var(--gris)">Ajoutez des compétences pour détecter les synergies.</span></div>
+      <div class="bs-free-sec">Synergies détectées</div>
+      <div class="bs-syns" id="f-syns"><span style="font-size:11px;color:var(--gris)">Ajoutez des compétences…</span></div>
     </div>
-
     <div class="bs-export-box">
-      <div class="bs-free-sec" style="margin-top:0">Export build</div>
+      <div class="bs-free-sec" style="margin-top:0">Export</div>
       <div class="bs-export-txt" id="f-export">—</div>
       <button class="bs-btn sec" style="margin-top:10px;font-size:11px;padding:7px 14px" onclick="fCopyExport()">📋 Copier</button>
     </div>
   </div>
 </div>
-</div><!-- /bs-free -->
-</div><!-- /bsim -->
-
-<!-- OVERLAY POP-IN -->
-<div id="bs-overlay" class="bs-overlay bsh">
-  <div class="bs-popup" id="bs-popup-content"></div>
+</div>
 </div>
 
 <script>
@@ -265,38 +286,42 @@ function getCompatTriggers(effect){if(!effect)return GD_TRIGGERS;const req=effec
 function getRarityOrder(r){return{Commun:0,Rare:1,'Épique':2,'Légendaire':3}[r]??0;}
 
 
-/* ══ DONNÉES META ══ */
+/* ══════════════════════════════════════════
+   DONNÉES STATIQUES
+══════════════════════════════════════════ */
 const CLASSES_META = {
-  "Souris":       {b1:"Ruée Courageuse",b2:"Détermination",tags:["#mouvement","#vitesse","#risque","#buff","#deplacement","#pv_personnage","#dash"]},
-  "Lapin":        {b1:"Poser un Chapeau",b2:"Carottes Piégées",tags:["#trajectoire","#piege","#mouvement","#teleportation","#sequence"]},
-  "Grenouille":   {b1:"Saut Empoisonné",b2:"Frappe de Langue",tags:["#dot","#poison","#zone","#rebond","#controle","#slow"]},
-  "Mouton":       {b1:"Charge Électrique",b2:"Bouclier Punitif",tags:["#impact_physique","#deplacement","#controle","#stun","#buff","#collision"]},
-  "Poule":        {b1:"Œuf Explosif",b2:"Cri Strident",tags:["#risque","#invocation","#controle","#deplacement","#pv_personnage","#debuff"]},
-  "Pigeon":       {b1:"Plume Incendiaire",b2:"Bombardement",tags:["#critique","#trajectoire","#feu","#dot","#aleatoire"]},
-  "Ecureuil":     {b1:"Noisette Piégée",b2:"Tourelle",tags:["#piege","#rebond","#invocation","#zone","#sequence"]},
-  "Canard":       {b1:"Fortune Personnelle",b2:"Corruption",tags:["#meta","#ressource","#debuff","#buff","#kill"]},
-  "Poisson Rouge":{b1:"Phase Bleue/Rouge",b2:"Cycle Chaotique",tags:["#aleatoire","#zone","#eau","#trigger","#sequence","#debuff"]},
-  "Loutre":       {b1:"Estocade",b2:"Marquage",tags:["#rebond","#dot","#critique","#dash","#sequence"]},
-  "Singe":        {b1:"Pickpocket",b2:"Patrimoine Volé",tags:["#aleatoire","#trigger","#sequence","#trajectoire","#debuff","#meta","#ressource"]},
-  "Tortue":       {b1:"Coup de Chi",b2:"Immobilité Absolue",tags:["#controle","#stun","#deplacement","#buff","#defense","#risque","#impact_physique","#armure"]},
+  "Souris":        {b1:"Ruée Courageuse",   b2:"Détermination",     tags:["#mouvement","#vitesse","#risque","#buff","#deplacement","#pv_personnage","#dash"]},
+  "Lapin":         {b1:"Poser un Chapeau",  b2:"Carottes Piégées",  tags:["#trajectoire","#piege","#mouvement","#teleportation","#sequence"]},
+  "Grenouille":    {b1:"Saut Empoisonné",   b2:"Frappe de Langue",  tags:["#dot","#poison","#zone","#rebond","#controle","#slow"]},
+  "Mouton":        {b1:"Charge Électrique", b2:"Bouclier Punitif",  tags:["#impact_physique","#deplacement","#controle","#stun","#buff","#collision"]},
+  "Poule":         {b1:"Œuf Explosif",      b2:"Cri Strident",      tags:["#risque","#invocation","#controle","#deplacement","#pv_personnage","#debuff"]},
+  "Pigeon":        {b1:"Plume Incendiaire", b2:"Bombardement",      tags:["#critique","#trajectoire","#feu","#dot","#aleatoire"]},
+  "Ecureuil":      {b1:"Noisette Piégée",   b2:"Tourelle",          tags:["#piege","#rebond","#invocation","#zone","#sequence"]},
+  "Canard":        {b1:"Fortune Perso.",    b2:"Corruption",        tags:["#meta","#ressource","#debuff","#buff","#kill"]},
+  "Poisson Rouge": {b1:"Phase Bleue/Rouge", b2:"Cycle Chaotique",   tags:["#aleatoire","#zone","#eau","#trigger","#sequence","#debuff"]},
+  "Loutre":        {b1:"Estocade",          b2:"Marquage",          tags:["#rebond","#dot","#critique","#dash","#sequence"]},
+  "Singe":         {b1:"Pickpocket",        b2:"Patrimoine Volé",   tags:["#aleatoire","#trigger","#sequence","#trajectoire","#debuff","#meta","#ressource"]},
+  "Tortue":        {b1:"Coup de Chi",       b2:"Immobilité Absolue",tags:["#controle","#stun","#deplacement","#buff","#defense","#risque","#impact_physique","#armure"]},
 };
+
 const ARCHETYPES = [
-  {id:"A01",nom:"Venin Vivant",e:"☠️",tags:["#dot","#poison","#zone","#multi_cible"]},
-  {id:"A02",nom:"Tempête de Feu",e:"🔥",tags:["#dot","#feu","#zone","#structures"]},
-  {id:"A03",nom:"Bulldozer",e:"⚡",tags:["#deplacement","#controle","#stun","#impact_physique"]},
-  {id:"A04",nom:"Ingénieur du Terrain",e:"🌿",tags:["#structures","#zone","#piege","#temps"]},
-  {id:"A05",nom:"Armée de l'Ombre",e:"🐣",tags:["#invocation","#piege","#structures","#stun"]},
-  {id:"A06",nom:"Capital Croissant",e:"💰",tags:["#meta","#collecte","#ressource"]},
-  {id:"A07",nom:"Chaos Maîtrisé",e:"🌊",tags:["#aleatoire","#sequence","#trigger"]},
-  {id:"A08",nom:"Danse de Lames",e:"🗡️",tags:["#rebond","#vitesse","#dot","#saignement"]},
-  {id:"A09",nom:"Vitesse Absolue",e:"🏃",tags:["#vitesse","#mouvement","#trajectoire","#buff"]},
-  {id:"A10",nom:"Risque Récompensé",e:"☠️➕",tags:["#risque","#pv_personnage","#buff","#defense"]},
-  {id:"A11",nom:"Briseur de Blindage",e:"⚔️",tags:["#controle","#armure","#impact_physique","#choc_frontal"]},
-  {id:"A12",nom:"Précision Létale",e:"🎯",tags:["#mouvement","#trajectoire","#tir","#temps"]},
-  {id:"A13",nom:"Alchimiste Élémentaire",e:"🧪",tags:["#etat_elementaire","#synergie","#dot"]},
-  {id:"A14",nom:"Forteresse Réactive",e:"🛡️",tags:["#bouclier","#defense","#renvoi","#cleanse"]},
-  {id:"A15",nom:"Saignement Perpétuel",e:"💚",tags:["#vol_de_vie","#soin","#hot","#saignement","#dot"]},
+  {id:"A01",nom:"Venin Vivant",      e:"☠️", tags:["#dot","#poison","#zone","#multi_cible"]},
+  {id:"A02",nom:"Tempête de Feu",    e:"🔥", tags:["#dot","#feu","#zone","#structures"]},
+  {id:"A03",nom:"Bulldozer",         e:"⚡", tags:["#deplacement","#controle","#stun","#impact_physique"]},
+  {id:"A04",nom:"Ingénieur Terrain", e:"🌿", tags:["#structures","#zone","#piege","#temps"]},
+  {id:"A05",nom:"Armée de l'Ombre", e:"🐣", tags:["#invocation","#piege","#structures","#stun"]},
+  {id:"A06",nom:"Capital Croissant", e:"💰", tags:["#meta","#collecte","#ressource"]},
+  {id:"A07",nom:"Chaos Maîtrisé",    e:"🌊", tags:["#aleatoire","#sequence","#trigger"]},
+  {id:"A08",nom:"Danse de Lames",    e:"🗡️", tags:["#rebond","#vitesse","#dot","#saignement"]},
+  {id:"A09",nom:"Vitesse Absolue",   e:"🏃", tags:["#vitesse","#mouvement","#trajectoire","#buff"]},
+  {id:"A10",nom:"Risque Récompensé", e:"☠️➕",tags:["#risque","#pv_personnage","#buff","#defense"]},
+  {id:"A11",nom:"Briseur Blindage",  e:"⚔️", tags:["#controle","#armure","#impact_physique","#choc_frontal"]},
+  {id:"A12",nom:"Précision Létale",  e:"🎯", tags:["#mouvement","#trajectoire","#tir","#temps"]},
+  {id:"A13",nom:"Alchimiste Élém.",  e:"🧪", tags:["#etat_elementaire","#synergie","#dot"]},
+  {id:"A14",nom:"Forteresse React.", e:"🛡️", tags:["#bouclier","#defense","#renvoi","#cleanse"]},
+  {id:"A15",nom:"Saignement Perpét.",e:"💚", tags:["#vol_de_vie","#soin","#hot","#saignement","#dot"]},
 ];
+
 const FAVEURS = [
   {id:"V01",nom:"Provision de Sang",cout:5,desc:"Commence avec 3 Gouttes de Sang"},
   {id:"V02",nom:"Dent de Rechange",cout:5,desc:"+8 Petites Dents de départ"},
@@ -307,494 +332,752 @@ const FAVEURS = [
   {id:"V07",nom:"Cicatrice Utile",cout:6,desc:"+10% PV max"},
   {id:"V08",nom:"Mémoire de Run",cout:8,desc:"+1 compétence au choix parmi 3"},
   {id:"V09",nom:"Vieux Réflexes",cout:5,desc:"Salle 1 = 1 seul ennemi"},
-  {id:"V10",nom:"Trésor Enfoui",cout:7,desc:"1ère récompense = 4 choix au lieu de 3"},
-  {id:"V11",nom:"Repos Mérité",cout:6,desc:"Salle de repos garantie parmi les 4 premières"},
-  {id:"V12",nom:"Karma de Chasse",cout:5,desc:"5 premiers kills = Goutte garantie"},
+  {id:"V10",nom:"Trésor Enfoui",cout:7,desc:"1ère récompense = 4 choix"},
+  {id:"V11",nom:"Repos Mérité",cout:6,desc:"Salle de repos garantie dans les 4 premières"},
+  {id:"V12",nom:"Karma de Chasse",cout:5,desc:"5 premiers kills = Goutte de Sang"},
   {id:"V13",nom:"Peau Durcie",cout:8,desc:"3 premiers dégâts reçus −50%"},
   {id:"V14",nom:"Slot Vide",cout:10,desc:"+1 slot standard au départ"},
-  {id:"V15",nom:"Marchand Familier",cout:7,desc:"+1 relique faible à chaque visite marchand"},
+  {id:"V15",nom:"Marchand Familier",cout:7,desc:"+1 relique faible par visite marchand"},
   {id:"V16",nom:"Élan de Début",cout:6,desc:"+20% vitesse — 3 premières salles"},
   {id:"V17",nom:"Don du Chasseur",cout:15,desc:"Relique forte, malus actif dès salle 4"},
   {id:"V18",nom:"Appel à l'Aide",cout:9,desc:"1ère salle élite → salle normale"},
-  {id:"V19",nom:"Instinct de Frappe",cout:10,desc:"1er effet par salle ×2 (5 salles)"},
+  {id:"V19",nom:"Instinct de Frappe",cout:10,desc:"1er effet/salle ×2 (5 salles)"},
   {id:"V20",nom:"Vieille Rancune",cout:8,desc:"1er élite à 50% PV"},
-  {id:"V25",nom:"Œil Augmenté",cout:8,desc:"Jauge BT démarre à 100%, −15% vidage"},
+  {id:"V25",nom:"Œil Augmenté",cout:8,desc:"Jauge BT à 100%, −15% vidage"},
   {id:"V26",nom:"Premier Tir Gratuit",cout:6,desc:"1er tir sans consommer BT"},
   {id:"V27",nom:"Réflexe Hérité",cout:7,desc:"1er kill/salle = +20% jauge BT"},
   {id:"V28",nom:"Vieille Méthode",cout:8,desc:"+15% dégâts BT — 3 premières salles"},
 ];
+
 const MALEDICTIONS = [
-  {id:"M01",nom:"Rage Primaire",cout:15,desc:"Ennemis +20% vitesse",bonus:"+25% âmes élites"},
-  {id:"M02",nom:"Cuir Épais",cout:15,desc:"Ennemis +25% PV",bonus:"+20% Dents/salle"},
+  {id:"M01",nom:"Rage Primaire",cout:15,desc:"Ennemis normaux +20% vitesse",bonus:"+25% âmes élites"},
+  {id:"M02",nom:"Cuir Épais",cout:15,desc:"Ennemis +25% PV",bonus:"+20% Petites Dents/salle"},
   {id:"M03",nom:"Meute Affamée",cout:20,desc:"+1 ennemi/salle",bonus:"+30% âmes élites"},
-  {id:"M04",nom:"Élites Partout",cout:20,desc:"2 salles norm → élites",bonus:"+2 récomp. élite"},
-  {id:"M05",nom:"Boss Enragé",cout:25,desc:"Boss phase 2 dès le départ",bonus:"Relique forte boss"},
-  {id:"M06",nom:"Amnésie",cout:15,desc:"Récompense 2 options au lieu de 5",bonus:"+40% âmes élites"},
+  {id:"M04",nom:"Élites Partout",cout:20,desc:"2 salles normales → élites",bonus:"+2 récompenses élite"},
+  {id:"M05",nom:"Boss Enragé",cout:25,desc:"Boss en phase 2 dès départ",bonus:"Relique forte boss"},
+  {id:"M06",nom:"Amnésie",cout:15,desc:"Récompense réduite à 2 options",bonus:"+40% âmes élites"},
   {id:"M07",nom:"Bourse Vide",cout:15,desc:"Marchand +40% prix",bonus:"+2 articles marchand"},
   {id:"M08",nom:"Kit Minimal",cout:20,desc:"−1 slot standard au départ",bonus:"+1 récomp élite Acte 1"},
-  {id:"M09",nom:"Fragile",cout:15,desc:"PV max −20%",bonus:"Gouttes +2 PV"},
+  {id:"M09",nom:"Fragile",cout:15,desc:"PV max −20%",bonus:"Gouttes de Sang +2 PV"},
   {id:"M10",nom:"Pas de Filet",cout:20,desc:"Survie passive désactivée",bonus:"+35% âmes run"},
-  {id:"M11",nom:"Horloger Fou",cout:20,desc:"Cooldowns +1s",bonus:"Effets niv1 = niv2 (5 salles)"},
+  {id:"M11",nom:"Horloger Fou",cout:20,desc:"Tous cooldowns +1s",bonus:"Effets niv1 = niv2 (5 salles)"},
   {id:"M12",nom:"Marché Fermé",cout:15,desc:"Pas de marchand",bonus:"+50 Dents boss"},
   {id:"M13",nom:"Monde Hostile",cout:20,desc:"Repos sans soin",bonus:"+1 salle de repos"},
   {id:"M14",nom:"Ennemis Coriaces",cout:15,desc:"Ennemis −15% dégâts reçus",bonus:"+25% Dents/salle"},
   {id:"M18",nom:"Proie Marquée",cout:25,desc:"Timer 30s/salle ou renfort",bonus:"Kills rapides = Gouttes"},
-  {id:"M19",nom:"Momentum Brisé",cout:20,desc:"Pas 2 lancers même direction",bonus:"Directions alternées +10%"},
-  {id:"M20",nom:"Un Seul Souffle",cout:30,desc:"Aucun soin",bonus:"+30% PV max, ×2 âmes victoire"},
-  {id:"M25",nom:"Temps Limité",cout:20,desc:"BT vide 2× plus vite",bonus:"+20% dégâts hors BT"},
-  {id:"M26",nom:"Jauge Maudite",cout:25,desc:"BT recharge kills seulement",bonus:"+1 Dent/tir jauge 0"},
+  {id:"M19",nom:"Momentum Brisé",cout:20,desc:"Interdit 2 lancers même direction",bonus:"+10% par direction alternée"},
+  {id:"M20",nom:"Un Seul Souffle",cout:30,desc:"Aucun soin possible",bonus:"+30% PV max, ×2 âmes si victoire"},
+  {id:"M25",nom:"Temps Limité",cout:20,desc:"Jauge BT vide 2× plus vite",bonus:"+20% dégâts hors BT"},
+  {id:"M26",nom:"Jauge Maudite",cout:25,desc:"BT recharge kills seulement",bonus:"+1 Dent/tir à jauge 0"},
 ];
+
 const RELIQUES = [
   {id:"RF01",nom:"Galet Poli",t:"faible"},{id:"RF02",nom:"Dent de Lait",t:"faible"},
   {id:"RF03",nom:"Horloge Cassée",t:"faible"},{id:"RF04",nom:"Fiole de Colère",t:"faible"},
   {id:"RF05",nom:"Miroir Fendu",t:"faible"},{id:"RF07",nom:"Plume d'Albatros",t:"faible"},
   {id:"RF09",nom:"Écaille de Dragon",t:"faible"},{id:"RF11",nom:"Amulette de l'Écho",t:"faible"},
-  {id:"RF12",nom:"Cristal de Résonance",t:"faible"},{id:"RF14",nom:"Montre Arrêtée",t:"faible"},
-  {id:"RF19",nom:"Larme de Golem",t:"faible"},{id:"RF24",nom:"Chaîne Brisée",t:"faible"},
-  {id:"RF33",nom:"Sel sur la Plaie",t:"faible"},{id:"RF35",nom:"Peau de Verre",t:"faible"},
+  {id:"RF12",nom:"Cristal de Résonance",t:"faible"},{id:"RF19",nom:"Larme de Golem",t:"faible"},
+  {id:"RF24",nom:"Chaîne Brisée",t:"faible"},{id:"RF33",nom:"Sel sur la Plaie",t:"faible"},
+  {id:"RF35",nom:"Peau de Verre",t:"faible"},
   {id:"RS01",nom:"Œil du Cyclone",t:"forte"},{id:"RS02",nom:"Pacte du Miroir",t:"forte"},
   {id:"RS03",nom:"Pendule de l'Oubli",t:"forte"},{id:"RS06",nom:"Éclat du Premier Monde",t:"forte"},
   {id:"RS07",nom:"Plaque Réactive",t:"forte"},{id:"RS08",nom:"Masse Écrasante",t:"forte"},
   {id:"RS14",nom:"Cœur Blindé",t:"forte"},{id:"RS15",nom:"Confluence Élémentaire",t:"forte"},
 ];
 
-/* ══ STATE ══ */
-const R={classe:"Souris",faveurs:[],mal:[],slots:[],extraSlots:0,rooms:[],marchProb:15,marchBuys:0,started:false};
-const F={classe:"Souris",faveurs:[],mal:[],comps:[],relics:[],slotsN:4};
+/* ══════════════════════════════════════════
+   TAUX DE RARETÉ PAR ACTE
+   Acte 1 = salles 1-4 | Acte 2 = 5-8 | Acte 3 = 9-12
+══════════════════════════════════════════ */
+const RARITY_WEIGHTS = {
+  normal_act1:   {Commun:60, Rare:35, "Épique":5,  "Légendaire":0},
+  normal_act2:   {Commun:30, Rare:45, "Épique":20, "Légendaire":5},
+  normal_act3:   {Commun:10, Rare:35, "Épique":40, "Légendaire":15},
+  elite:         {Commun:0,  Rare:50, "Épique":40, "Légendaire":10},
+  miniboss:      {Commun:0,  Rare:0,  "Épique":60, "Légendaire":40},
+};
+
+function getRarityWeights(roomType, salle) {
+  if(roomType === 'miniboss') return RARITY_WEIGHTS.miniboss;
+  if(roomType === 'elite')    return RARITY_WEIGHTS.elite;
+  if(salle <= 4) return RARITY_WEIGHTS.normal_act1;
+  if(salle <= 8) return RARITY_WEIGHTS.normal_act2;
+  return RARITY_WEIGHTS.normal_act3;
+}
+
+function weightedRarity(weights) {
+  const total = Object.values(weights).reduce((s,v)=>s+v,0);
+  let r = Math.random() * total;
+  for(const [rar, w] of Object.entries(weights)) {
+    r -= w;
+    if(r <= 0) return rar;
+  }
+  return Object.keys(weights).at(-1);
+}
+
+/* ══════════════════════════════════════════
+   STATE
+══════════════════════════════════════════ */
+const R = {
+  classe:'Souris', faveurs:[], mal:[],
+  slots:[], extraSlots:0,
+  rooms:[], currentRoom:0,
+  marchProb:15, marchBuys:0,
+  marchBuysTotal:0,
+  reposChoices:{},
+};
+
+const F = { classe:'Souris', faveurs:[], mal:[], comps:[], relics:[], slotsN:4 };
 
 /* ══ HELPERS ══ */
-const g=id=>document.getElementById(id);
-const rnd=arr=>arr[Math.floor(Math.random()*arr.length)];
-const shuffle=a=>a.sort(()=>Math.random()-.5);
+const g = id => document.getElementById(id);
+const rnd = arr => arr[Math.floor(Math.random()*arr.length)];
 
-function rarityClass(r){return{Commun:'Commun',Rare:'Rare','Épique':'Epique','Légendaire':'Legendaire'}[r]||'Commun';}
-
-function rarityColor(r){return{Commun:'#6DB33F',Rare:'var(--bleu)','Épique':'#b08aff','Légendaire':'var(--or)'}[r]||'#888';}
-
-function detectSynergies(allTags){
-  return ARCHETYPES.map(a=>{
-    const n=a.tags.filter(t=>allTags.includes(t)).length;
-    if(n>=5)return{a,tier:3};if(n>=3)return{a,tier:2};if(n>=2)return{a,tier:1};return null;
-  }).filter(Boolean).sort((a,b)=>b.tier-a.tier);
+function rarityColor(r) {
+  return {Commun:'#6DB33F', Rare:'var(--bleu)', 'Épique':'#b08aff', 'Légendaire':'var(--or)'}[r] || '#888';
+}
+function rarityClass(r) {
+  return {Commun:'Commun', Rare:'Rare', 'Épique':'Epique', 'Légendaire':'Legendaire'}[r] || 'Commun';
 }
 
-function renderSynBlock(containerId,allTags){
-  const syns=detectSynergies(allTags);
-  const el=g(containerId);
-  if(!el)return;
-  if(!syns.length){el.innerHTML='<span style="font-size:11px;color:var(--gris)">Aucune synergie.</span>';return;}
-  const labels={1:'🟡 Douce',2:'🟠 Confirmée',3:'🔴 Complétée'};
-  el.innerHTML=syns.map(s=>`<div class="bs-syn t${s.tier}">${s.a.e} ${s.a.nom} — ${labels[s.tier]}</div>`).join('');
+function detectSynergies(allTags) {
+  return ARCHETYPES.map(a => {
+    const n = a.tags.filter(t => allTags.includes(t)).length;
+    if(n>=5) return {a, tier:3};
+    if(n>=3) return {a, tier:2};
+    if(n>=2) return {a, tier:1};
+    return null;
+  }).filter(Boolean).sort((a,b) => b.tier - a.tier);
 }
 
-function getAllBuildTags(){
-  const cls=CLASSES_META[R.classe];
-  const tags=[...(cls?.tags||[])];
-  R.slots.forEach(s=>{
-    if(s.trig?.tags)s.trig.tags.forEach(t=>tags.push(t));
-    if(s.eff?.tags)s.eff.tags.forEach(t=>tags.push(t));
+function renderSynBlock(containerId, allTags) {
+  const syns = detectSynergies(allTags);
+  const el = g(containerId);
+  if(!el) return;
+  if(!syns.length) { el.innerHTML='<span style="font-size:11px;color:var(--gris)">Aucune synergie.</span>'; return; }
+  const lbl = {1:'🟡 Douce', 2:'🟠 Confirmée', 3:'🔴 Complétée'};
+  el.innerHTML = syns.map(s => `<div class="bs-syn t${s.tier}">${s.a.e} ${s.a.nom} — ${lbl[s.tier]}</div>`).join('');
+}
+
+function getAllBuildTags() {
+  const cls = CLASSES_META[R.classe] || CLASSES_META.Souris;
+  const tags = [...cls.tags];
+  R.slots.forEach(s => {
+    if(s.trig?.tags) s.trig.tags.forEach(t => tags.push(t));
+    if(s.eff?.tags)  s.eff.tags.forEach(t => tags.push(t));
   });
   return tags;
 }
 
-/* ══ RUN — MODS LISTS ══ */
-function renderRunFav(){
-  g('r-fav-list').innerHTML=FAVEURS.map(v=>{
-    const on=R.faveurs.includes(v.id);
-    return`<div class="bs-mod-row${on?' on fv':' fv'}" onclick="rTogFav('${v.id}')">
-      <span class="bs-mod-name">${v.nom}</span>
-      <span class="bs-mod-desc">${v.desc}</span>
-      <span class="bs-mod-cost fv">${v.cout} 💀</span>
+function totalSlots() {
+  const hasM08 = R.mal.includes('M08');
+  const hasV14 = R.faveurs.includes('V14');
+  return 2 + (hasM08 ? 3 : 4) + (hasV14 ? 1 : 0) + R.extraSlots;
+}
+
+/* ══ MOD LISTS ══ */
+function renderFavList(listId, costId, state, onToggle, type) {
+  g(listId).innerHTML = FAVEURS.map(v => {
+    const on = state.includes(v.id);
+    return `<div class="bs-mod-row ${on?'on fv':'fv'}" onclick="${onToggle}('${v.id}')">
+      <div class="bs-mod-info">
+        <div class="bs-mod-name">${v.nom}</div>
+        <div class="bs-mod-desc">${v.desc}</div>
+      </div>
+      <div class="bs-mod-cost fv">${v.cout} 💀</div>
     </div>`;
   }).join('');
-  g('r-fav-cost').textContent='Coût: '+R.faveurs.reduce((s,id)=>{const v=FAVEURS.find(x=>x.id===id);return s+(v?v.cout:0);},0)+' 💀';
+  g(costId).textContent = 'Coût : ' + state.reduce((s,id)=>{const v=FAVEURS.find(x=>x.id===id);return s+(v?v.cout:0);},0) + ' 💀';
 }
-function renderRunMal(){
-  g('r-mal-list').innerHTML=MALEDICTIONS.map(m=>{
-    const on=R.mal.includes(m.id);
-    return`<div class="bs-mod-row${on?' on ml':' ml'}" onclick="rTogMal('${m.id}')">
-      <span class="bs-mod-name">${m.nom}</span>
-      <span class="bs-mod-desc">${m.desc} → ${m.bonus}</span>
-      <span class="bs-mod-cost ml">${m.cout} 💀</span>
+function renderMalList(listId, costId, state, onToggle) {
+  g(listId).innerHTML = MALEDICTIONS.map(m => {
+    const on = state.includes(m.id);
+    return `<div class="bs-mod-row ${on?'on ml':'ml'}" onclick="${onToggle}('${m.id}')">
+      <div class="bs-mod-info">
+        <div class="bs-mod-name">${m.nom}</div>
+        <div class="bs-mod-desc">${m.desc} <span style="color:var(--vert)">→ ${m.bonus}</span></div>
+      </div>
+      <div class="bs-mod-cost ml">${m.cout} 💀</div>
     </div>`;
   }).join('');
-  g('r-mal-cost').textContent='Coût: '+R.mal.reduce((s,id)=>{const m=MALEDICTIONS.find(x=>x.id===id);return s+(m?m.cout:0);},0)+' 💀';
+  g(costId).textContent = 'Coût : ' + state.reduce((s,id)=>{const m=MALEDICTIONS.find(x=>x.id===id);return s+(m?m.cout:0);},0) + ' 💀';
 }
-window.rTogFav=id=>{
-  const i=R.faveurs.indexOf(id);
-  if(i>=0)R.faveurs.splice(i,1);
-  else if(R.faveurs.length<2)R.faveurs.push(id);
-  renderRunFav();
+
+window.rTogFav = id => {
+  const i = R.faveurs.indexOf(id);
+  if(i>=0) R.faveurs.splice(i,1);
+  else if(R.faveurs.length<2) R.faveurs.push(id);
+  renderFavList('r-fav-list','r-fav-cost',R.faveurs,'rTogFav');
 };
-window.rTogMal=id=>{
-  const i=R.mal.indexOf(id);
-  if(i>=0)R.mal.splice(i,1); else R.mal.push(id);
-  renderRunMal();
+window.rTogMal = id => {
+  const i = R.mal.indexOf(id);
+  if(i>=0) R.mal.splice(i,1); else R.mal.push(id);
+  renderMalList('r-mal-list','r-mal-cost',R.mal,'rTogMal');
 };
 
-/* ══ RUN — BUILD DISPLAY ══ */
-function renderRunBuild(){
-  const cls=CLASSES_META[R.classe];
-  const hasM08=R.mal.includes('M08');
-  const hasV14=R.faveurs.includes('V14');
-  const stdBase=(hasM08?3:4)+(hasV14?1:0)+R.extraSlots;
-  const el=g('r-slots');
-  let html=`<div class="bs-slot id">${cls.b1}</div><div class="bs-slot id">${cls.b2}</div>`;
-  R.slots.forEach(s=>{
-    const cls2=s.type==='advanced'?'advanced':'base';
-    html+=`<div class="bs-slot ${cls2}">${s.eff?.nom.split(' — ')[1]||'?'} / ${s.trig?.nom||'?'}</div>`;
+/* ══ BUILD DISPLAY ══ */
+function renderBuildDisplay() {
+  const cls = CLASSES_META[R.classe] || CLASSES_META.Souris;
+  const total = totalSlots();
+  const used = 2 + R.slots.length;
+  g('r-build-label').textContent = `${R.classe} · ${used}/${total} slots`;
+  // Slots
+  let html = `<div class="bs-slot id">${cls.b1}</div><div class="bs-slot id">${cls.b2}</div>`;
+  R.slots.forEach(s => {
+    const cls2 = s.type==='advanced'?'advanced':s.type==='wildcard'?'wildcard':'base';
+    const effName = s.eff?.nom?.split(' — ')[1] || s.eff?.nom || '?';
+    html += `<div class="bs-slot ${cls2}" title="${s.trig?.nom||''}">${effName}</div>`;
   });
-  const empty=Math.max(0,stdBase-R.slots.length);
-  for(let i=0;i<empty;i++)html+=`<div class="bs-slot empty">Slot vide</div>`;
-  el.innerHTML=html;
-  g('r-build').classList.remove('bsh');
-  renderSynBlock('r-syns',getAllBuildTags());
+  const empty = Math.max(0, total - used);
+  for(let i=0;i<empty;i++) html += `<div class="bs-slot empty">Slot vide</div>`;
+  g('r-slots').innerHTML = html;
+  // Synergies
+  renderSynBlock('r-syns', getAllBuildTags());
 }
 
-/* ══ RUN — GÉNÉRATION ══ */
-function genRooms(){
-  // 12 salles de combat + 2 repos + 1 boss = 15 salles
-  const types=['combat','combat','combat','combat','elite',
-               'repos','combat','combat','miniboss','combat',
-               'elite','repos','combat','miniboss','boss'];
-  // 3e mini-boss en salle finale avant boss
-  return types.map((t,i)=>({idx:i+1,type:t,choices:[],picked:null,marchand:null,marchBought:[]}));
-}
-
-function genChoices(roomType,buildTags,classTags,slotCount){
-  const all=[...buildTags,...classTags];
-  const isMiniboss=roomType==='miniboss';
-  if(slotCount===0){
-    // Salle 1 — 5 compétences de base uniquement
-    const pool=shuffle(GD_TRIGGERS.filter(t=>t.type==='base'&&t.r==='Commun')).slice(0,15);
-    return pool.slice(0,5).map(trig=>{
-      const effs=getCompatEffects(trig).filter(e=>e.r==='Commun');
-      const eff=effs.length?rnd(effs):rnd(getCompatEffects(trig));
-      return{trig,eff,class_choice:'base'};
-    }).filter(c=>c.eff);
+/* ══ GÉNÉRATION D'UNE RUN ══ */
+function genRooms() {
+  // 12 salles combat + 2 repos + 1 boss = 15 salles
+  // Schéma : C C C E R C C MB C E R C C MB Boss
+  const schema = [
+    {type:'combat', salle:1}, {type:'combat',salle:2}, {type:'combat',salle:3}, {type:'elite',salle:4},
+    {type:'repos',  salle:5}, {type:'combat',salle:6}, {type:'combat',salle:7}, {type:'miniboss',salle:8},
+    {type:'combat', salle:9}, {type:'elite', salle:10},{type:'repos', salle:11},{type:'combat',salle:12},
+    {type:'combat', salle:13},{type:'miniboss',salle:14},{type:'boss',salle:15},
+  ];
+  // M04 : 2 salles normales supplémentaires → élites
+  if(R.mal.includes('M04')) {
+    let converted = 0;
+    for(let i=0; i<schema.length && converted<2; i++) {
+      if(schema[i].type==='combat') { schema[i].type='elite'; converted++; }
+    }
   }
-  const results=[];
-  if(isMiniboss){
-    // 5 compétences épiques/légendaires
-    for(let i=0;i<5;i++){
-      const type=Math.random()<.4?'advanced':'base';
-      const pool=(type==='advanced'?GD_TRIGGERS.filter(t=>t.type==='advanced'):GD_TRIGGERS.filter(t=>t.type==='base'))
-        .filter(t=>t.r==='Épique'||t.r==='Légendaire')
-        .filter(t=>type==='advanced'?t.tags.some(tag=>all.includes(tag)):true);
-      if(!pool.length)continue;
-      const trig=rnd(pool);
-      const effs=getCompatEffects(trig).filter(e=>e.r==='Épique'||e.r==='Légendaire');
-      const eff=effs.length?rnd(effs):null;
-      if(eff)results.push({trig,eff,class_choice:type==='advanced'?'advanced':'base'});
+  return schema.map((s,i) => ({...s, idx:i+1, choices:[], marchand:null, marchBought:[], picked:null}));
+}
+
+/* ══ GÉNÉRATION COMPÉTENCES D'UNE SALLE (à la demande) ══ */
+function genChoicesForRoom(room) {
+  const buildTags = getAllBuildTags();
+  const clsTags = CLASSES_META[R.classe]?.tags || [];
+  const allTags = [...buildTags, ...clsTags];
+  const weights = getRarityWeights(room.type, room.salle);
+  const isRoom1 = room.salle === 1;
+  const isMiniboss = room.type === 'miniboss';
+  const nOptions = R.mal.includes('M06') ? 2 : 5;
+
+  const results = [];
+
+  if(isRoom1) {
+    // 5 compétences de base uniquement — Commun/Rare
+    const w1 = {Commun:70, Rare:30};
+    for(let i=0;i<5;i++) {
+      const rar = weightedRarity(w1);
+      const pool = GD_TRIGGERS.filter(t=>t.type==='base'&&t.r===rar);
+      const trig = pool.length ? rnd(pool) : rnd(GD_TRIGGERS.filter(t=>t.type==='base'));
+      const effs = getCompatEffects(trig).filter(e=>e.r===rar);
+      const eff = effs.length ? rnd(effs) : rnd(getCompatEffects(trig));
+      if(eff) results.push({trig, eff, class_choice:'base'});
     }
     return results.slice(0,5);
   }
-  const nBase=Math.random()<.5?1:2;
-  const nAdv=5-nBase-(Math.random()<.35?1:0);
-  const hasWild=(nBase+nAdv)<5;
+
+  if(isMiniboss) {
+    // 5 options garanties épique/légendaire
+    for(let i=0;i<8&&results.length<5;i++) {
+      const rar = weightedRarity(weights);
+      const isAdv = Math.random() < 0.5;
+      const trigPool = isAdv
+        ? GD_TRIGGERS.filter(t=>t.type==='advanced'&&t.r===rar&&t.tags.some(tag=>allTags.includes(tag)))
+        : GD_TRIGGERS.filter(t=>t.type==='base'&&t.r===rar);
+      if(!trigPool.length) continue;
+      const trig = rnd(trigPool);
+      const effPool = getCompatEffects(trig).filter(e=>e.r===rar);
+      const eff = effPool.length ? rnd(effPool) : rnd(getCompatEffects(trig));
+      if(eff) results.push({trig, eff, class_choice: isAdv?'advanced':'base'});
+    }
+    return results.slice(0,5);
+  }
+
+  // Salles normales/élites : distribution 1-2 Base + 2-3 Avancées + 0-1 Wildcard
+  const slotsAvail = totalSlots() - 2 - R.slots.length;
+  const nBase    = slotsAvail > 0 ? (Math.random()<.5 ? 1 : 2) : 0;
+  const nAdv     = Math.floor(Math.random()*2)+2; // 2 ou 3
+  const hasWild  = slotsAvail > 0 && (nBase + nAdv) < nOptions && Math.random() < .4;
+  const limit    = nOptions;
+
   // Base
-  for(let i=0;i<nBase;i++){
-    const eligible=GD_TRIGGERS.filter(t=>t.type==='base');
-    const trig=rnd(eligible);
-    const eff=rnd(getCompatEffects(trig));
-    if(eff)results.push({trig,eff,class_choice:'base'});
+  for(let i=0;i<nBase&&results.length<limit;i++) {
+    const rar = weightedRarity(weights);
+    const pool = GD_TRIGGERS.filter(t=>t.type==='base'&&(t.r===rar||!GD_TRIGGERS.some(x=>x.type==='base'&&x.r===rar)));
+    const pool2 = pool.length ? pool : GD_TRIGGERS.filter(t=>t.type==='base');
+    const trig = rnd(pool2);
+    const effs = getCompatEffects(trig).filter(e=>e.r===rar);
+    const eff = effs.length ? rnd(effs) : rnd(getCompatEffects(trig));
+    if(eff) results.push({trig, eff, class_choice:'base'});
   }
-  // Avancées — filtrées par CheckBuildTag
-  const eligAdv=GD_TRIGGERS.filter(t=>t.type==='advanced'&&t.tags.some(tag=>all.includes(tag)));
-  const advPool=eligAdv.length?eligAdv:GD_TRIGGERS.filter(t=>t.type==='advanced');
-  for(let i=0;i<nAdv;i++){
-    const trig=rnd(advPool);
-    const eff=rnd(getCompatEffects(trig));
-    if(eff)results.push({trig,eff,class_choice:'advanced'});
+
+  // Avancées — filtrées CheckBuildTag
+  const advElig = GD_TRIGGERS.filter(t=>t.type==='advanced'&&t.tags.some(tag=>allTags.includes(tag)));
+  const advPool = advElig.length >= 3 ? advElig : GD_TRIGGERS.filter(t=>t.type==='advanced');
+  for(let i=0;i<nAdv&&results.length<limit;i++) {
+    const rar = weightedRarity(weights);
+    const pool = advPool.filter(t=>t.r===rar);
+    const trig = (pool.length ? rnd(pool) : rnd(advPool));
+    const effs = getCompatEffects(trig).filter(e=>e.r===rar);
+    const eff = effs.length ? rnd(effs) : rnd(getCompatEffects(trig));
+    if(eff) results.push({trig, eff, class_choice:'advanced'});
   }
+
   // Wildcard
-  if(hasWild){
-    const trig=rnd(GD_TRIGGERS.filter(t=>t.type==='base'));
-    const eff=rnd(getCompatEffects(trig));
-    if(eff)results.push({trig,eff,class_choice:'wildcard'});
+  if(hasWild && results.length < limit) {
+    const rar = weightedRarity(weights);
+    const pool = GD_TRIGGERS.filter(t=>t.type==='base'&&t.r===rar);
+    const trig = pool.length ? rnd(pool) : rnd(GD_TRIGGERS.filter(t=>t.type==='base'));
+    const eff = rnd(getCompatEffects(trig));
+    if(eff) results.push({trig, eff, class_choice:'wildcard'});
   }
-  return results.slice(0,5);
+
+  // Compléter si trop peu
+  while(results.length < Math.min(limit,3)) {
+    const trig = rnd(GD_TRIGGERS.filter(t=>t.type==='base'));
+    const eff = rnd(getCompatEffects(trig));
+    if(eff) results.push({trig, eff, class_choice:'base'});
+  }
+
+  return results.slice(0, limit);
 }
 
-function genMarchand(){
-  const items=[];
-  // 3 déclencheurs
-  for(let i=0;i<3;i++){
-    const t=rnd(GD_TRIGGERS);
-    items.push({type:'trigger',item:t,price:t.r==='Commun'?4+Math.floor(Math.random()*3):t.r==='Rare'?10+Math.floor(Math.random()*5):18+Math.floor(Math.random()*7),bought:false});
+/* ══ MARCHAND ══ */
+function genMarchand(salle) {
+  const buildTags = getAllBuildTags();
+  const nBonus = R.mal.includes('M07') ? 2 : 0;
+  const items = [];
+  const weights = getRarityWeights('normal', salle);
+
+  // 3 déclencheurs (mix build/aléatoire)
+  for(let i=0;i<3;i++) {
+    const rar = weightedRarity(weights);
+    const linked = i < 2;
+    let pool = linked
+      ? GD_TRIGGERS.filter(t=>t.r===rar&&t.tags.some(tag=>buildTags.includes(tag)))
+      : GD_TRIGGERS.filter(t=>t.r===rar);
+    if(!pool.length) pool = GD_TRIGGERS.filter(t=>t.r===rar);
+    if(!pool.length) pool = GD_TRIGGERS;
+    const trig = rnd(pool);
+    const basePrice = rar==='Commun'?5:rar==='Rare'?12:21;
+    const price = basePrice + Math.floor(Math.random()*4) + (R.mal.includes('M07')?Math.ceil(basePrice*.4):0);
+    items.push({cat:'Déclencheur', name:trig.nom, rarity:rar, price, data:trig, dtype:'trigger', bought:false});
   }
   // 3 effets
-  for(let i=0;i<3;i++){
-    const e=rnd(GD_EFFECTS);
-    items.push({type:'effect',item:e,price:e.r==='Commun'?4+Math.floor(Math.random()*3):e.r==='Rare'?10+Math.floor(Math.random()*5):18+Math.floor(Math.random()*7),bought:false});
+  for(let i=0;i<3;i++) {
+    const rar = weightedRarity(weights);
+    const linked = i < 2;
+    let pool = linked
+      ? GD_EFFECTS.filter(e=>e.r===rar&&e.tags.some(tag=>buildTags.includes(tag)))
+      : GD_EFFECTS.filter(e=>e.r===rar);
+    if(!pool.length) pool = GD_EFFECTS.filter(e=>e.r===rar);
+    if(!pool.length) pool = GD_EFFECTS;
+    const eff = rnd(pool);
+    const basePrice = rar==='Commun'?5:rar==='Rare'?12:21;
+    const price = basePrice + Math.floor(Math.random()*4) + (R.mal.includes('M07')?Math.ceil(basePrice*.4):0);
+    items.push({cat:'Effet', name:eff.nom.split(' — ')[1]||eff.nom, rarity:rar, price, data:eff, dtype:'effect', bought:false});
   }
   // 1-2 reliques faibles
-  items.push({type:'relique-faible',item:{nom:'Relique Faible (aléatoire)'},price:8+Math.floor(Math.random()*5),bought:false});
-  // 30% chance relique forte
-  if(Math.random()<.3)items.push({type:'relique-forte',item:{nom:'Relique Forte (aléatoire)'},price:20+Math.floor(Math.random()*9),bought:false});
-  // Slot si <3 achats
-  if(R.marchBuys<3){
-    const slotPrice=[18,28,40][R.marchBuys]||40;
-    items.push({type:'slot',item:{nom:'+1 Slot de compétence'},price:slotPrice,bought:false});
+  const nRel = 1 + Math.floor(Math.random()*2);
+  for(let i=0;i<nRel;i++) {
+    const rf = rnd(RELIQUES.filter(r=>r.t==='faible'));
+    const price = 8 + Math.floor(Math.random()*5) + (R.mal.includes('M07')?4:0);
+    items.push({cat:'Relique faible', name:rf.nom, rarity:'Rare', price, dtype:'relic-weak', bought:false});
+  }
+  // 30% relique forte
+  if(Math.random()<.3) {
+    const rs = rnd(RELIQUES.filter(r=>r.t==='forte'));
+    const price = 22 + Math.floor(Math.random()*8);
+    items.push({cat:'Relique forte', name:rs.nom, rarity:'Légendaire', price, dtype:'relic-strong', bought:false});
+  }
+  // Slot sup si < 3 achats
+  if(R.marchBuysTotal < 3) {
+    const slotPrice = [18,28,40][R.marchBuysTotal] || 40;
+    items.push({cat:'Slot sup.', name:'+1 slot de compétence', rarity:'Épique', price:slotPrice, dtype:'slot', bought:false});
+  }
+  // Bonus M07
+  for(let i=0;i<nBonus;i++) {
+    const rar = weightedRarity(weights);
+    const pool = GD_EFFECTS.filter(e=>e.r===rar);
+    const eff = pool.length ? rnd(pool) : rnd(GD_EFFECTS);
+    const price = 8 + Math.floor(Math.random()*8);
+    items.push({cat:'Effet (bonus)', name:eff.nom.split(' — ')[1]||eff.nom, rarity:rar, price, data:eff, dtype:'effect', bought:false});
   }
   return items;
 }
 
-/* ══ RUN — START ══ */
-window.bsStartRun=()=>{
-  R.classe=g('r-class').value;
-  R.slots=[];R.extraSlots=R.faveurs.includes('V14')?1:0;
-  R.rooms=genRooms();R.marchProb=15;R.marchBuys=0;
-  // Prégénérer choix salles
-  let slotCount=0;
-  const clsTags=CLASSES_META[R.classe]?.tags||[];
-  R.rooms.forEach((room,idx)=>{
-    if(room.type==='combat'||room.type==='elite'||room.type==='miniboss'){
-      const buildTags=R.slots.flatMap(s=>[...(s.trig?.tags||[]),...(s.eff?.tags||[])]);
-      room.choices=genChoices(room.type,buildTags,clsTags,slotCount);
-      slotCount=R.slots.length;
-    }
-    // Marchand — uniquement salles normales et non marchand-fermé
-    if(room.type==='combat'&&!R.mal.includes('M12')){
-      if(R.marchProb>=100||Math.random()*100<R.marchProb){
-        room.marchand=genMarchand();R.marchProb=15;
-      } else { R.marchProb=Math.min(100,R.marchProb+15); }
-    }
-    // V04 : forcer marchand salle 1-3
-    if(R.faveurs.includes('V04')&&idx<3&&!R.rooms.slice(0,idx).some(r=>r.marchand)){
-      if(!room.marchand)room.marchand=genMarchand();
-    }
-  });
-  renderRunBuild();
-  renderRunLog();
+/* ══ START RUN ══ */
+window.bsStartRun = () => {
+  R.classe = g('r-class').value;
+  R.slots = []; R.extraSlots = R.faveurs.includes('V14')?1:0;
+  R.marchProb = 15; R.marchBuys = 0; R.marchBuysTotal = 0;
+  R.currentRoom = 0; R.reposChoices = {};
+  R.rooms = genRooms();
+  // V04 : forcer marchand dans les 3 premières salles combat
+  if(R.faveurs.includes('V04')) {
+    const firstCombat = R.rooms.find(r=>r.type==='combat');
+    if(firstCombat) firstCombat._forceMarchand = true;
+  }
+  g('r-build').classList.remove('bsh');
+  renderBuildDisplay();
+  renderProgress();
+  renderCurrentStep();
 };
 
-window.bsResetRun=()=>{
-  R.slots=[];R.extraSlots=0;R.rooms=[];R.started=false;R.faveurs=[];R.mal=[];
-  renderRunFav();renderRunMal();
+window.bsResetRun = () => {
+  R.slots=[]; R.extraSlots=0; R.rooms=[]; R.currentRoom=0;
+  R.faveurs=[]; R.mal=[]; R.marchProb=15; R.marchBuys=0; R.marchBuysTotal=0;
+  renderFavList('r-fav-list','r-fav-cost',R.faveurs,'rTogFav');
+  renderMalList('r-mal-list','r-mal-cost',R.mal,'rTogMal');
   g('r-build').classList.add('bsh');
-  g('r-log').innerHTML='';
 };
 
-/* ══ RUN — LOG ══ */
-function renderRunLog(){
-  const typeLabel={combat:'Salle normale',elite:'Salle élite',miniboss:'Mini-Boss',repos:'Salle de repos',boss:'Boss Final'};
-  const typeCls={combat:'n',elite:'e',miniboss:'mb',repos:'r',boss:'b'};
-  g('r-log').innerHTML=R.rooms.map((room,ri)=>{
-    let body='';
-    if(room.type==='repos'){
-      body=`<div style="font-size:11px;margin-bottom:8px;color:var(--vert)">Options disponibles :</div>
-        <div class="bs-repos-opts">
-          <div class="bs-repos-opt ${room.reposChoice==='soin'?'on':''}" onclick="rReposChoice(${ri},'soin')">💊 Soin (30% PV)</div>
-          <div class="bs-repos-opt ${room.reposChoice==='sacrifice'?'on':''}" onclick="rReposChoice(${ri},'sacrifice')">🔥 Sacrifice</div>
-          <div class="bs-repos-opt ${room.reposChoice==='reorg'?'on':''}" onclick="rReposChoice(${ri},'reorg')">🔧 Réorganiser</div>
-        </div>`;
-    } else if(room.type==='boss'){
-      body=`<div style="font-size:11px;color:#ff4444">⚔️ Boss Final — Le Lion (ou le Couronné en mode Trône Renversé)</div>`;
-    } else {
-      // Marchand en premier si présent
-      if(room.marchand){
-        body+=`<div style="font-size:10px;color:var(--or);margin-bottom:6px">🛒 Marchand</div>
-          <div class="bs-march-grid">${room.marchand.map((it,ii)=>`
-            <div class="bs-march-item${it.type==='slot'?' slot-item':''}${it.bought?' bought':''}" onclick="rBuyItem(${ri},${ii})">
-              <div class="bs-march-type">${it.type==='trigger'?'Déclencheur':it.type==='effect'?'Effet':it.type==='relique-faible'?'Relique faible':it.type==='relique-forte'?'Relique forte':'Slot +1'}</div>
-              <div class="bs-march-name">${it.item.nom||it.item.id}</div>
-              <div class="bs-march-price">${it.price} 🦷${it.bought?' ✓':''}</div>
-            </div>`).join('')}</div>`;
-      }
-      // Récompenses
-      body+=`<div style="font-size:10px;color:var(--gris);margin-bottom:6px">
-        ${room.type==='elite'?'<span style="color:var(--ocre)">🏆 Récompense élite — ':'<span>'}Choisir une compétence :</span></div>
-        <div class="bs-cards-grid">${(room.choices||[]).map((c,ci)=>`
-          <div class="bs-card${room.picked===ci?` picked ${c.class_choice}`:''}" onclick="rPickComp(${ri},${ci})">
-            <div class="bs-card-effect">
-              <div class="bs-card-label e">Effet</div>
-              <div style="color:${rarityColor(c.eff?.r)};font-size:9px;margin-bottom:2px">${c.eff?.r||''}</div>
-              <div class="bs-card-name">${c.eff?.nom?.split(' — ')[1]||c.eff?.nom||'?'}</div>
-              <div class="bs-card-desc">${c.eff?.desc||''}</div>
-              <div class="bs-card-cd">⏱ ${c.eff?.cd||'?'}</div>
-              <div class="bs-card-tags">${(c.eff?.tags||[]).slice(0,3).map(t=>`<span class="bs-card-tag">${t}</span>`).join('')}</div>
-            </div>
-            <div class="bs-card-trigger">
-              <div class="bs-card-label t">${c.class_choice==='advanced'?'Déclencheur Avancé':c.class_choice==='wildcard'?'🎲 Wildcard':'Déclencheur de Base'}</div>
-              <div style="color:${rarityColor(c.trig?.r)};font-size:9px;margin-bottom:2px">${c.trig?.r||''}</div>
-              <div class="bs-card-name">${c.trig?.nom||'?'}</div>
-              <div class="bs-card-desc">${c.trig?.cond||''}</div>
-              <div class="bs-card-tags">${(c.trig?.tags||[]).slice(0,3).map(t=>`<span class="bs-card-tag">${t}</span>`).join('')}</div>
-            </div>
-          </div>`).join('')}</div>`;
-      // Élite : relique faible en plus
-      if(room.type==='elite'){
-        body+=`<div style="font-size:10px;color:var(--ocre);margin-top:8px">+ Relique faible aléatoire obtenue</div>`;
-      }
-      // Mini-boss : slot supplémentaire
-      if(room.type==='miniboss'){
-        body+=`<div style="font-size:10px;color:var(--rouge);margin-top:8px">⭐ Mini-Boss vaincu : +1 slot de compétence obtenu + Relique forte aléatoire</div>`;
-      }
-    }
-    return`<div class="bs-room-card">
-      <div class="bs-room-hdr" onclick="rTogRoom(this)">
-        <span class="bs-room-num">Salle ${room.idx}</span>
-        <span class="bs-room-type ${typeCls[room.type]||'n'}">${typeLabel[room.type]||'—'}</span>
-        <span style="font-size:10px;color:var(--gris)">${R.slots.length} compétences</span>
-      </div>
-      <div class="bs-room-bdy">${body}</div>
-    </div>`;
+/* ══ PROGRESS BAR ══ */
+function renderProgress() {
+  const icons = {combat:'⚔️',elite:'🏆',miniboss:'💀',repos:'💤',boss:'👑'};
+  g('r-progress').innerHTML = R.rooms.map((room,i) => {
+    let cls = '';
+    if(i < R.currentRoom) cls = 'done';
+    else if(i === R.currentRoom) cls = 'current';
+    else cls = 'locked';
+    return `<div class="bs-prog-dot ${cls} ${room.type}" title="Salle ${room.salle} — ${room.type}">${icons[room.type]||'?'}</div>`;
   }).join('');
 }
 
-window.rTogRoom=hdr=>{
-  const bdy=hdr.nextElementSibling;
-  bdy.classList.toggle('collapsed');
-};
+/* ══ STEP RENDERER — CŒUR DU SIMULATEUR ══ */
+function renderCurrentStep() {
+  const room = R.rooms[R.currentRoom];
+  if(!room) { renderFinalStep(); return; }
 
-window.rPickComp=(ri,ci)=>{
-  const room=R.rooms[ri];if(!room)return;
-  if(room.picked===ci){
-    // Dépicker : enlever du build si présent
-    const c=room.choices[ci];
-    const idx=R.slots.findIndex(s=>s.eff?.id===c.eff?.id&&s.trig?.nom===c.trig?.nom);
-    if(idx>=0)R.slots.splice(idx,1);
-    room.picked=null;
-  } else {
-    // Dépicker l'ancien
-    if(room.picked!=null){
-      const old=room.choices[room.picked];
-      const idx=R.slots.findIndex(s=>s.eff?.id===old.eff?.id&&s.trig?.nom===old.trig?.nom);
-      if(idx>=0)R.slots.splice(idx,1);
-    }
-    room.picked=ci;
-    const c=room.choices[ci];
-    if(!R.slots.find(s=>s.eff?.id===c.eff?.id&&s.trig?.nom===c.trig?.nom)){
-      R.slots.push({eff:c.eff,trig:c.trig,type:c.class_choice});
+  const step = g('r-step');
+  const typeLabel = {combat:'Salle normale',elite:'Salle élite',miniboss:'Mini-Boss',repos:'Salle de repos',boss:'Boss Final'};
+
+  if(room.type === 'boss') {
+    step.innerHTML = `
+      <div class="bs-step-title">👑 Salle 15 — Boss Final</div>
+      <div class="bs-step-sub">Le Lion vous attend. Bonne chance.</div>
+      <div style="font-size:13px;color:var(--or);margin-top:16px">Build final : ${2+R.slots.length} compétences actives</div>
+      <div class="bs-syns" style="margin-top:10px" id="r-step-syns"></div>
+      <div class="bs-btn-row" style="margin-top:20px">
+        <button class="bs-btn" onclick="bsResetRun()">↺ Nouvelle Run</button>
+      </div>`;
+    renderSynBlock('r-step-syns', getAllBuildTags());
+    return;
+  }
+
+  if(room.type === 'repos') {
+    renderReposStep(room);
+    return;
+  }
+
+  // Générer les choix si pas encore fait
+  if(!room.choices.length) {
+    room.choices = genChoicesForRoom(room);
+    // Marchand : calculer apparition
+    if(room.type === 'combat' && !R.mal.includes('M12')) {
+      if(room._forceMarchand || R.marchProb >= 100 || Math.random()*100 < R.marchProb) {
+        room.marchand = genMarchand(room.salle);
+        R.marchProb = 15;
+      } else {
+        R.marchProb = Math.min(100, R.marchProb + 15);
+      }
     }
   }
-  renderRunBuild();renderRunLog();
+
+  // Affichage selon phase : marchand en premier si présent et pas encore affiché
+  const phase = room._phase || (room.marchand && !room._marchandDone ? 'marchand' : 'recompense');
+  room._phase = phase;
+
+  if(phase === 'marchand' && room.marchand && !room._marchandDone) {
+    renderMarchandStep(room);
+  } else {
+    renderRecompenseStep(room);
+  }
+}
+
+function renderMarchandStep(room) {
+  const step = g('r-step');
+  const html = `
+    <div class="bs-step-title">🛒 Salle ${room.salle} — ${room.type==='elite'?'Salle élite':'Salle normale'} · Marchand</div>
+    <div class="bs-step-sub">Le Corbeau est là. Petites Dents en poche ?</div>
+    <div class="bs-march-grid" id="r-march-grid">
+      ${room.marchand.map((it,i)=>`
+        <div class="bs-march-item ${it.dtype==='slot'?'slot-t':''} ${it.bought?'bought':''}" onclick="rBuyMarch(${i})">
+          <div class="bs-march-cat">${it.cat}</div>
+          <div class="bs-march-rarity" style="color:${rarityColor(it.rarity)}">${it.rarity}</div>
+          <div class="bs-march-name">${it.name}</div>
+          <div class="bs-march-price">${it.price} 🦷${it.bought?' ✓':''}</div>
+        </div>`).join('')}
+    </div>
+    <div class="bs-btn-row" style="margin-top:14px">
+      <button class="bs-btn" onclick="rMarchandDone()">Continuer →</button>
+    </div>`;
+  step.innerHTML = html;
+}
+
+window.rBuyMarch = i => {
+  const room = R.rooms[R.currentRoom];
+  if(!room?.marchand) return;
+  const it = room.marchand[i];
+  it.bought = !it.bought;
+  if(it.dtype === 'slot') {
+    R.extraSlots += it.bought ? 1 : -1;
+    if(it.bought) R.marchBuysTotal++;
+    else R.marchBuysTotal = Math.max(0, R.marchBuysTotal-1);
+  }
+  renderBuildDisplay();
+  // Refresh juste le grid
+  const grid = g('r-march-grid');
+  if(grid) grid.outerHTML = `<div class="bs-march-grid" id="r-march-grid">
+    ${room.marchand.map((it2,i2)=>`
+      <div class="bs-march-item ${it2.dtype==='slot'?'slot-t':''} ${it2.bought?'bought':''}" onclick="rBuyMarch(${i2})">
+        <div class="bs-march-cat">${it2.cat}</div>
+        <div class="bs-march-rarity" style="color:${rarityColor(it2.rarity)}">${it2.rarity}</div>
+        <div class="bs-march-name">${it2.name}</div>
+        <div class="bs-march-price">${it2.price} 🦷${it2.bought?' ✓':''}</div>
+      </div>`).join('')}
+  </div>`;
 };
 
-window.rBuyItem=(ri,ii)=>{
-  const room=R.rooms[ri];if(!room||!room.marchand)return;
-  const it=room.marchand[ii];
-  it.bought=!it.bought;
-  if(it.type==='slot'){R.extraSlots+=it.bought?1:-1;R.marchBuys+=it.bought?1:-1;}
-  renderRunBuild();renderRunLog();
+window.rMarchandDone = () => {
+  const room = R.rooms[R.currentRoom];
+  if(room) { room._marchandDone = true; room._phase = 'recompense'; }
+  renderCurrentStep();
 };
 
-window.rReposChoice=(ri,choice)=>{
-  R.rooms[ri].reposChoice=choice;
-  renderRunLog();
-};
+function renderRecompenseStep(room) {
+  const step = g('r-step');
+  const typeLabel = {combat:'Salle normale',elite:'Salle élite',miniboss:'Mini-Boss'};
+  const isMiniboss = room.type === 'miniboss';
+  const isElite = room.type === 'elite';
 
-/* ══ FREE ══ */
-function renderFreeFav(){
-  g('f-fav-list').innerHTML=FAVEURS.map(v=>{
-    const on=F.faveurs.includes(v.id);
-    return`<div class="bs-mod-row${on?' on fv':' fv'}" onclick="fTogFav('${v.id}')">
-      <span class="bs-mod-name">${v.nom}</span>
-      <span class="bs-mod-desc">${v.desc}</span>
-      <span class="bs-mod-cost fv">${v.cout} 💀</span>
+  let noteHtml = '';
+  if(isMiniboss) noteHtml = `<div class="bs-step-note">⭐ Mini-Boss — Toutes les récompenses sont Épiques ou Légendaires. +1 slot de compétence + Relique forte obtenue automatiquement.</div>`;
+  else if(isElite) noteHtml = `<div class="bs-step-note ml">🏆 Salle élite — Raretés Rare à Légendaire. Relique faible obtenue automatiquement.</div>`;
+
+  const cards = room.choices.map((c,ci) => {
+    const isPicked = room.picked === ci;
+    const effName = c.eff?.nom?.split(' — ')[1] || c.eff?.nom || '?';
+    const rc_e = rarityClass(c.eff?.r);
+    const rc_t = rarityClass(c.trig?.r);
+    return `<div class="bs-card ${isPicked?'picked '+c.class_choice:''}" onclick="rPickComp(${ci})">
+      <div class="bs-card-type-badge ${c.class_choice}">${c.class_choice==='advanced'?'Avancée':c.class_choice==='wildcard'?'🎲 Wildcard':'Base'}</div>
+      <div class="bs-card-top">
+        <div class="bs-card-section-lbl e">Effet</div>
+        <div class="bs-card-rarity rc-${rc_e}" style="color:${rarityColor(c.eff?.r)}">${c.eff?.r||''}</div>
+        <div class="bs-card-name">${effName}</div>
+        <div class="bs-card-desc">${c.eff?.desc||''}</div>
+        <div class="bs-card-cd">⏱ ${c.eff?.cd||'?'}</div>
+        <div class="bs-card-tags">${(c.eff?.tags||[]).slice(0,3).map(t=>`<span class="bs-card-tag">${t}</span>`).join('')}</div>
+      </div>
+      <div class="bs-card-bot">
+        <div class="bs-card-section-lbl t">Déclencheur</div>
+        <div class="bs-card-rarity rc-${rc_t}" style="color:${rarityColor(c.trig?.r)}">${c.trig?.r||''}</div>
+        <div class="bs-card-name">${c.trig?.nom||'?'}</div>
+        <div class="bs-card-desc">${c.trig?.cond||''}</div>
+        <div class="bs-card-tags">${(c.trig?.tags||[]).slice(0,3).map(t=>`<span class="bs-card-tag">${t}</span>`).join('')}</div>
+      </div>
     </div>`;
   }).join('');
-  g('f-fav-cost').textContent=F.faveurs.reduce((s,id)=>{const v=FAVEURS.find(x=>x.id===id);return s+(v?v.cout:0);},0)+' 💀';
-}
-function renderFreeMal(){
-  g('f-mal-list').innerHTML=MALEDICTIONS.map(m=>{
-    const on=F.mal.includes(m.id);
-    return`<div class="bs-mod-row${on?' on ml':' ml'}" onclick="fTogMal('${m.id}')">
-      <span class="bs-mod-name">${m.nom}</span>
-      <span class="bs-mod-desc">${m.desc}</span>
-      <span class="bs-mod-cost ml">${m.cout} 💀</span>
+
+  step.innerHTML = `
+    <div class="bs-step-title">${room.type==='miniboss'?'💀':'⚔️'} Salle ${room.salle} — ${typeLabel[room.type]||''}</div>
+    <div class="bs-step-sub">Choisissez une compétence (1 parmi ${room.choices.length})</div>
+    ${noteHtml}
+    <div class="bs-cards-grid">${cards}</div>
+    <div class="bs-btn-row">
+      <button class="bs-btn" id="r-next-btn" onclick="rNextRoom()" ${room.picked===null?'disabled':''}>
+        ${R.currentRoom < R.rooms.length-1 ? 'Salle suivante →' : 'Terminer →'}
+      </button>
+      <button class="bs-btn sec" onclick="rSkipRoom()">Passer</button>
     </div>`;
-  }).join('');
-  g('f-mal-cost').textContent=F.mal.reduce((s,id)=>{const m=MALEDICTIONS.find(x=>x.id===id);return s+(m?m.cout:0);},0)+' 💀';
-}
-window.fTogFav=id=>{const i=F.faveurs.indexOf(id);if(i>=0)F.faveurs.splice(i,1);else if(F.faveurs.length<2)F.faveurs.push(id);renderFreeFav();fRender();};
-window.fTogMal=id=>{const i=F.mal.indexOf(id);if(i>=0)F.mal.splice(i,1);else F.mal.push(id);renderFreeMal();fRender();};
-
-function renderFreeRelics(){
-  g('f-relics').innerHTML=RELIQUES.map(r=>{
-    const on=F.relics.includes(r.id);
-    return`<span class="bs-relic-badge ${r.t} ${on?'on':''}" onclick="fTogRelic('${r.id}')">${r.nom}</span>`;
-  }).join('');
-}
-window.fTogRelic=id=>{const i=F.relics.indexOf(id);if(i>=0)F.relics.splice(i,1);else F.relics.push(id);renderFreeRelics();fRender();};
-
-// Builder dropdowns avec filtrage
-let _builderTrig=null,_builderEff=null;
-window.fUpdateBuilder=()=>{
-  _builderTrig=null;_builderEff=null;
-  const type=g('f-add-type').value;
-  const pool=(type==='advanced'?GD_TRIGGERS.filter(t=>t.type==='advanced'):GD_TRIGGERS.filter(t=>t.type==='base'))
-    .sort((a,b)=>getRarityOrder(a.r)-getRarityOrder(b.r));
-  g('f-add-trig').innerHTML=pool.map(t=>`<option value="${t.nom}">[${t.r}] ${t.nom}</option>`).join('');
-  _builderTrig=pool[0];
-  fRefreshEffDropdown();
-};
-
-window.fOnTrigSelect=()=>{
-  const sel=g('f-add-trig').value;
-  _builderTrig=GD_TRIGGERS.find(t=>t.nom===sel)||null;
-  fRefreshEffDropdown();
-};
-
-function fRefreshEffDropdown(){
-  const effs=getCompatEffects(_builderTrig).sort((a,b)=>getRarityOrder(a.r)-getRarityOrder(b.r));
-  g('f-add-eff').innerHTML=effs.map(e=>`<option value="${e.id}">[${e.r}] ${e.nom.split(' — ')[1]||e.nom}</option>`).join('');
-  _builderEff=effs[0]||null;
 }
 
-window.fOnEffSelect=()=>{
-  const sel=g('f-add-eff').value;
-  _builderEff=GD_EFFECTS.find(e=>e.id===sel)||null;
+window.rPickComp = ci => {
+  const room = R.rooms[R.currentRoom];
+  if(!room) return;
+  // Dépicker l'ancien
+  if(room.picked !== null && room.picked !== undefined) {
+    const old = room.choices[room.picked];
+    const idx = R.slots.findIndex(s => s.eff?.id===old.eff?.id && s.trig?.nom===old.trig?.nom);
+    if(idx >= 0) R.slots.splice(idx, 1);
+  }
+  if(room.picked === ci) {
+    room.picked = null;
+  } else {
+    room.picked = ci;
+    const c = room.choices[ci];
+    if(!R.slots.find(s => s.eff?.id===c.eff?.id && s.trig?.nom===c.trig?.nom)) {
+      R.slots.push({eff:c.eff, trig:c.trig, type:c.class_choice});
+    }
+  }
+  // Ajouter slot mini-boss
+  if(room.type==='miniboss' && room.picked!==null && !room._slotAdded) {
+    R.extraSlots++; room._slotAdded = true;
+  } else if(room.type==='miniboss' && room.picked===null && room._slotAdded) {
+    R.extraSlots = Math.max(0, R.extraSlots-1); room._slotAdded = false;
+  }
+  renderBuildDisplay();
+  // Activer bouton suivant
+  const btn = g('r-next-btn');
+  if(btn) btn.disabled = (room.picked === null);
+  // Re-render les cards pour mise à jour visuelle
+  renderCurrentStep();
 };
 
-window.fAddComp=()=>{
-  const sel_t=g('f-add-trig').value;const sel_e=g('f-add-eff').value;
-  const trig=GD_TRIGGERS.find(t=>t.nom===sel_t);
-  const eff=GD_EFFECTS.find(e=>e.id===sel_e);
-  if(!trig||!eff)return;
-  const type=g('f-add-type').value;
-  F.comps.push({trig,eff,type});
+window.rNextRoom = () => {
+  R.currentRoom++;
+  renderProgress();
+  renderCurrentStep();
+  renderBuildDisplay();
+  // Scroll vers le step
+  g('r-step').scrollIntoView({behavior:'smooth', block:'start'});
+};
+
+window.rSkipRoom = () => {
+  R.currentRoom++;
+  renderProgress();
+  renderCurrentStep();
+  renderBuildDisplay();
+  g('r-step').scrollIntoView({behavior:'smooth', block:'start'});
+};
+
+function renderReposStep(room) {
+  const step = g('r-step');
+  const choice = R.reposChoices[room.idx];
+  step.innerHTML = `
+    <div class="bs-step-title">💤 Salle ${room.salle} — Salle de Repos</div>
+    <div class="bs-step-sub">Choisissez une action</div>
+    <div class="bs-repos-opts">
+      <div class="bs-repos-opt ${choice==='soin'?'on':''}" onclick="rReposOpt(${room.idx},'soin')">💊 Soin — Restaurer 30% PV</div>
+      <div class="bs-repos-opt ${choice==='sacrifice'?'on':''}" onclick="rReposOpt(${room.idx},'sacrifice')">🔥 Sacrifice — Échanger une pièce contre 3 propositions ciblées</div>
+      <div class="bs-repos-opt ${choice==='reorg'?'on':''}" onclick="rReposOpt(${room.idx},'reorg')">🔧 Réorganiser — Déplacer les pièces du kit</div>
+    </div>
+    <div class="bs-btn-row" style="margin-top:14px">
+      <button class="bs-btn" onclick="rNextRoom()">Continuer →</button>
+    </div>`;
+}
+
+window.rReposOpt = (roomIdx, choice) => {
+  R.reposChoices[roomIdx] = choice;
+  renderCurrentStep();
+};
+
+function renderFinalStep() {
+  g('r-step').innerHTML = `
+    <div class="bs-step-title">🏁 Run terminée</div>
+    <div class="bs-step-sub">Build final : ${2+R.slots.length} compétences actives</div>
+    <div class="bs-btn-row" style="margin-top:16px">
+      <button class="bs-btn" onclick="bsResetRun()">↺ Nouvelle Run</button>
+    </div>`;
+}
+
+/* ══════════════════════════════════════════
+   FREE BUILD
+══════════════════════════════════════════ */
+window.fTogFav = id => {
+  const i = F.faveurs.indexOf(id);
+  if(i>=0) F.faveurs.splice(i,1); else if(F.faveurs.length<2) F.faveurs.push(id);
+  renderFavList('f-fav-list','f-fav-cost',F.faveurs,'fTogFav');
+  fRender();
+};
+window.fTogMal = id => {
+  const i = F.mal.indexOf(id);
+  if(i>=0) F.mal.splice(i,1); else F.mal.push(id);
+  renderMalList('f-mal-list','f-mal-cost',F.mal,'fTogMal');
   fRender();
 };
 
-window.fDelComp=i=>{F.comps.splice(i,1);fRender();};
+function renderFreeRelics() {
+  g('f-relics').innerHTML = RELIQUES.map(r=>{
+    const on = F.relics.includes(r.id);
+    return `<span class="bs-relic-badge ${r.t} ${on?'on':''}" onclick="fTogRelic('${r.id}')">${r.nom}</span>`;
+  }).join('');
+}
+window.fTogRelic = id => {
+  const i = F.relics.indexOf(id);
+  if(i>=0) F.relics.splice(i,1); else F.relics.push(id);
+  renderFreeRelics();
+  fRender();
+};
 
-window.fRender=()=>{
-  const cls=CLASSES_META[g('f-class')?.value||F.classe]||CLASSES_META.Souris;
-  F.classe=g('f-class')?.value||F.classe;
-  const hasM08=F.mal.includes('M08'),hasV14=F.faveurs.includes('V14');
-  const slotsN=parseInt(g('f-slots-n')?.value||4);
-  const totalSlots=2+(slotsN-(hasM08?1:0))+(hasV14?1:0);
-  g('f-total-slots').textContent=totalSlots;
-  g('f-active-n').textContent=2+F.comps.length;
-  const allTags=[...cls.tags,...F.comps.flatMap(c=>[...(c.trig?.tags||[]),...(c.eff?.tags||[])])];
-  const tagFreq={};allTags.forEach(t=>{tagFreq[t]=(tagFreq[t]||0)+1;});
-  const top=Object.entries(tagFreq).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([t])=>t).join(' ');
-  g('f-top-tags').textContent=top||'—';
-  const souls=F.faveurs.reduce((s,id)=>{const v=FAVEURS.find(x=>x.id===id);return s+(v?v.cout:0);},0)
-    +F.mal.reduce((s,id)=>{const m=MALEDICTIONS.find(x=>x.id===id);return s+(m?m.cout:0);},0);
-  g('f-souls').textContent=souls+' 💀';
-  // Slots list
-  let html=`<div class="bs-free-slot"><span class="bs-free-slot-n">B1</span><span class="bs-free-slot-content" style="color:var(--or)">${cls.b1}</span></div>`;
-  html+=`<div class="bs-free-slot"><span class="bs-free-slot-n">B2</span><span class="bs-free-slot-content" style="color:var(--or)">${cls.b2}</span></div>`;
+let _fTrig = null, _fEff = null;
+window.fUpdateBuilder = () => {
+  const type = g('f-add-type').value;
+  const pool = (type==='advanced' ? GD_TRIGGERS.filter(t=>t.type==='advanced') : GD_TRIGGERS.filter(t=>t.type==='base'))
+    .sort((a,b) => getRarityOrder(a.r) - getRarityOrder(b.r));
+  g('f-add-trig').innerHTML = pool.map(t=>`<option value="${t.nom}">[${t.r[0]}] ${t.nom}</option>`).join('');
+  _fTrig = pool[0] || null;
+  fRefreshEffDropdown();
+};
+
+window.fOnTrigSel = () => {
+  const sel = g('f-add-trig').value;
+  _fTrig = GD_TRIGGERS.find(t=>t.nom===sel) || null;
+  fRefreshEffDropdown();
+};
+
+function fRefreshEffDropdown() {
+  const effs = getCompatEffects(_fTrig).sort((a,b)=>getRarityOrder(a.r)-getRarityOrder(b.r));
+  g('f-add-eff').innerHTML = effs.map(e=>`<option value="${e.id}">[${e.r[0]}] ${e.nom.split(' — ')[1]||e.nom}</option>`).join('');
+  g('f-eff-compat').textContent = `(${effs.length} effets compatibles)`;
+  _fEff = effs[0] || null;
+}
+
+window.fAddComp = () => {
+  const sel_t = g('f-add-trig').value;
+  const sel_e = g('f-add-eff').value;
+  const trig = GD_TRIGGERS.find(t=>t.nom===sel_t);
+  const eff  = GD_EFFECTS.find(e=>e.id===sel_e);
+  if(!trig||!eff) return;
+  F.comps.push({trig, eff, type:g('f-add-type').value});
+  fRender();
+};
+
+window.fDelComp = i => { F.comps.splice(i,1); fRender(); };
+
+window.fRender = () => {
+  const cls = CLASSES_META[g('f-class')?.value||F.classe] || CLASSES_META.Souris;
+  F.classe = g('f-class')?.value || F.classe;
+  const hasM08 = F.mal.includes('M08'), hasV14 = F.faveurs.includes('V14');
+  const slotsN = parseInt(g('f-slots-n')?.value||4);
+  const total = 2 + (slotsN-(hasM08?1:0)) + (hasV14?1:0);
+  g('f-total-slots').textContent = total;
+  g('f-active-n').textContent = 2 + F.comps.length;
+  const allTags = [...cls.tags, ...F.comps.flatMap(c=>[...(c.trig?.tags||[]),...(c.eff?.tags||[])])];
+  const freq = {}; allTags.forEach(t=>{freq[t]=(freq[t]||0)+1;});
+  const top = Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([t])=>t).join(' ');
+  g('f-top-tags').textContent = top||'—';
+  const souls = F.faveurs.reduce((s,id)=>{const v=FAVEURS.find(x=>x.id===id);return s+(v?v.cout:0);},0)
+    + F.mal.reduce((s,id)=>{const m=MALEDICTIONS.find(x=>x.id===id);return s+(m?m.cout:0);},0);
+  g('f-souls').textContent = souls+' 💀';
+
+  let html = `<div class="bs-free-slot"><span class="bs-free-slot-n">B1</span><span class="bs-free-slot-content" style="color:var(--or)">${cls.b1}</span></div>`;
+  html += `<div class="bs-free-slot"><span class="bs-free-slot-n">B2</span><span class="bs-free-slot-content" style="color:var(--or)">${cls.b2}</span></div>`;
   F.comps.forEach((c,i)=>{
-    html+=`<div class="bs-free-slot">
+    const col = c.type==='advanced'?'#9a8aff':'var(--blanc)';
+    html += `<div class="bs-free-slot">
       <span class="bs-free-slot-n">${i+1}</span>
-      <span class="bs-free-slot-content" style="color:${c.type==='advanced'?'#9a8aff':'var(--blanc)'}">${c.eff?.nom?.split(' — ')[1]||'?'} / ${c.trig?.nom||'?'}</span>
+      <span class="bs-free-slot-content" style="color:${col}">${c.eff?.nom?.split(' — ')[1]||'?'} / ${c.trig?.nom||'?'}</span>
       <button class="bs-free-slot-del" onclick="fDelComp(${i})">✕</button>
     </div>`;
   });
-  g('f-comp-list').innerHTML=html;
-  renderSynBlock('f-syns',allTags);
+  g('f-comp-list').innerHTML = html;
+  renderSynBlock('f-syns', allTags);
   fUpdateExport();
 };
 
-function fUpdateExport(){
-  const cls=CLASSES_META[F.classe]||CLASSES_META.Souris;
-  const lines=[
+function fUpdateExport() {
+  const cls = CLASSES_META[F.classe] || CLASSES_META.Souris;
+  const allTags = [...cls.tags, ...F.comps.flatMap(c=>[...(c.trig?.tags||[]),...(c.eff?.tags||[])])];
+  const lines = [
     `=== BUILD ${F.classe.toUpperCase()} ===`,
-    `B1: ${cls.b1}  B2: ${cls.b2}`,
+    `B1: ${cls.b1}  |  B2: ${cls.b2}`,
     `Faveurs: ${F.faveurs.join(', ')||'aucune'}`,
     `Malédictions: ${F.mal.join(', ')||'aucune'}`,
     `Reliques: ${F.relics.join(', ')||'aucune'}`,
@@ -803,31 +1086,29 @@ function fUpdateExport(){
     ...F.comps.map((c,i)=>`  ${i+1}. [${c.type==='advanced'?'Avancée':'Base'}] ${c.eff?.nom?.split(' — ')[1]||'?'} + ${c.trig?.nom||'?'}`),
     '',
     'Synergies:',
-    ...detectSynergies([...CLASSES_META[F.classe]?.tags||[],...F.comps.flatMap(c=>[...(c.trig?.tags||[]),...(c.eff?.tags||[])])]).map(s=>{
+    ...detectSynergies(allTags).map(s=>{
       const t=s.tier===3?'🔴 Complétée':s.tier===2?'🟠 Confirmée':'🟡 Douce';
-      return`  ${s.a.e} ${s.a.nom} — ${t}`;
+      return `  ${s.a.e} ${s.a.nom} — ${t}`;
     }),
   ];
-  g('f-export').textContent=lines.join('\n');
+  g('f-export').textContent = lines.join('\n');
 }
-window.fCopyExport=()=>{navigator.clipboard.writeText(g('f-export').textContent).catch(()=>{});};
+window.fCopyExport = () => { navigator.clipboard.writeText(g('f-export').textContent).catch(()=>{}); };
 
 /* ══ TABS ══ */
-window.bsTab=tab=>{
-  g('bs-run').classList.toggle('bsh',tab!=='run');
-  g('bs-free').classList.toggle('bsh',tab!=='free');
+window.bsTab = tab => {
+  g('bs-run').classList.toggle('bsh', tab!=='run');
+  g('bs-free').classList.toggle('bsh', tab!=='free');
   document.querySelectorAll('.bs-tab').forEach((t,i)=>t.classList.toggle('on',(i===0&&tab==='run')||(i===1&&tab==='free')));
 };
 
 /* ══ INIT ══ */
-renderRunFav();renderRunMal();
-renderFreeFav();renderFreeMal();renderFreeRelics();
-fUpdateBuilder();fRender();
-
-if(typeof window.registerSearchEntries==='function'){
-  window.registerSearchEntries([
-    {title:'Simulateur de Build',page:'build-simulator',section:'Outils',content:'simulation run build compétences synergies marchand faveurs malédictions progression'},
-  ]);
-}
+renderFavList('r-fav-list','r-fav-cost',R.faveurs,'rTogFav');
+renderMalList('r-mal-list','r-mal-cost',R.mal,'rTogMal');
+renderFavList('f-fav-list','f-fav-cost',F.faveurs,'fTogFav');
+renderMalList('f-mal-list','f-mal-cost',F.mal,'fTogMal');
+renderFreeRelics();
+fUpdateBuilder();
+fRender();
 </script>
 </div>
