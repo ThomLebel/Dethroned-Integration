@@ -1,0 +1,494 @@
+<div data-fullwidth="true">
+<div class="page-hero">
+  <h1>Créateur d'Ennemis</h1>
+  <p class="lead">Créez un ennemi, assignez ses compétences — les affinités se calculent automatiquement. Exportez au format <code>ennemis_v10.csv</code>.</p>
+</div>
+
+<style>
+#ec-root { display: grid; grid-template-columns: 340px 1fr; gap: 20px; font-family: var(--font-mono); }
+@media(max-width:900px){ #ec-root { grid-template-columns:1fr; } }
+
+/* ── Panels ── */
+.ec-panel { background: var(--noir2); border-radius: var(--radius); padding: 16px; }
+.ec-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--gris); margin: 14px 0 8px; border-bottom: 1px solid #2a2a2a; padding-bottom: 4px; }
+.ec-section-title:first-child { margin-top: 0; }
+
+/* ── Champs ── */
+.ec-field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.ec-label { font-size: 10px; color: var(--gris); text-transform: uppercase; letter-spacing: 1px; }
+.ec-input, .ec-select, .ec-textarea { background: #0d0a07; border: 1px solid #333; color: var(--blanc); padding: 7px 10px; border-radius: var(--radius); font-family: var(--font-mono); font-size: 12px; width: 100%; box-sizing: border-box; }
+.ec-input:focus, .ec-select:focus, .ec-textarea:focus { outline: none; border-color: var(--or); }
+.ec-textarea { resize: vertical; min-height: 60px; }
+.ec-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ec-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+
+/* ── Stats sliders ── */
+.ec-stat { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.ec-stat-label { font-size: 10px; color: var(--gris); min-width: 90px; }
+.ec-stat-select { background: #0d0a07; border: 1px solid #333; color: var(--blanc); padding: 5px 8px; border-radius: 4px; font-size: 11px; font-family: var(--font-mono); flex: 1; }
+.ec-coeff-input { background: #0d0a07; border: 1px solid #333; color: var(--blanc); padding: 5px 8px; border-radius: 4px; font-size: 11px; font-family: var(--font-mono); width: 70px; text-align: right; }
+
+/* ── Compétences ── */
+.ec-comp { background: #0d0a07; border: 1px solid #2a2a2a; border-radius: var(--radius); padding: 12px; margin-bottom: 10px; position: relative; }
+.ec-comp-num { font-size: 10px; color: var(--or); margin-bottom: 8px; font-weight: 700; }
+.ec-comp-del { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--rouge); cursor: pointer; font-size: 14px; opacity: .7; }
+.ec-comp-del:hover { opacity: 1; }
+.ec-add-comp { display: flex; gap: 8px; margin-top: 8px; }
+
+/* ── Tags ── */
+.ec-tags-auto { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.ec-tag { padding: 3px 8px; border-radius: 4px; font-size: 10px; border: 1px solid; }
+.ec-tag.auto { border-color: #4a3a8a; background: rgba(154,138,255,.08); color: #9a8aff; }
+.ec-tag.tier1 { border-color: #3a6a4a; color: var(--vert); }
+
+/* ── Preview ── */
+.ec-preview { background: var(--noir2); border-radius: var(--radius); padding: 16px; }
+.ec-preview-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.ec-preview-icon { font-size: 28px; }
+.ec-preview-name { font-size: 18px; font-family: var(--font-display); color: var(--or); }
+.ec-preview-meta { font-size: 11px; color: var(--gris); }
+.ec-preview-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 14px; }
+.ec-stat-row { display: flex; justify-content: space-between; font-size: 11px; padding: 3px 0; border-bottom: 1px solid #1e1e1e; }
+.ec-stat-label-r { color: var(--gris); }
+.ec-stat-val-r { color: var(--blanc); }
+.ec-comp-preview { margin-bottom: 8px; }
+.ec-comp-preview-title { font-size: 11px; color: var(--or); font-weight: 700; margin-bottom: 3px; }
+.ec-comp-preview-body { font-size: 11px; color: var(--gris); line-height: 1.5; }
+.ec-comp-preview-body strong { color: var(--blanc); }
+.ec-affinites { display: flex; flex-wrap: wrap; gap: 5px; margin: 10px 0; }
+
+/* ── Boutons ── */
+.ec-btn-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.ec-btn { padding: 9px 20px; background: var(--or); color: var(--noir); border: none; border-radius: var(--radius); font-family: var(--font-mono); font-size: 12px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+.ec-btn:hover { opacity: .85; }
+.ec-btn.secondary { background: var(--noir2); color: var(--or); border: 1px solid var(--or); }
+
+/* ── CSV output ── */
+.ec-csv-box { background: var(--noir2); border-radius: var(--radius); padding: 14px; margin-top: 16px; }
+.ec-csv-text { font-size: 10px; color: var(--gris); word-break: break-all; white-space: pre-wrap; max-height: 180px; overflow-y: auto; line-height: 1.5; }
+
+/* ── Tier colors ── */
+.tier-Faible { color: #6DB33F; }
+.tier-Normal { color: var(--bleu); }
+.tier-Puissant { color: var(--rouge); }
+.tier-Mini-Boss { color: var(--or); }
+</style>
+
+<div id="ec-root">
+  <!-- ══ PANNEAU GAUCHE : Formulaire ══ -->
+  <div>
+    <div class="ec-panel">
+      <div class="ec-section-title">Identité</div>
+      <div class="ec-field">
+        <span class="ec-label">Nom</span>
+        <input class="ec-input" id="ec-nom" placeholder="Ex : Le Scorpion des Sables" oninput="ecUpdate()">
+      </div>
+      <div class="ec-row">
+        <div class="ec-field">
+          <span class="ec-label">Biome</span>
+          <select class="ec-select" id="ec-biome" onchange="ecUpdate()">
+            <option>Savane</option>
+            <option>Zones Humides</option>
+            <option>Forêt</option>
+            <option>Ruines</option>
+          </select>
+        </div>
+        <div class="ec-field">
+          <span class="ec-label">Tier</span>
+          <select class="ec-select" id="ec-tier" onchange="ecUpdate()">
+            <option value="Faible">🟢 Faible</option>
+            <option value="Normal">🔵 Normal</option>
+            <option value="Puissant">🔴 Puissant</option>
+            <option value="Mini-Boss">⭐ Mini-Boss</option>
+          </select>
+        </div>
+      </div>
+      <div class="ec-field">
+        <span class="ec-label">IA</span>
+        <select class="ec-select" id="ec-ia" onchange="ecUpdate()">
+          <option>Passive</option>
+          <option>Agressive</option>
+          <option>Fuyarde</option>
+          <option>Mixte</option>
+          <option>Passive — zone de danger</option>
+          <option>Agressive — charge rectiligne</option>
+          <option>Fuyarde — orbitale</option>
+          <option>Mixte — opportuniste</option>
+          <option>Mixte — territorial</option>
+          <option>Mixte — traqueur de meute</option>
+        </select>
+      </div>
+
+      <div class="ec-section-title">Statistiques</div>
+      <div class="ec-stat">
+        <span class="ec-stat-label">PV</span>
+        <select class="ec-stat-select" id="ec-pv" onchange="ecUpdate()">
+          <option>Très faibles</option><option>Faibles</option><option>Moyens</option>
+          <option>Élevés</option><option>Très élevés</option><option>Maximaux</option>
+        </select>
+      </div>
+      <div class="ec-stat">
+        <span class="ec-stat-label">Vitesse</span>
+        <select class="ec-stat-select" id="ec-vitesse" onchange="ecUpdate()">
+          <option>Très lente</option><option>Lente</option><option>Moyenne</option>
+          <option>Élevée</option><option>Très élevée</option>
+        </select>
+      </div>
+      <div class="ec-stat">
+        <span class="ec-stat-label">Masse</span>
+        <select class="ec-stat-select" id="ec-masse" onchange="ecUpdate()">
+          <option>Quasi nulle</option><option>Faible</option><option>Moyenne</option>
+          <option>Élevée</option><option>Très élevée</option><option>Maximale</option>
+        </select>
+      </div>
+      <div class="ec-stat">
+        <span class="ec-stat-label">Virage</span>
+        <select class="ec-stat-select" id="ec-virage" onchange="ecUpdate()">
+          <option>Nul</option><option>Faible</option><option>Moyen</option>
+          <option>Élevé</option><option>Total</option>
+        </select>
+      </div>
+      <div class="ec-row">
+        <div class="ec-stat">
+          <span class="ec-stat-label">coeff_ACC</span>
+          <input type="number" class="ec-coeff-input" id="ec-acc" value="0.05" min="0.01" max="0.25" step="0.01" oninput="ecUpdate()">
+        </div>
+        <div class="ec-stat">
+          <span class="ec-stat-label">coeff_DEF</span>
+          <input type="number" class="ec-coeff-input" id="ec-def" value="0.10" min="0.01" max="0.30" step="0.01" oninput="ecUpdate()">
+        </div>
+      </div>
+
+      <div class="ec-section-title">Compétences</div>
+      <div id="ec-comps"></div>
+      <button class="ec-btn secondary" style="font-size:11px;padding:7px 14px;width:100%" onclick="ecAddComp()">+ Ajouter une compétence</button>
+
+      <div class="ec-section-title">Données spéciales</div>
+      <div class="ec-field">
+        <span class="ec-label">Bonus stats Élite (si applicable)</span>
+        <input class="ec-input" id="ec-elite" placeholder="Ex : Stats +35%, fourrure gris acier" oninput="ecUpdate()">
+      </div>
+      <div class="ec-field">
+        <span class="ec-label">Passif unique (Mini-Boss uniquement)</span>
+        <textarea class="ec-textarea" id="ec-passif" placeholder="Description du passif unique hors-pipeline..." oninput="ecUpdate()"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ PANNEAU DROIT : Preview + Export ══ -->
+  <div>
+    <div class="ec-preview">
+      <div class="ec-preview-header">
+        <div class="ec-preview-icon" id="ec-prev-icon">🐾</div>
+        <div>
+          <div class="ec-preview-name" id="ec-prev-name">Nouvel Ennemi</div>
+          <div class="ec-preview-meta" id="ec-prev-meta">Savane · Faible · IA Passive</div>
+        </div>
+      </div>
+
+      <div class="ec-section-title">Statistiques</div>
+      <div class="ec-preview-stats" id="ec-prev-stats"></div>
+
+      <div class="ec-section-title">Affinités (auto-calculées)</div>
+      <div class="ec-affinites" id="ec-prev-affinites">
+        <span style="font-size:11px;color:var(--gris)">Ajoutez des compétences pour détecter les affinités.</span>
+      </div>
+
+      <div class="ec-section-title">Compétences</div>
+      <div id="ec-prev-comps"></div>
+
+      <div class="ec-section-title">ID généré</div>
+      <div id="ec-prev-id" style="font-size:12px;color:var(--or)">—</div>
+    </div>
+
+    <div class="ec-csv-box">
+      <div class="ec-section-title">Export CSV (format ennemis_v10)</div>
+      <div class="ec-csv-text" id="ec-csv-output">—</div>
+      <div class="ec-btn-row">
+        <button class="ec-btn" onclick="ecExportCSV()">💾 Copier la ligne CSV</button>
+        <button class="ec-btn secondary" onclick="ecReset()">↺ Réinitialiser</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+const g = id => document.getElementById(id);
+
+// Déclencheurs disponibles
+const TRIGGERS = [
+  "Collision Standard","Collision à Grande Vitesse","Enchaînement Rapide","Premier Contact de la Salle",
+  "Ennemi Déjà Touché","Ennemi Intact","Choc Frontal","Ennemi Affaibli","Heurt par un Ennemi",
+  "Heurt Consécutif","Rebond sur Obstacle","Premier Rebond du Tir","Rebond Consécutif",
+  "Trajectoire Libre","Arrêt Complet","Changement Brusque de Direction","Haute Vitesse Soutenue",
+  "Tir Relâché","Tir à Charge Maximale","Tir dans l'Axe","Minuterie Passive",
+  "Minuterie en Mouvement","Minuterie à l'Arrêt","Compteur de Collisions","Compteur de Rebonds",
+  "État Appliqué","Seuil de PV Bas","Seuil de PV Critique","Kill","Premier Kill de la Salle",
+];
+
+// Effets disponibles
+const EFFECTS = [
+  "CàC-D01 Percussion Brute","CàC-D02 Frappe Brisante","CàC-D03 Morsure de Feu",
+  "CàC-D04 Arc de Contact","CàC-D05 Injection Toxique","CàC-D06 Onde de Choc",
+  "CàC-D08 Charge Statique","CàC-D11 Loi du Marteau",
+  "CàC-T01 Hémorragie","CàC-T02 Venin","CàC-T04 Saignée Profonde","CàC-T05 Venin Concentré",
+  "SCE-01 Choc Paralysant","SCE-03 Répulsion","SCE-04 Aspiration Gravitaire",
+  "SCE-05 Enracinement","SCE-06 Confusion","SCE-08 Champ de Gravité",
+  "SMO-01 Boost de Vitesse","SMO-04 Téléportation Courte","SMO-07 Propulsion Électrique",
+  "SDE-01 Carapace","SDE-03 Bouclier de Force","SDE-04 Déviation Électrique",
+  "SBU-01 Furie du Combat","SBU-02 Peau de Pierre","SBU-03 Concentration","SBU-04 Frénésie",
+  "SDB-01 Fragiliser","SDB-02 Marque de Chasse","SDB-05 Corrosion Totale",
+  "SSO-03 Vol de Vie","Dist-D03 Jet d'Eau","Inv-01 Tourelle de Pierre",
+];
+
+// Map trigger → tags automatiques
+const TRIGGER_TAGS = {
+  "Collision Standard":["#collision","#mouvement"],
+  "Collision à Grande Vitesse":["#collision","#vitesse","#mouvement"],
+  "Enchaînement Rapide":["#collision","#sequence","#trajectoire"],
+  "Choc Frontal":["#choc_frontal","#collision","#impact_physique"],
+  "Heurt par un Ennemi":["#heurt","#risque"],
+  "Rebond sur Obstacle":["#rebond","#mouvement"],
+  "Trajectoire Libre":["#trajectoire","#mouvement","#vitesse"],
+  "Arrêt Complet":["#mouvement","#vitesse"],
+  "Minuterie Passive":["#temps","#sequence"],
+  "Compteur de Collisions":["#compteur","#sequence","#collision"],
+  "Compteur de Rebonds":["#compteur","#rebond"],
+  "Ennemi Affaibli":["#pv_ennemi","#sequence"],
+  "Seuil de PV Bas":["#pv_personnage","#risque"],
+  "Kill":["#kill","#sequence"],
+};
+
+const EFFECT_TAGS = {
+  "CàC-T01 Hémorragie":["#dot","#saignement"],
+  "CàC-T02 Venin":["#dot","#poison"],
+  "CàC-T04 Saignée Profonde":["#dot","#saignement"],
+  "CàC-T05 Venin Concentré":["#dot","#poison"],
+  "CàC-D06 Onde de Choc":["#degat_direct","#deplacement","#aoe"],
+  "CàC-D11 Loi du Marteau":["#degat_direct","#impact_physique"],
+  "CàC-D02 Frappe Brisante":["#degat_direct","#etat_elementaire","#impact_physique"],
+  "CàC-D04 Arc de Contact":["#degat_direct","#etat_elementaire","#electricite"],
+  "CàC-D03 Morsure de Feu":["#degat_direct","#etat_elementaire","#feu"],
+  "SCE-01 Choc Paralysant":["#controle","#stun"],
+  "SCE-03 Répulsion":["#controle","#deplacement","#pousser"],
+  "SCE-04 Aspiration Gravitaire":["#controle","#deplacement","#attirer"],
+  "SCE-05 Enracinement":["#controle","#stun","#deplacement"],
+  "SCE-06 Confusion":["#controle","#confusion","#debuff"],
+  "SCE-08 Champ de Gravité":["#controle","#deplacement","#attirer","#zone"],
+  "SDE-03 Bouclier de Force":["#buff","#bouclier","#defense"],
+  "SBU-01 Furie du Combat":["#buff","#vitesse"],
+  "SBU-04 Frénésie":["#buff","#vitesse","#mouvement"],
+  "SDB-01 Fragiliser":["#debuff","#armure","#controle"],
+  "SDB-02 Marque de Chasse":["#debuff","#marque","#sequence"],
+  "SDB-05 Corrosion Totale":["#debuff","#armure","#etat_elementaire"],
+  "SSO-03 Vol de Vie":["#soin","#vol_de_vie"],
+  "Dist-D03 Jet d'Eau":["#degat_direct","#etat_elementaire","#eau","#aoe"],
+  "SMO-07 Propulsion Électrique":["#mouvement","#etat_elementaire","#electricite"],
+};
+
+const BIOME_PREFIXES = { "Savane":"SAV","Zones Humides":"ZH","Forêt":"FOR","Ruines":"RUI" };
+const TIER_PREFIXES = { "Faible":"F","Normal":"N","Puissant":"P","Mini-Boss":"MB" };
+
+let comps = []; // [{trigger, effect, desc}]
+
+function renderComps(){
+  const container = g('ec-comps');
+  const tier = g('ec-tier').value;
+  const maxComps = {Faible:1,Normal:2,Puissant:3,"Mini-Boss":4}[tier]||2;
+
+  container.innerHTML = comps.map((c,i) => `
+    <div class="ec-comp">
+      <div class="ec-comp-num">Compétence ${i+1}</div>
+      <button class="ec-comp-del" onclick="ecDelComp(${i})">✕</button>
+      <div class="ec-field" style="margin-bottom:6px">
+        <span class="ec-label">Déclencheur</span>
+        <select class="ec-select" id="ec-trig-${i}" onchange="ecUpdate()">
+          ${TRIGGERS.map(t=>`<option ${c.trigger===t?'selected':''}>${t}</option>`).join('')}
+        </select>
+      </div>
+      <div class="ec-field" style="margin-bottom:6px">
+        <span class="ec-label">Effet</span>
+        <select class="ec-select" id="ec-eff-${i}" onchange="ecUpdate()">
+          ${EFFECTS.map(e=>`<option ${c.effect===e?'selected':''}>${e}</option>`).join('')}
+        </select>
+      </div>
+      <div class="ec-field" style="margin-bottom:0">
+        <span class="ec-label">Description</span>
+        <input class="ec-input" id="ec-desc-${i}" value="${c.desc||''}" placeholder="Ce que fait la compétence..." oninput="ecUpdate()">
+      </div>
+    </div>
+  `).join('');
+
+  if(comps.length < maxComps){
+    g('ec-comps').parentNode.querySelector('.ec-btn.secondary') // bouton add visible
+  }
+}
+
+window.ecAddComp = function(){
+  const tier = g('ec-tier').value;
+  const maxComps = {Faible:1,Normal:2,Puissant:3,"Mini-Boss":4}[tier]||2;
+  if(comps.length >= maxComps){
+    alert(`Un ennemi de tier ${tier} peut avoir au maximum ${maxComps} compétence${maxComps>1?'s':''}.`);
+    return;
+  }
+  comps.push({trigger:TRIGGERS[0], effect:EFFECTS[0], desc:''});
+  renderComps();
+  ecUpdate();
+};
+
+window.ecDelComp = function(i){
+  comps.splice(i,1);
+  renderComps();
+  ecUpdate();
+};
+
+function readComps(){
+  comps = comps.map((c,i)=>({
+    trigger: g(`ec-trig-${i}`)?.value||c.trigger,
+    effect:  g(`ec-eff-${i}`)?.value||c.effect,
+    desc:    g(`ec-desc-${i}`)?.value||c.desc,
+  }));
+}
+
+function computeAffinites(){
+  readComps();
+  const tagSet = new Set();
+  comps.forEach(c=>{
+    (TRIGGER_TAGS[c.trigger]||[]).forEach(t=>tagSet.add(t));
+    (EFFECT_TAGS[c.effect]||[]).forEach(t=>tagSet.add(t));
+  });
+  return [...tagSet];
+}
+
+function generateID(){
+  const biome = BIOME_PREFIXES[g('ec-biome').value]||'???';
+  const tier = TIER_PREFIXES[g('ec-tier').value]||'?';
+  return `${tier}-${biome}-NEW`;
+}
+
+const TIER_ICONS = {Faible:'🟢',Normal:'🔵',Puissant:'🔴',"Mini-Boss":'⭐'};
+
+window.ecUpdate = function(){
+  readComps();
+  const nom = g('ec-nom').value||'Nouvel Ennemi';
+  const biome = g('ec-biome').value;
+  const tier = g('ec-tier').value;
+  const ia = g('ec-ia').value;
+  const pv = g('ec-pv').value;
+  const vitesse = g('ec-vitesse').value;
+  const masse = g('ec-masse').value;
+  const virage = g('ec-virage').value;
+  const acc = g('ec-acc').value;
+  const def = g('ec-def').value;
+  const affinites = computeAffinites();
+
+  // Preview header
+  g('ec-prev-icon').textContent = TIER_ICONS[tier]||'🐾';
+  g('ec-prev-name').textContent = nom;
+  g('ec-prev-meta').textContent = `${biome} · ${tier} · IA ${ia}`;
+
+  // Stats
+  g('ec-prev-stats').innerHTML = [
+    ['PV',pv],['Vitesse',vitesse],['Masse',masse],['Virage',virage],
+    ['coeff_ACC',acc],['coeff_DEF',def],
+  ].map(([l,v])=>`<div class="ec-stat-row"><span class="ec-stat-label-r">${l}</span><span class="ec-stat-val-r">${v}</span></div>`).join('');
+
+  // Affinités
+  if(affinites.length){
+    g('ec-prev-affinites').innerHTML = affinites.map(t=>`<span class="ec-tag auto">${t}</span>`).join('');
+  } else {
+    g('ec-prev-affinites').innerHTML = '<span style="font-size:11px;color:var(--gris)">Ajoutez des compétences pour détecter les affinités.</span>';
+  }
+
+  // Compétences preview
+  g('ec-prev-comps').innerHTML = comps.length
+    ? comps.map((c,i)=>`
+      <div class="ec-comp-preview">
+        <div class="ec-comp-preview-title">Compétence ${i+1}</div>
+        <div class="ec-comp-preview-body">
+          <strong>${c.trigger}</strong> → <strong>${c.effect}</strong><br>
+          <span>${c.desc||'—'}</span>
+        </div>
+      </div>`).join('')
+    : '<span style="font-size:11px;color:var(--gris)">Aucune compétence ajoutée.</span>';
+
+  // ID
+  g('ec-prev-id').textContent = generateID();
+
+  // CSV
+  const csvLine = buildCSVLine(nom,biome,tier,ia,pv,vitesse,masse,virage,acc,def,affinites);
+  g('ec-csv-output').textContent = csvLine;
+};
+
+function escCSV(val){
+  if(val===null||val===undefined) return '""';
+  const s = String(val);
+  return '"' + s.replace(/"/g,'""') + '"';
+}
+
+function buildCSVLine(nom,biome,tier,ia,pv,vitesse,masse,virage,acc,def,affinites){
+  const id = generateID();
+  const elite = g('ec-elite').value||'—';
+  const passif = g('ec-passif').value||'—';
+  const aff = affinites.join(' ');
+
+  const c = comps;
+  const fields = [
+    id, nom, biome, tier, ia, pv, vitesse, masse, virage, acc, def, aff,
+    c[0]?.trigger||'', c[0]?.effect||'', c[0]?.desc||'',
+    c[1]?.trigger||'', c[1]?.effect||'', c[1]?.desc||'',
+    c[2]?.trigger||'', c[2]?.effect||'', c[2]?.desc||'',
+    elite, passif
+  ];
+  return fields.map(escCSV).join(',');
+}
+
+window.ecExportCSV = function(){
+  const header = '"ID","Nom","Biome","Tier","IA","PV","Vitesse","Masse","Virage","coeff_ACC","coeff_DEF","Affinites","Comp1_trigger","Comp1_effet","Comp1_desc","Comp2_trigger","Comp2_effet","Comp2_desc","Comp3_trigger","Comp3_effet","Comp3_desc","Elite_bonus_stats","Passif_unique_miniboss"';
+  const line = g('ec-csv-output').textContent;
+  const full = header + '\n' + line;
+  navigator.clipboard.writeText(full).catch(()=>{
+    // fallback
+    const ta = document.createElement('textarea');
+    ta.value = full; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+  });
+};
+
+window.ecReset = function(){
+  g('ec-nom').value='';
+  g('ec-biome').value='Savane';
+  g('ec-tier').value='Faible';
+  g('ec-ia').value='Passive';
+  g('ec-pv').value='Moyens';
+  g('ec-vitesse').value='Moyenne';
+  g('ec-masse').value='Moyenne';
+  g('ec-virage').value='Moyen';
+  g('ec-acc').value='0.05';
+  g('ec-def').value='0.10';
+  g('ec-elite').value='';
+  g('ec-passif').value='';
+  comps=[];
+  renderComps();
+  ecUpdate();
+};
+
+// Init
+renderComps();
+ecUpdate();
+
+})();
+</script>
+
+<script>
+if(typeof window.registerSearchEntries==='function'){
+  window.registerSearchEntries([
+    {title:'Créateur d\'Ennemis', page:'enemy-creator', section:'Outils', content:'créateur ennemi nom biome tier IA statistiques compétences affinités export CSV'},
+  ]);
+}
+</script>
+</div>

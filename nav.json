@@ -99,6 +99,21 @@
     "section": "Outils",
     "items": [
       {
+        "id": "mockups-ecrans",
+        "icon": "🖼️",
+        "label": "Mockup écrans"
+      },
+      {
+        "id": "build-simulator",
+        "icon": "👤",
+        "label": "Build Simulator"
+      },
+      {
+        "id": "enemy-creator",
+        "icon": "👹",
+        "label": "Enemy Creator"
+      },
+      {
         "id": "arena_forge_integration",
         "icon": "🏁",
         "label": "Arena Forger"
@@ -112,11 +127,6 @@
         "id": "pp-balancer",
         "icon": "👊",
         "label": "Power Point Balancer"
-      },
-      {
-        "id": "mockups-ecrans",
-        "icon": "🖼️",
-        "label": "Mockup écrans"
       }
     ]
   }

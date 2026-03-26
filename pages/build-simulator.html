@@ -1,0 +1,913 @@
+<div data-fullwidth="true">
+<div class="page-hero">
+  <h1>Simulateur de Build</h1>
+  <p class="lead">Deux modes : simulation d'une run complète (drops, marchand, synergies) ou construction libre d'un build de A à Z.</p>
+</div>
+
+<style>
+/* ── Layout ── */
+#bs-root { display: flex; flex-direction: column; gap: 0; font-family: var(--font-mono); }
+#bs-tabs { display: flex; border-bottom: 2px solid var(--noir2); }
+.bs-tab { padding: 10px 24px; background: none; border: none; color: var(--gris); font-family: var(--font-mono); font-size: 12px; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all .18s; }
+.bs-tab.active { color: var(--or); border-bottom-color: var(--or); }
+.bs-tab:hover:not(.active) { color: var(--blanc); }
+#bs-panel-run, #bs-panel-free { padding: 20px 0; }
+.bs-hidden { display: none !important; }
+
+/* ── Config row ── */
+.bs-config { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.bs-field { display: flex; flex-direction: column; gap: 4px; }
+.bs-label { font-size: 10px; color: var(--gris); text-transform: uppercase; letter-spacing: 1px; }
+.bs-select, .bs-input { background: var(--noir2); border: 1px solid #333; color: var(--blanc); padding: 7px 10px; border-radius: var(--radius); font-family: var(--font-mono); font-size: 12px; }
+.bs-select:focus, .bs-input:focus { outline: none; border-color: var(--or); }
+
+/* ── Faveurs/Malédictions ── */
+.bs-mods { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+.bs-mod-panel { background: var(--noir2); border-radius: var(--radius); padding: 14px; }
+.bs-mod-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 10px; }
+.bs-mod-title.fav { color: var(--vert); }
+.bs-mod-title.mal { color: var(--rouge); }
+.bs-mod-list { display: flex; flex-direction: column; gap: 4px; max-height: 200px; overflow-y: auto; }
+.bs-mod-item { display: flex; align-items: center; justify-content: space-between; padding: 5px 8px; border-radius: 4px; cursor: pointer; background: rgba(255,255,255,.03); transition: background .12s; }
+.bs-mod-item:hover { background: rgba(255,255,255,.08); }
+.bs-mod-item.selected.fav { background: rgba(74,124,89,.2); border-left: 3px solid var(--vert); }
+.bs-mod-item.selected.mal { background: rgba(139,26,26,.2); border-left: 3px solid var(--rouge); }
+.bs-mod-name { font-size: 11px; color: var(--blanc); }
+.bs-mod-cost { font-size: 10px; color: var(--gris); }
+.bs-mod-cost.fav { color: var(--vert); }
+.bs-mod-cost.mal { color: var(--rouge); }
+.bs-total-cost { font-size: 11px; margin-top: 8px; color: var(--gris); }
+
+/* ── Boutons ── */
+.bs-btn { padding: 9px 20px; background: var(--or); color: var(--noir); border: none; border-radius: var(--radius); font-family: var(--font-mono); font-size: 12px; font-weight: 700; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; transition: opacity .18s; }
+.bs-btn:hover { opacity: .85; }
+.bs-btn.secondary { background: var(--noir2); color: var(--or); border: 1px solid var(--or); }
+.bs-btn-row { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+
+/* ── Run timeline ── */
+#bs-run-log { display: flex; flex-direction: column; gap: 10px; }
+.bs-room { background: var(--noir2); border-radius: var(--radius); overflow: hidden; }
+.bs-room-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; }
+.bs-room-num { font-size: 10px; color: var(--gris); min-width: 60px; }
+.bs-room-type { font-size: 11px; font-weight: 700; flex: 1; }
+.bs-room-type.normal { color: var(--blanc); }
+.bs-room-type.elite { color: var(--ocre); }
+.bs-room-type.miniboss { color: var(--rouge); }
+.bs-room-type.repos { color: var(--vert); }
+.bs-room-type.marchand { color: var(--or); }
+.bs-room-type.boss { color: #ff4444; }
+.bs-room-slots { font-size: 10px; color: var(--gris); }
+.bs-room-body { padding: 10px 14px 14px; border-top: 1px solid #1e1e1e; }
+.bs-room.collapsed .bs-room-body { display: none; }
+.bs-choices { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.bs-choice { padding: 6px 10px; border-radius: 4px; border: 1px solid #333; font-size: 10px; cursor: pointer; transition: all .15s; }
+.bs-choice:hover { border-color: var(--or); color: var(--or); }
+.bs-choice.picked { border-color: var(--or); background: rgba(242,183,73,.12); color: var(--or); }
+.bs-choice.base { border-color: #444; }
+.bs-choice.advanced { border-color: #4a3a8a; color: #9a8aff; }
+.bs-choice.advanced.picked { border-color: #9a8aff; background: rgba(154,138,255,.12); }
+.bs-choice.wildcard { border-color: #3a6a4a; color: var(--vert); }
+.bs-choice.wildcard.picked { border-color: var(--vert); background: rgba(74,124,89,.12); }
+.bs-choice.epic { border-color: #8a4a2a; color: var(--ocre); }
+.bs-choice.epic.picked { border-color: var(--ocre); background: rgba(166,85,38,.12); }
+.bs-marchand-items { display: flex; flex-wrap: wrap; gap: 6px; }
+.bs-item { padding: 5px 9px; border-radius: 4px; border: 1px solid #333; font-size: 10px; cursor: pointer; transition: all .15s; }
+.bs-item:hover { border-color: var(--or); }
+.bs-item.bought { border-color: var(--or); background: rgba(242,183,73,.1); color: var(--or); }
+.bs-item.slot { border-color: var(--bleu); color: var(--bleu); }
+.bs-item.slot.bought { background: rgba(46,91,138,.2); }
+
+/* ── Build actuel ── */
+#bs-current-build { background: var(--noir2); border-radius: var(--radius); padding: 14px; margin-bottom: 16px; }
+.bs-build-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--gris); margin-bottom: 10px; }
+.bs-slots-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.bs-slot { padding: 6px 10px; border-radius: 4px; font-size: 10px; border: 1px solid #333; }
+.bs-slot.identity { border-color: var(--or); background: rgba(242,183,73,.08); color: var(--or); }
+.bs-slot.filled { border-color: #444; color: var(--blanc); }
+.bs-slot.filled.advanced-slot { border-color: #4a3a8a; color: #9a8aff; }
+.bs-slot.empty { border-color: #2a2a2a; color: var(--gris); border-style: dashed; }
+
+/* ── Synergies ── */
+#bs-synergies { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.bs-syn { padding: 5px 10px; border-radius: 4px; font-size: 10px; border-left: 3px solid; }
+.bs-syn.tier1 { border-color: var(--vert); background: rgba(74,124,89,.1); color: var(--vert); }
+.bs-syn.tier2 { border-color: var(--ocre); background: rgba(166,85,38,.1); color: var(--ocre); }
+.bs-syn.tier3 { border-color: var(--rouge); background: rgba(139,26,26,.15); color: #ff7777; }
+
+/* ── Free builder ── */
+#bs-free-grid { display: grid; grid-template-columns: 280px 1fr; gap: 16px; }
+#bs-free-left { display: flex; flex-direction: column; gap: 12px; }
+#bs-free-right { display: flex; flex-direction: column; gap: 12px; }
+.bs-section-title { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--gris); margin-bottom: 8px; border-bottom: 1px solid #2a2a2a; padding-bottom: 4px; }
+.bs-free-slots { display: flex; flex-direction: column; gap: 6px; }
+.bs-free-slot { display: flex; gap: 6px; align-items: center; background: var(--noir2); padding: 8px 10px; border-radius: var(--radius); }
+.bs-free-slot-n { font-size: 10px; color: var(--gris); min-width: 24px; }
+.bs-free-slot-content { flex: 1; font-size: 10px; color: var(--blanc); }
+.bs-free-slot-del { background: none; border: none; color: var(--rouge); cursor: pointer; font-size: 12px; padding: 0 4px; opacity: .6; }
+.bs-free-slot-del:hover { opacity: 1; }
+.bs-add-comp { display: flex; gap: 6px; }
+.bs-add-comp .bs-select { flex: 1; }
+.bs-stat-row { display: flex; justify-content: space-between; font-size: 11px; padding: 4px 0; border-bottom: 1px solid #1e1e1e; }
+.bs-stat-label { color: var(--gris); }
+.bs-stat-val { color: var(--blanc); }
+.bs-relique-list { display: flex; flex-wrap: wrap; gap: 5px; }
+.bs-relic-badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; border: 1px solid #333; transition: all .15s; }
+.bs-relic-badge.faible.selected { border-color: var(--vert); background: rgba(74,124,89,.15); color: var(--vert); }
+.bs-relic-badge.forte.selected { border-color: var(--rouge); background: rgba(139,26,26,.15); color: #ff7777; }
+.bs-relic-badge:hover { border-color: var(--or); }
+.bs-export-box { background: var(--noir2); border-radius: var(--radius); padding: 14px; }
+.bs-export-text { font-size: 10px; color: var(--gris); line-height: 1.6; word-break: break-all; white-space: pre-wrap; max-height: 120px; overflow-y: auto; }
+@media (max-width: 800px) {
+  #bs-free-grid { grid-template-columns: 1fr; }
+  .bs-mods { grid-template-columns: 1fr; }
+}
+</style>
+
+<div id="bs-root">
+  <!-- TABS -->
+  <div id="bs-tabs">
+    <button class="bs-tab active" onclick="bsShowTab('run')">🎲 Simulation de Run</button>
+    <button class="bs-tab" onclick="bsShowTab('free')">🔧 Création Libre</button>
+  </div>
+
+  <!-- ═══ TAB RUN ═══ -->
+  <div id="bs-panel-run">
+    <!-- Config -->
+    <div class="bs-config">
+      <div class="bs-field">
+        <span class="bs-label">Classe</span>
+        <select class="bs-select" id="bs-run-class">
+          <option value="Souris">🐭 Souris (Débutant)</option>
+          <option value="Lapin">🐰 Lapin</option>
+          <option value="Grenouille">🐸 Grenouille</option>
+          <option value="Mouton">🐑 Mouton</option>
+          <option value="Poule">🐔 Poule</option>
+          <option value="Pigeon">🕊️ Pigeon</option>
+          <option value="Écureuil">🐿️ Écureuil</option>
+          <option value="Canard">🦆 Canard</option>
+          <option value="Poisson Rouge">🐟 Poisson Rouge</option>
+          <option value="Loutre">🦦 Loutre</option>
+          <option value="Singe">🐒 Singe</option>
+          <option value="Tortue">🐢 Tortue</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Faveurs & Malédictions -->
+    <div class="bs-mods">
+      <div class="bs-mod-panel">
+        <div class="bs-mod-title fav">✨ Faveurs (max 2)</div>
+        <div class="bs-mod-list" id="bs-faveurs-list"></div>
+        <div class="bs-total-cost" id="bs-fav-cost">Coût : 0 💀</div>
+      </div>
+      <div class="bs-mod-panel">
+        <div class="bs-mod-title mal">💀 Malédictions (illimitées)</div>
+        <div class="bs-mod-list" id="bs-mal-list"></div>
+        <div class="bs-total-cost" id="bs-mal-cost">Coût : 0 💀</div>
+      </div>
+    </div>
+
+    <div class="bs-btn-row">
+      <button class="bs-btn" onclick="bsStartRun()">▶ Simuler la Run</button>
+      <button class="bs-btn secondary" onclick="bsResetRun()">↺ Réinitialiser</button>
+    </div>
+
+    <!-- Build actuel -->
+    <div id="bs-current-build" class="bs-hidden">
+      <div class="bs-build-title">Build actuel</div>
+      <div id="bs-synergies"></div>
+      <div class="bs-slots-grid" id="bs-slots-grid"></div>
+    </div>
+
+    <!-- Run log -->
+    <div id="bs-run-log"></div>
+  </div>
+
+  <!-- ═══ TAB FREE ═══ -->
+  <div id="bs-panel-free bs-hidden" id="bs-panel-free">
+    <div id="bs-free-grid">
+      <!-- Colonne gauche : config -->
+      <div id="bs-free-left">
+        <div>
+          <div class="bs-section-title">Classe & Slots</div>
+          <div class="bs-config" style="grid-template-columns:1fr">
+            <div class="bs-field">
+              <span class="bs-label">Classe</span>
+              <select class="bs-select" id="bs-free-class" onchange="bsFreeUpdateClass()">
+                <option value="Souris">🐭 Souris</option>
+                <option value="Lapin">🐰 Lapin</option>
+                <option value="Grenouille">🐸 Grenouille</option>
+                <option value="Mouton">🐑 Mouton</option>
+                <option value="Poule">🐔 Poule</option>
+                <option value="Pigeon">🕊️ Pigeon</option>
+                <option value="Écureuil">🐿️ Écureuil</option>
+                <option value="Canard">🦆 Canard</option>
+                <option value="Poisson Rouge">🐟 Poisson Rouge</option>
+                <option value="Loutre">🦦 Loutre</option>
+                <option value="Singe">🐒 Singe</option>
+                <option value="Tortue">🐢 Tortue</option>
+              </select>
+            </div>
+            <div class="bs-field">
+              <span class="bs-label">Slots standards</span>
+              <input type="number" class="bs-input" id="bs-free-slots-n" value="4" min="3" max="11" onchange="bsFreeRender()">
+            </div>
+          </div>
+        </div>
+
+        <!-- Faveurs -->
+        <div>
+          <div class="bs-section-title">Faveurs (max 2)</div>
+          <div class="bs-mod-list" id="bs-free-fav-list" style="max-height:140px"></div>
+          <div class="bs-total-cost" id="bs-free-fav-cost">0 💀</div>
+        </div>
+
+        <!-- Malédictions -->
+        <div>
+          <div class="bs-section-title">Malédictions</div>
+          <div class="bs-mod-list" id="bs-free-mal-list" style="max-height:140px"></div>
+          <div class="bs-total-cost" id="bs-free-mal-cost">0 💀</div>
+        </div>
+
+        <!-- Reliques -->
+        <div>
+          <div class="bs-section-title">Reliques portées</div>
+          <div class="bs-relique-list" id="bs-free-relics"></div>
+        </div>
+
+        <!-- Stats récap -->
+        <div>
+          <div class="bs-section-title">Récap</div>
+          <div id="bs-free-stats">
+            <div class="bs-stat-row"><span class="bs-stat-label">Slots totaux</span><span class="bs-stat-val" id="bs-free-total-slots">6</span></div>
+            <div class="bs-stat-row"><span class="bs-stat-label">Compétences actives</span><span class="bs-stat-val" id="bs-free-active">0</span></div>
+            <div class="bs-stat-row"><span class="bs-stat-label">Tags dominants</span><span class="bs-stat-val" id="bs-free-tags">—</span></div>
+            <div class="bs-stat-row"><span class="bs-stat-label">Coût âmes total</span><span class="bs-stat-val" id="bs-free-souls">0 💀</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Colonne droite : slots + synergies -->
+      <div id="bs-free-right">
+        <div>
+          <div class="bs-section-title">Slots de compétences</div>
+          <div class="bs-free-slots" id="bs-free-slots"></div>
+          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap">
+            <div class="bs-field" style="flex:1; min-width:160px">
+              <span class="bs-label">Ajouter compétence</span>
+              <div class="bs-add-comp">
+                <input class="bs-input" id="bs-free-add-input" placeholder="Ex: Collision + Hémorragie" style="flex:1">
+                <button class="bs-btn" style="padding:7px 14px" onclick="bsFreeAddComp()">+</button>
+              </div>
+            </div>
+            <div class="bs-field" style="flex:1; min-width:120px">
+              <span class="bs-label">Type</span>
+              <select class="bs-select" id="bs-free-add-type">
+                <option value="base">Compétence de Base</option>
+                <option value="advanced">Compétence Avancée</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <div class="bs-section-title">Synergies détectées</div>
+          <div id="bs-free-synergies"><span style="font-size:11px;color:var(--gris)">Ajoutez des compétences pour détecter les synergies.</span></div>
+        </div>
+
+        <div class="bs-export-box">
+          <div class="bs-section-title">Export</div>
+          <div class="bs-export-text" id="bs-free-export">—</div>
+          <button class="bs-btn secondary" style="margin-top:10px;font-size:11px;padding:7px 14px" onclick="bsCopyExport()">📋 Copier</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+'use strict';
+
+/* ══════════ DONNÉES ══════════ */
+
+const CLASSES = {
+  "Souris": { icon:"🐭", tags:["#mouvement","#vitesse","#risque","#buff","#deplacement","#pv_personnage","#dash"], b1:"Ruée Courageuse", b2:"Détermination" },
+  "Lapin": { icon:"🐰", tags:["#trajectoire","#piege","#mouvement","#teleportation","#sequence"], b1:"Poser un Chapeau", b2:"Carottes Piégées" },
+  "Grenouille": { icon:"🐸", tags:["#dot","#poison","#zone","#rebond","#controle","#slow"], b1:"Saut Empoisonné", b2:"Frappe de Langue" },
+  "Mouton": { icon:"🐑", tags:["#impact_physique","#deplacement","#controle","#stun","#buff","#collision"], b1:"Charge Électrique", b2:"Bouclier Punitif" },
+  "Poule": { icon:"🐔", tags:["#risque","#invocation","#controle","#deplacement","#pv_personnage","#debuff"], b1:"Œuf Explosif", b2:"Cri Strident" },
+  "Pigeon": { icon:"🕊️", tags:["#critique","#trajectoire","#feu","#dot","#aleatoire"], b1:"Plume Incendiaire", b2:"Bombardement" },
+  "Écureuil": { icon:"🐿️", tags:["#piege","#rebond","#invocation","#zone","#sequence"], b1:"Noisette Piégée", b2:"Tourelle" },
+  "Canard": { icon:"🦆", tags:["#meta","#ressource","#debuff","#buff","#kill"], b1:"Fortune Personnelle", b2:"Corruption" },
+  "Poisson Rouge": { icon:"🐟", tags:["#aleatoire","#zone","#eau","#trigger","#sequence","#debuff"], b1:"Phase Bleue/Rouge", b2:"Cycle Chaotique" },
+  "Loutre": { icon:"🦦", tags:["#rebond","#dot","#critique","#dash","#sequence"], b1:"Estocade", b2:"Marquage" },
+  "Singe": { icon:"🐒", tags:["#aleatoire","#trigger","#sequence","#trajectoire","#debuff","#meta","#ressource"], b1:"Pickpocket", b2:"Patrimoine Volé" },
+  "Tortue": { icon:"🐢", tags:["#controle","#stun","#deplacement","#buff","#defense","#risque","#impact_physique","#armure"], b1:"Coup de Chi", b2:"Immobilité Absolue" },
+};
+
+const FAVEURS = [
+  {id:"V01",nom:"Provision de Sang",cout:5,desc:"Commence avec 3 Gouttes de Sang"},
+  {id:"V02",nom:"Dent de Rechange",cout:5,desc:"+8 Petites Dents de départ"},
+  {id:"V03",nom:"Blessure Ancienne",cout:10,desc:"Premier effet au niveau 2"},
+  {id:"V04",nom:"Instinct Aiguisé",cout:7,desc:"Premier marchand garanti en 3 salles"},
+  {id:"V05",nom:"Souvenir de Guerre",cout:8,desc:"Relique faible aléatoire au départ"},
+  {id:"V06",nom:"Trajectoire Connue",cout:6,desc:"Déclencheur départ sans cooldown 2 premières salles"},
+  {id:"V07",nom:"Cicatrice Utile",cout:6,desc:"+10% PV de départ"},
+  {id:"V08",nom:"Mémoire de Run",cout:8,desc:"+1 compétence orpheline au choix"},
+  {id:"V09",nom:"Vieux Réflexes",cout:5,desc:"Salle 1 avec un seul ennemi"},
+  {id:"V10",nom:"Trésor Enfoui",cout:7,desc:"Première récompense = 4 choix"},
+  {id:"V11",nom:"Repos Mérité",cout:6,desc:"Salle de repos garantie en 4 premières"},
+  {id:"V12",nom:"Karma de Chasse",cout:5,desc:"5 premiers kills = Goutte de Sang garantie"},
+  {id:"V13",nom:"Peau Durcie",cout:8,desc:"3 premiers dégâts reçus −50%"},
+  {id:"V14",nom:"Slot Vide",cout:10,desc:"+1 slot standard au départ"},
+  {id:"V15",nom:"Marchand Familier",cout:7,desc:"+1 relique faible chez le marchand"},
+  {id:"V16",nom:"Élan de Début",cout:6,desc:"+20% vitesse 30s — 3 premières salles"},
+  {id:"V17",nom:"Don du Chasseur",cout:15,desc:"Relique forte, malus actif dès salle 4"},
+  {id:"V18",nom:"Appel à l'Aide",cout:9,desc:"Première salle élite → salle normale"},
+  {id:"V19",nom:"Instinct de Frappe",cout:10,desc:"Premier effet x2 — 5 premières salles"},
+  {id:"V20",nom:"Vieille Rancune",cout:8,desc:"Premier élite à 50% PV"},
+  {id:"V25",nom:"Œil Augmenté",cout:8,desc:"Jauge BT à 100%, −15% vidage"},
+  {id:"V26",nom:"Premier Tir Gratuit",cout:6,desc:"1er tir sans consommer BT"},
+  {id:"V27",nom:"Réflexe Hérité",cout:7,desc:"1er kill/salle = +20% jauge BT"},
+  {id:"V28",nom:"Vieille Méthode",cout:8,desc:"+15% dégâts BT — 3 premières salles"},
+];
+
+const MALEDICTIONS = [
+  {id:"M01",nom:"Rage Primaire",cout:15,desc:"Ennemis normaux +20% vitesse",bonus:"+25% âmes élites"},
+  {id:"M02",nom:"Cuir Épais",cout:15,desc:"Tous ennemis +25% PV",bonus:"+20% Petites Dents/salle"},
+  {id:"M03",nom:"Meute Affamée",cout:20,desc:"+1 ennemi par salle",bonus:"+30% âmes élites"},
+  {id:"M04",nom:"Élites Partout",cout:20,desc:"2 salles normales → élites",bonus:"+2 récompenses élite"},
+  {id:"M05",nom:"Boss Enragé",cout:25,desc:"Boss commence en phase 2",bonus:"Relique forte garantie boss"},
+  {id:"M06",nom:"Amnésie",cout:15,desc:"Récompense réduite à 2 options",bonus:"+40% âmes élites"},
+  {id:"M07",nom:"Bourse Vide",cout:15,desc:"Marchand +40% prix",bonus:"+2 articles marchand"},
+  {id:"M08",nom:"Kit Minimal",cout:20,desc:"−1 slot standard au départ",bonus:"+1 récompense élite Acte 1"},
+  {id:"M09",nom:"Fragile",cout:15,desc:"PV max −20%",bonus:"Gouttes +2 PV bonus"},
+  {id:"M10",nom:"Pas de Filet",cout:20,desc:"Survie passive désactivée",bonus:"+35% âmes run"},
+  {id:"M11",nom:"Horloger Fou",cout:20,desc:"Cooldowns +1s",bonus:"Effets niv.1 = niv.2 (5 salles)"},
+  {id:"M12",nom:"Marché Fermé",cout:15,desc:"Pas de marchand",bonus:"+50 Dents boss"},
+  {id:"M13",nom:"Monde Hostile",cout:20,desc:"Repos sans soin",bonus:"+1 salle de repos"},
+  {id:"M14",nom:"Ennemis Coriaces",cout:15,desc:"Ennemis normaux −15% dégâts reçus",bonus:"+25% Dents/salle"},
+  {id:"M18",nom:"Proie Marquée",cout:25,desc:"Timer 30s par salle ou renfort",bonus:"Kills rapides = Gouttes bonus"},
+  {id:"M19",nom:"Momentum Brisé",cout:20,desc:"Pas deux lancers dans la même direction",bonus:"Directions alternées +10% (max ×3)"},
+  {id:"M20",nom:"Un Seul Souffle",cout:30,desc:"Aucun soin possible",bonus:"+30% PV max, ×2 âmes boss si victoire"},
+  {id:"M25",nom:"Temps Limité",cout:20,desc:"Jauge BT vide 2× plus vite",bonus:"+20% dégâts hors BT"},
+  {id:"M26",nom:"Jauge Maudite",cout:25,desc:"BT rechargeable uniquement par kills",bonus:"+1 Dent par tir jauge à 0"},
+];
+
+const ARCHETYPES = [
+  {id:"ARCH-01",nom:"Venin Vivant",emoji:"☠️",tags:["#dot","#poison","#zone","#multi_cible"]},
+  {id:"ARCH-02",nom:"Tempête de Feu",emoji:"🔥",tags:["#dot","#feu","#zone","#structures"]},
+  {id:"ARCH-03",nom:"Bulldozer",emoji:"⚡",tags:["#deplacement","#controle","#stun","#impact_physique"]},
+  {id:"ARCH-04",nom:"Ingénieur du Terrain",emoji:"🌿",tags:["#structures","#zone","#piege","#temps"]},
+  {id:"ARCH-05",nom:"Armée de l'Ombre",emoji:"🐣",tags:["#invocation","#piege","#structures","#stun"]},
+  {id:"ARCH-06",nom:"Capital Croissant",emoji:"💰",tags:["#meta","#collecte","#ressource"]},
+  {id:"ARCH-07",nom:"Chaos Maîtrisé",emoji:"🌊",tags:["#aleatoire","#sequence","#trigger"]},
+  {id:"ARCH-08",nom:"Danse de Lames",emoji:"🗡️",tags:["#rebond","#vitesse","#dot","#saignement"]},
+  {id:"ARCH-09",nom:"Vitesse Absolue",emoji:"🏃",tags:["#vitesse","#mouvement","#trajectoire","#buff"]},
+  {id:"ARCH-10",nom:"Risque Récompensé",emoji:"☠️➕",tags:["#risque","#pv_personnage","#buff","#defense"]},
+  {id:"ARCH-11",nom:"Briseur de Blindage",emoji:"⚔️",tags:["#controle","#armure","#impact_physique","#choc_frontal"]},
+  {id:"ARCH-12",nom:"Précision Létale",emoji:"🎯",tags:["#mouvement","#trajectoire","#tir","#temps"]},
+  {id:"ARCH-13",nom:"Alchimiste Élémentaire",emoji:"🧪",tags:["#etat_elementaire","#synergie","#dot"]},
+  {id:"ARCH-14",nom:"Forteresse Réactive",emoji:"🛡️",tags:["#bouclier","#defense","#renvoi","#cleanse"]},
+  {id:"ARCH-15",nom:"Saignement Perpétuel",emoji:"💚",tags:["#vol_de_vie","#soin","#hot","#saignement","#dot"]},
+];
+
+const RELIQUES = [
+  {id:"RF01",nom:"Galet Poli",type:"faible"},{id:"RF02",nom:"Dent de Lait",type:"faible"},
+  {id:"RF03",nom:"Horloge Cassée",type:"faible"},{id:"RF04",nom:"Fiole de Colère",type:"faible"},
+  {id:"RF05",nom:"Miroir Fendu",type:"faible"},{id:"RF09",nom:"Écaille de Dragon",type:"faible"},
+  {id:"RF11",nom:"Amulette de l'Écho",type:"faible"},{id:"RF12",nom:"Cristal de Résonance",type:"faible"},
+  {id:"RF19",nom:"Larme de Golem",type:"faible"},{id:"RF24",nom:"Chaîne Brisée",type:"faible"},
+  {id:"RF33",nom:"Sel sur la Plaie",type:"faible"},{id:"RF35",nom:"Peau de Verre",type:"faible"},
+  {id:"RS01",nom:"Œil du Cyclone",type:"forte"},{id:"RS02",nom:"Pacte du Miroir",type:"forte"},
+  {id:"RS03",nom:"Pendule de l'Oubli",type:"forte"},{id:"RS06",nom:"Éclat du Premier Monde",type:"forte"},
+  {id:"RS07",nom:"Plaque Réactive",type:"forte"},{id:"RS08",nom:"Masse Écrasante",type:"forte"},
+  {id:"RS14",nom:"Cœur Blindé",type:"forte"},{id:"RS15",nom:"Confluence Élémentaire",type:"forte"},
+];
+
+const COMP_POOL_BASE = [
+  {nom:"Collision + Hémorragie",tags:["#collision","#dot","#saignement"],type:"base"},
+  {nom:"Collision + Frappe Brute",tags:["#collision","#degat_direct"],type:"base"},
+  {nom:"Rebond Mur + Sillage Vitesse",tags:["#rebond","#vitesse","#mouvement"],type:"base"},
+  {nom:"Rebond + Onde de Choc",tags:["#rebond","#deplacement"],type:"base"},
+  {nom:"Grande Vitesse + Répulsion",tags:["#vitesse","#deplacement","#collision"],type:"base"},
+  {nom:"Kill + Collecte Magnétique",tags:["#kill","#ressource","#collecte"],type:"base"},
+  {nom:"Minuterie + Régénération",tags:["#temps","#soin","#buff"],type:"base"},
+  {nom:"Minuterie + Boost Vitesse",tags:["#temps","#vitesse","#mouvement"],type:"base"},
+  {nom:"Trajectoire Libre + Accélération",tags:["#trajectoire","#vitesse","#mouvement"],type:"base"},
+  {nom:"Arrêt Complet + Aspiration",tags:["#mouvement","#structures","#zone"],type:"base"},
+  {nom:"Heurt + Bouclier",tags:["#heurt","#bouclier","#defense"],type:"base"},
+  {nom:"Heurt + Vol de Vie",tags:["#heurt","#vol_de_vie","#soin"],type:"base"},
+  {nom:"Compteur Rebonds + Saignée",tags:["#compteur","#rebond","#dot","#saignement"],type:"base"},
+  {nom:"Enchaînement + Poison",tags:["#collision","#sequence","#dot","#poison"],type:"base"},
+  {nom:"Seuil PV Bas + Coquille",tags:["#pv_personnage","#risque","#bouclier","#defense"],type:"base"},
+  {nom:"Premier Kill + Fragiliser",tags:["#kill","#sequence","#debuff"],type:"base"},
+];
+
+const COMP_POOL_ADVANCED = [
+  {nom:"Ennemi Sous DoT + Venin Concentré",tags:["#dot","#poison"],type:"advanced"},
+  {nom:"Bouclier Actif + Onde Réactive",tags:["#bouclier","#defense","#renvoi"],type:"advanced"},
+  {nom:"État Élémentaire + Épiphanie",tags:["#etat_elementaire","#synergie"],type:"advanced"},
+  {nom:"Invocation Posée + Essaim",tags:["#invocation","#structures"],type:"advanced"},
+  {nom:"Ennemi Corrodé + Coup Amplifié",tags:["#controle","#armure","#impact_physique"],type:"advanced"},
+  {nom:"Accumulation DoT + Burst",tags:["#dot","#saignement","#sequence"],type:"advanced"},
+  {nom:"Kill Indirect + Vampirisme",tags:["#kill","#vol_de_vie","#dot"],type:"advanced"},
+  {nom:"Buff Appliqué + Concentration",tags:["#buff","#trajectoire"],type:"advanced"},
+  {nom:"Ennemi Sous Contrôle + Enracinement",tags:["#controle","#stun","#deplacement"],type:"advanced"},
+  {nom:"Synergie Élémentaire + Chaîne",tags:["#etat_elementaire","#electricite","#eau"],type:"advanced"},
+  {nom:"Survie Coup Fatal + Déviation",tags:["#pv_personnage","#risque","#renvoi"],type:"advanced"},
+  {nom:"Terrain Vivant + Saturation",tags:["#invocation","#structures","#zone"],type:"advanced"},
+];
+
+/* ══════════ STATE ══════════ */
+
+const runState = {
+  classe: "Souris",
+  faveurs: [],
+  maledictions: [],
+  slots: [], // {nom, tags, type}
+  slotCount: 0,
+  roomIndex: 0,
+  rooms: [],
+  started: false,
+};
+
+const freeState = {
+  classe: "Souris",
+  faveurs: [],
+  maledictions: [],
+  slots: [], // {nom, tags, type}
+  relics: [],
+  slotsStandards: 4,
+};
+
+/* ══════════ TABS ══════════ */
+function g(id){ return document.getElementById(id); }
+
+window.bsShowTab = function(tab){
+  g('bs-panel-run').classList.toggle('bs-hidden', tab !== 'run');
+  g('bs-panel-free').classList.toggle('bs-hidden', tab !== 'free');
+  document.querySelectorAll('.bs-tab').forEach((t,i)=>{
+    t.classList.toggle('active', (i===0&&tab==='run')||(i===1&&tab==='free'));
+  });
+};
+g('bs-panel-free').classList.add('bs-hidden');
+
+/* ══════════ INIT LISTES ══════════ */
+
+function renderModList(containerId, items, state, type, onToggle) {
+  const el = g(containerId);
+  el.innerHTML = items.map(item => {
+    const sel = state.includes(item.id);
+    return `<div class="bs-mod-item ${sel?'selected':''} ${type}" onclick="${onToggle}('${item.id}')">
+      <span class="bs-mod-name">${item.nom}</span>
+      <span class="bs-mod-cost ${type}">${type==='fav'?item.cout+'💀 fav':'M: '+item.cout+'💀'}</span>
+    </div>`;
+  }).join('');
+}
+
+function initFavList(containerId, state, type, cb) {
+  renderModList(containerId, FAVEURS, state, 'fav', cb);
+}
+function initMalList(containerId, state, type, cb) {
+  renderModList(containerId, MALEDICTIONS, state, 'mal', cb);
+}
+
+// RUN — Faveurs
+window.bsToggleFav = function(id){
+  const i = runState.faveurs.indexOf(id);
+  if(i>=0) runState.faveurs.splice(i,1);
+  else if(runState.faveurs.length<2) runState.faveurs.push(id);
+  initFavList('bs-faveurs-list', runState.faveurs, 'fav', 'bsToggleFav');
+  const cost = runState.faveurs.reduce((s,f)=>{const v=FAVEURS.find(x=>x.id===f);return s+(v?v.cout:0);},0);
+  g('bs-fav-cost').textContent = `Coût : ${cost} 💀`;
+};
+window.bsToggleMal = function(id){
+  const i = runState.maledictions.indexOf(id);
+  if(i>=0) runState.maledictions.splice(i,1);
+  else runState.maledictions.push(id);
+  initMalList('bs-mal-list', runState.maledictions, 'mal', 'bsToggleMal');
+  const cost = runState.maledictions.reduce((s,m)=>{const v=MALEDICTIONS.find(x=>x.id===m);return s+(v?v.cout:0);},0);
+  g('bs-mal-cost').textContent = `Coût : ${cost} 💀`;
+};
+
+// FREE — Faveurs/Malédictions
+window.bsFreeFav = function(id){
+  const i = freeState.faveurs.indexOf(id);
+  if(i>=0) freeState.faveurs.splice(i,1);
+  else if(freeState.faveurs.length<2) freeState.faveurs.push(id);
+  renderModList('bs-free-fav-list', FAVEURS, freeState.faveurs, 'fav', 'bsFreeFav');
+  g('bs-free-fav-cost').textContent = freeState.faveurs.reduce((s,f)=>{const v=FAVEURS.find(x=>x.id===f);return s+(v?v.cout:0);},0)+' 💀';
+  bsFreeRender();
+};
+window.bsFreeMal = function(id){
+  const i = freeState.maledictions.indexOf(id);
+  if(i>=0) freeState.maledictions.splice(i,1);
+  else freeState.maledictions.push(id);
+  renderModList('bs-free-mal-list', MALEDICTIONS, freeState.maledictions, 'mal', 'bsFreeMal');
+  g('bs-free-mal-cost').textContent = freeState.maledictions.reduce((s,m)=>{const v=MALEDICTIONS.find(x=>x.id===m);return s+(v?v.cout:0);},0)+' 💀';
+  bsFreeRender();
+};
+
+// FREE — Reliques
+function renderFreeRelics(){
+  g('bs-free-relics').innerHTML = RELIQUES.map(r=>{
+    const sel = freeState.relics.includes(r.id);
+    return `<span class="bs-relic-badge ${r.type} ${sel?'selected':''}" onclick="bsFreeRelic('${r.id}')">${r.nom}</span>`;
+  }).join('');
+}
+window.bsFreeRelic = function(id){
+  const i = freeState.relics.indexOf(id);
+  if(i>=0) freeState.relics.splice(i,1); else freeState.relics.push(id);
+  renderFreeRelics();
+  bsFreeRender();
+};
+
+/* ══════════ SYNERGIES ══════════ */
+function detectSynergies(allTags){
+  return ARCHETYPES.map(arch=>{
+    const matches = arch.tags.filter(t=>allTags.includes(t)).length;
+    if(matches>=5) return {arch, tier:3};
+    if(matches>=3) return {arch, tier:2};
+    if(matches>=2) return {arch, tier:1};
+    return null;
+  }).filter(Boolean).sort((a,b)=>b.tier-a.tier);
+}
+
+function renderSynergies(containerId, allTags){
+  const syns = detectSynergies(allTags);
+  const el = g(containerId);
+  if(!syns.length){ el.innerHTML='<span style="font-size:11px;color:var(--gris)">Aucune synergie active.</span>'; return; }
+  el.innerHTML = syns.map(s=>{
+    const label = s.tier===3?'🔴 Complétée':s.tier===2?'🟠 Confirmée':'🟡 Douce';
+    return `<div class="bs-syn tier${s.tier}">${s.arch.emoji} ${s.arch.nom} — ${label}</div>`;
+  }).join('');
+}
+
+/* ══════════ RUN MODE ══════════ */
+
+function generateRun(){
+  const rooms = [];
+  const hasM08 = runState.maledictions.includes("M08");
+  const hasM12 = runState.maledictions.includes("M12");
+  let marchandProb = 0.15;
+  let marchandCount = 0;
+
+  const roomTypes = [
+    'combat','combat','combat','combat','combat',
+    'combat','combat','repos','combat','combat',
+    'combat','combat','repos','combat','boss'
+  ];
+
+  roomTypes.forEach((type,i)=>{
+    const room = {index:i+1, type, choices:[], marchand:false, salle:'normal'};
+
+    if(type==='boss'){ room.salle='boss'; rooms.push(room); return; }
+    if(type==='repos'){ room.salle='repos'; rooms.push(room); return; }
+
+    // Type de salle
+    if(i===6){ room.salle='miniboss'; }
+    else if(i===11){ room.salle='miniboss'; }
+    else if(i===13){ room.salle='miniboss'; }
+    else if(i%4===1){ room.salle='elite'; }
+
+    // Marchand
+    if(!hasM12 && room.salle==='normal'){
+      marchandProb += 0.15;
+      if(marchandProb >= 1 || Math.random() < marchandProb){
+        room.marchand = true;
+        marchandProb = 0.15;
+        marchandCount++;
+      }
+    }
+
+    rooms.push(room);
+  });
+  return rooms;
+}
+
+function generateChoices(roomSalle, buildTags, classe, slotCount){
+  const choices = [];
+  const isMiniboss = roomSalle === 'miniboss';
+  const classTags = CLASSES[classe]?.tags || [];
+  const allTags = [...buildTags, ...classTags];
+
+  // Mini-boss : épiques/légendaires
+  if(isMiniboss){
+    // 5 choix : 2 base + 3 avancés de bonne rareté
+    const eligibleAdv = COMP_POOL_ADVANCED.filter(c=>c.tags.some(t=>allTags.includes(t)));
+    for(let i=0;i<2;i++) choices.push({...rnd(COMP_POOL_BASE), rarity:'epic', class_choice:'base'});
+    const advPool = eligibleAdv.length>=3 ? eligibleAdv : COMP_POOL_ADVANCED;
+    for(let i=0;i<3;i++) choices.push({...rnd(advPool), rarity:'epic', class_choice:'advanced'});
+    return shuffle(choices);
+  }
+
+  // Salle 1 : 5 de base
+  if(slotCount===0){
+    for(let i=0;i<5;i++) choices.push({...rnd(COMP_POOL_BASE), class_choice:'base'});
+    return choices;
+  }
+
+  // Normal : 1-2 Base, 2-3 Avancées, 0-1 Wildcard
+  const nBase = Math.random()<.5 ? 1 : 2;
+  const nAdv = 5 - nBase - (Math.random()<.4?1:0);
+  const hasWild = (nBase+nAdv) < 5;
+
+  for(let i=0;i<nBase;i++) choices.push({...rnd(COMP_POOL_BASE), class_choice:'base'});
+
+  const eligible = COMP_POOL_ADVANCED.filter(c=>c.tags.some(t=>allTags.includes(t)));
+  const advPool = eligible.length>=2 ? eligible : COMP_POOL_ADVANCED;
+  for(let i=0;i<nAdv;i++) choices.push({...rnd(advPool), class_choice:'advanced'});
+
+  if(hasWild) choices.push({...rnd(COMP_POOL_BASE), class_choice:'wildcard'});
+
+  return shuffle(choices);
+}
+
+function rnd(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+function shuffle(arr){ return arr.sort(()=>Math.random()-.5); }
+
+function getAllBuildTags(){
+  return runState.slots.flatMap(s=>s.tags);
+}
+
+function renderCurrentBuild(){
+  const el = g('bs-current-build');
+  const grid = g('bs-slots-grid');
+  el.classList.remove('bs-hidden');
+
+  const classe = CLASSES[runState.classe];
+  const hasM08 = runState.maledictions.includes("M08");
+  const standardBase = hasM08 ? 3 : 4;
+  const totalStandard = standardBase + runState.slotCount;
+  const slots = [];
+
+  // Identitaires
+  slots.push({nom: classe.b1, type:'identity'});
+  slots.push({nom: classe.b2, type:'identity'});
+
+  // Standards
+  for(let i=0;i<totalStandard;i++){
+    if(i<runState.slots.length) slots.push({nom:runState.slots[i].nom, type:runState.slots[i].type==='advanced'?'filled advanced-slot':'filled'});
+    else slots.push({nom:'Slot vide', type:'empty'});
+  }
+
+  grid.innerHTML = slots.map(s=>`<div class="bs-slot ${s.type}">${s.nom}</div>`).join('');
+
+  // Synergies
+  const allTags = getAllBuildTags().concat(CLASSES[runState.classe]?.tags||[]);
+  renderSynergies('bs-synergies', allTags);
+}
+
+function renderRunLog(){
+  const log = g('bs-run-log');
+  const html = runState.rooms.map(room=>{
+    const typeLabels = {normal:'Salle normale',elite:'Salle élite',miniboss:'Mini-Boss',repos:'Salle de repos',boss:'Boss Final'};
+    const typeClass = {normal:'normal',elite:'elite',miniboss:'miniboss',repos:'repos',boss:'boss'};
+
+    let body = '';
+
+    if(room.salle==='repos'){
+      body = `<div style="font-size:11px;color:var(--vert)">Option : Soin (30% PV) — ou — Sacrifice (échanger une pièce contre 3 propositions ciblées)</div>`;
+    } else if(room.salle==='boss'){
+      body = `<div style="font-size:11px;color:#ff4444">⚔️ Boss Final — Le Lion (ou le couronné en mode Trône Renversé)</div>`;
+    } else {
+      // Choices
+      body = `<div style="font-size:10px;color:var(--gris);margin-bottom:6px">Récompenses proposées :</div>`;
+      body += `<div class="bs-choices">` + room.choices.map((c,ci)=>{
+        const picked = room.picked===ci;
+        const cls = c.class_choice + (c.rarity==='epic'?' epic':'') + (picked?' picked':'');
+        const label = c.class_choice==='base'?'[Base]':c.class_choice==='advanced'?'[Avancée]':'[Wildcard]';
+        return `<div class="bs-choice ${cls}" onclick="bsPick(${room.index-1},${ci})" title="${c.tags?.join(' ')||''}">${label} ${c.nom}</div>`;
+      }).join('') + `</div>`;
+
+      if(room.marchand){
+        body += `<div style="font-size:10px;color:var(--or);margin:8px 0 4px">🛒 Marchand présent :</div>`;
+        body += `<div class="bs-marchand-items">`;
+        // Générer des articles
+        const articles = [
+          {nom:`[Déclencheur] ${rnd(COMP_POOL_BASE).nom.split('+')[0].trim()}`, prix:`${4+Math.floor(Math.random()*10)}🦷`, type:'trigger'},
+          {nom:`[Effet] ${rnd(COMP_POOL_BASE).nom.split('+')[1]?.trim()||'Hémorragie'}`, prix:`${4+Math.floor(Math.random()*10)}🦷`, type:'effect'},
+          {nom:`[Relique] ${rnd(RELIQUES).nom}`, prix:`${8+Math.floor(Math.random()*12)}🦷`, type:'relic'},
+          {nom:`[Slot sup.] +1 slot`, prix:`${room._slotBought?40:room._slot2?28:18}🦷`, type:'slot'},
+        ];
+        body += articles.map((a,ai)=>{
+          const bought = room.bought?.includes(ai);
+          return `<span class="bs-item ${a.type==='slot'?'slot':''} ${bought?'bought':''}" onclick="bsBuy(${room.index-1},${ai})">${a.nom} — ${a.prix}</span>`;
+        }).join('');
+        body += `</div>`;
+      }
+    }
+
+    const slotInfo = `${runState.slots.length} compétences`;
+    return `<div class="bs-room" id="room-${room.index}">
+      <div class="bs-room-header" onclick="bsToggleRoom(${room.index})">
+        <span class="bs-room-num">Salle ${room.index}</span>
+        <span class="bs-room-type ${typeClass[room.salle]}">${typeLabels[room.salle]}</span>
+        <span class="bs-room-slots">${slotInfo}</span>
+      </div>
+      <div class="bs-room-body">${body}</div>
+    </div>`;
+  }).join('');
+  log.innerHTML = html;
+}
+
+window.bsPick = function(roomIdx, choiceIdx){
+  const room = runState.rooms[roomIdx];
+  if(!room) return;
+  if(room.picked===choiceIdx){ room.picked=undefined; } else {
+    if(room.picked!==undefined){
+      const old = room.choices[room.picked];
+      if(old) { const i=runState.slots.findIndex(s=>s.nom===old.nom); if(i>=0) runState.slots.splice(i,1); }
+    }
+    room.picked = choiceIdx;
+    const c = room.choices[choiceIdx];
+    if(c && !runState.slots.find(s=>s.nom===c.nom)) runState.slots.push({nom:c.nom, tags:c.tags||[], type:c.class_choice});
+  }
+  renderCurrentBuild();
+  renderRunLog();
+};
+
+window.bsBuy = function(roomIdx, artIdx){
+  const room = runState.rooms[roomIdx];
+  if(!room) return;
+  if(!room.bought) room.bought = [];
+  const i = room.bought.indexOf(artIdx);
+  if(i>=0) {
+    room.bought.splice(i,1);
+    if(artIdx===3) runState.slotCount = Math.max(0, runState.slotCount-1);
+  } else {
+    room.bought.push(artIdx);
+    if(artIdx===3) runState.slotCount++;
+  }
+  renderCurrentBuild();
+  renderRunLog();
+};
+
+window.bsToggleRoom = function(idx){
+  const el = g('room-'+idx);
+  if(el) el.classList.toggle('collapsed');
+};
+
+window.bsStartRun = function(){
+  runState.classe = g('bs-run-class').value;
+  runState.slots = [];
+  runState.slotCount = 0;
+  runState.started = true;
+
+  // Slot V14
+  if(runState.faveurs.includes('V14')) runState.slotCount++;
+
+  runState.rooms = generateRun();
+  // Pré-générer les choix pour chaque salle
+  let buildTags = [];
+  runState.rooms.forEach((room,i)=>{
+    if(room.salle!=='repos'&&room.salle!=='boss'){
+      room.choices = generateChoices(room.salle, buildTags, runState.classe, i);
+    }
+  });
+
+  renderCurrentBuild();
+  renderRunLog();
+};
+
+window.bsResetRun = function(){
+  runState.slots=[];runState.slotCount=0;runState.started=false;runState.rooms=[];runState.faveurs=[];runState.maledictions=[];
+  initFavList('bs-faveurs-list',runState.faveurs,'fav','bsToggleFav');
+  initMalList('bs-mal-list',runState.maledictions,'mal','bsToggleMal');
+  g('bs-fav-cost').textContent='Coût : 0 💀';
+  g('bs-mal-cost').textContent='Coût : 0 💀';
+  g('bs-current-build').classList.add('bs-hidden');
+  g('bs-run-log').innerHTML='';
+};
+
+/* ══════════ FREE MODE ══════════ */
+
+window.bsFreeUpdateClass = function(){
+  freeState.classe = g('bs-free-class').value;
+  bsFreeRender();
+};
+
+window.bsFreeRender = function(){
+  const hasM08 = freeState.maledictions.includes("M08");
+  const hasV14 = freeState.faveurs.includes("V14");
+  const std = parseInt(g('bs-free-slots-n').value)||4;
+  const total = 2 + std + (hasV14?1:0);
+  const realStd = std - (hasM08?1:0);
+
+  g('bs-free-total-slots').textContent = total;
+  g('bs-free-active').textContent = 2 + freeState.slots.length;
+
+  const allTags = freeState.slots.flatMap(s=>s.tags).concat(CLASSES[freeState.classe]?.tags||[]);
+  const tagFreq = {};
+  allTags.forEach(t=>{ tagFreq[t]=(tagFreq[t]||0)+1; });
+  const top = Object.entries(tagFreq).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([t])=>t);
+  g('bs-free-tags').textContent = top.length ? top.join(' ') : '—';
+
+  const soulCost = freeState.faveurs.reduce((s,f)=>{const v=FAVEURS.find(x=>x.id===f);return s+(v?v.cout:0);},0)
+    + freeState.maledictions.reduce((s,m)=>{const v=MALEDICTIONS.find(x=>x.id===m);return s+(v?v.cout:0);},0);
+  g('bs-free-souls').textContent = soulCost+' 💀';
+
+  // Slots
+  const classe = CLASSES[freeState.classe];
+  const slotEl = g('bs-free-slots');
+  let html = `<div class="bs-free-slot"><span class="bs-free-slot-n">B1</span><span class="bs-free-slot-content" style="color:var(--or)">${classe.b1}</span></div>`;
+  html += `<div class="bs-free-slot"><span class="bs-free-slot-n">B2</span><span class="bs-free-slot-content" style="color:var(--or)">${classe.b2}</span></div>`;
+
+  freeState.slots.forEach((s,i)=>{
+    html += `<div class="bs-free-slot">
+      <span class="bs-free-slot-n">${i+1}</span>
+      <span class="bs-free-slot-content" style="color:${s.type==='advanced'?'#9a8aff':'var(--blanc)'}">${s.nom}</span>
+      <button class="bs-free-slot-del" onclick="bsFreeRemoveSlot(${i})">✕</button>
+    </div>`;
+  });
+
+  const emptyCount = Math.max(0, std - (hasM08?1:0) - freeState.slots.length);
+  for(let i=0;i<emptyCount;i++){
+    html += `<div class="bs-free-slot"><span class="bs-free-slot-n">—</span><span class="bs-free-slot-content" style="color:var(--gris);font-style:italic">Slot vide</span></div>`;
+  }
+  slotEl.innerHTML = html;
+
+  renderSynergies('bs-free-synergies', allTags);
+  bsFreeUpdateExport();
+};
+
+window.bsFreeAddComp = function(){
+  const input = g('bs-free-add-input');
+  const type = g('bs-free-add-type').value;
+  const nom = input.value.trim();
+  if(!nom) return;
+  // Deviner des tags depuis le nom
+  const guessedTags = [];
+  if(/collision|heurt|impact/i.test(nom)) guessedTags.push('#collision');
+  if(/rebond|rebond/i.test(nom)) guessedTags.push('#rebond');
+  if(/poison|venin/i.test(nom)) guessedTags.push('#dot','#poison');
+  if(/saignement|hémorragie|lacération/i.test(nom)) guessedTags.push('#dot','#saignement');
+  if(/feu|brûlure|incendie/i.test(nom)) guessedTags.push('#dot','#feu');
+  if(/vitesse|élan|ruée/i.test(nom)) guessedTags.push('#vitesse','#mouvement');
+  if(/invocation|tourelle|larve/i.test(nom)) guessedTags.push('#invocation');
+  if(/zone|terrain|flaque/i.test(nom)) guessedTags.push('#zone','#structures');
+  if(/bouclier|défense|coquille/i.test(nom)) guessedTags.push('#bouclier','#defense');
+  if(/soin|régénér|vol.de.vie/i.test(nom)) guessedTags.push('#soin','#vol_de_vie');
+  if(guessedTags.length===0) guessedTags.push('#collision');
+
+  freeState.slots.push({nom, tags:guessedTags, type});
+  input.value='';
+  bsFreeRender();
+};
+
+window.bsFreeRemoveSlot = function(i){
+  freeState.slots.splice(i,1);
+  bsFreeRender();
+};
+
+function bsFreeUpdateExport(){
+  const classe = freeState.classe;
+  const c = CLASSES[classe];
+  const lines = [
+    `=== BUILD ${classe.toUpperCase()} ===`,
+    `Classe : ${c.icon} ${classe}`,
+    `B1 : ${c.b1} | B2 : ${c.b2}`,
+    ``,
+    `Faveurs : ${freeState.faveurs.join(', ')||'aucune'}`,
+    `Malédictions : ${freeState.maledictions.join(', ')||'aucune'}`,
+    `Reliques : ${freeState.relics.join(', ')||'aucune'}`,
+    ``,
+    `Compétences :`,
+    ...freeState.slots.map((s,i)=>`  ${i+1}. [${s.type==='advanced'?'Avancée':'Base'}] ${s.nom}  (${s.tags.join(' ')})`),
+    ``,
+    `Synergies :`,
+    ...detectSynergies(freeState.slots.flatMap(s=>s.tags).concat(CLASSES[classe]?.tags||[])).map(s=>{
+      const t = s.tier===3?'🔴 Complétée':s.tier===2?'🟠 Confirmée':'🟡 Douce';
+      return `  ${s.arch.emoji} ${s.arch.nom} — ${t}`;
+    }),
+  ];
+  g('bs-free-export').textContent = lines.join('\n');
+}
+
+window.bsCopyExport = function(){
+  const text = g('bs-free-export').textContent;
+  navigator.clipboard.writeText(text).catch(()=>{});
+};
+
+/* ══════════ INIT ══════════ */
+initFavList('bs-faveurs-list', runState.faveurs, 'fav', 'bsToggleFav');
+initMalList('bs-mal-list', runState.maledictions, 'mal', 'bsToggleMal');
+renderModList('bs-free-fav-list', FAVEURS, freeState.faveurs, 'fav', 'bsFreeFav');
+renderModList('bs-free-mal-list', MALEDICTIONS, freeState.maledictions, 'mal', 'bsFreeMal');
+renderFreeRelics();
+bsFreeRender();
+
+})();
+</script>
+
+<script>
+if(typeof window.registerSearchEntries==='function'){
+  window.registerSearchEntries([
+    {title:'Simulateur de Build — Simulation de Run', page:'build-simulator', section:'Outils', content:'simulation run faveurs malédictions drops salle marchand synergies build progression'},
+    {title:'Simulateur de Build — Création Libre', page:'build-simulator', section:'Outils', content:'création build reliques slots compétences synergies export classe faveurs malédictions'},
+  ]);
+}
+</script>
+</div>
