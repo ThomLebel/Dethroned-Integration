@@ -977,7 +977,7 @@ g('ppb-sr').addEventListener('input',renderR); g('ppb-fr').addEventListener('cha
 renderD(); updateSB(); recalc();
 
 if(typeof <script>
-(function(){var s=document.createElement('script');s.src='gamedata.js';s.onload=function(){document.dispatchEvent(new CustomEvent('gamedata:ready'));initPPBFromGamedata();};s.onerror=function(){console.error('[gamedata] Impossible de charger gamedata.js');};(document.head||document.body).appendChild(s);})();
+// gamedata.js chargé par le layout du site
 </script>
 <script>
 /* Initialisation de DB depuis gamedata.js */
@@ -1063,7 +1063,7 @@ function initPPBFromGamedata() {
 
 window.registerSearchEntries==='function'){
   <script>
-(function(){var s=document.createElement('script');s.src='gamedata.js';s.onload=function(){document.dispatchEvent(new CustomEvent('gamedata:ready'));initPPBFromGamedata();};s.onerror=function(){console.error('[gamedata] Impossible de charger gamedata.js');};(document.head||document.body).appendChild(s);})();
+// gamedata.js chargé par le layout du site
 </script>
 <script>
 /* Initialisation de DB depuis gamedata.js */
@@ -1153,6 +1153,10 @@ window.registerSearchEntries([
   ]);
 }
 })();
+
+if(typeof GD_EFFECTS!=='undefined'&&typeof initPPBFromGamedata==='function'){initPPBFromGamedata();}
+
+if(typeof GD_EFFECTS!=='undefined'&&typeof initPPBFromGamedata==='function'){initPPBFromGamedata();}
 </script>
 
 </div>

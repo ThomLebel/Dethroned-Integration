@@ -269,7 +269,7 @@
 </div>
 
 <script>
-(function(){var s=document.createElement('script');s.src='gamedata.js';s.onload=function(){document.dispatchEvent(new CustomEvent('gamedata:ready'));};s.onerror=function(){console.error('[gamedata] Impossible de charger gamedata.js');};(document.head||document.body).appendChild(s);})();
+// gamedata.js chargé par le layout du site
 </script>
 <h2 class="section">Catalogue interactif — Recherche &amp; filtre</h2>
 <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
@@ -292,8 +292,7 @@
 </table></div>
 
 <script>
-document.addEventListener('gamedata:ready', function() {
-  window.trRender = function() {
+(function(){window.trRender = function() {
     const s = document.getElementById('tr-search').value.toLowerCase();
     const type = document.getElementById('tr-type').value;
     const loc = document.getElementById('tr-loc').value;
@@ -319,8 +318,7 @@ document.addEventListener('gamedata:ready', function() {
       </tr>`;
     }).join('');
   };
-  trRender();
-});
+  trRender();})(); // init synchrone
 </script>
 
 <script>
@@ -331,4 +329,8 @@ window.registerSearchEntries([
   { title: 'TriggerRunner — Manager Graph', page: 'triggers', section: 'Compétences', content: 'triggerrunner evaluate_all skillmanager process_event ctx cooldown fired' },
   { title: 'Ordre d\'implémentation déclencheurs', page: 'triggers', section: 'Compétences', content: 'sprint ordre implémentation infrastructure blocs compteurs cibles tres' },
 ]);
+
+if(typeof GD_TRIGGERS!=='undefined'){if(typeof trRender==='function')trRender();}
+
+if(typeof GD_TRIGGERS!=='undefined'){if(typeof trRender==='function')trRender();}
 </script>

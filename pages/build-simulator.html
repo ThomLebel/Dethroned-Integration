@@ -281,9 +281,6 @@
 </div>
 
 <script>
-(function(){var s=document.createElement('script');s.src='gamedata.js';s.onload=function(){document.dispatchEvent(new CustomEvent('gamedata:ready'));if(typeof GD_CLASSES!=='undefined')bsInit();};s.onerror=function(){console.error('[gamedata] Impossible de charger gamedata.js');};(document.head||document.body).appendChild(s);})();
-</script>
-<script>
 /* ══════════════════════════════════
    gamedata.js doit être chargé avant ce script
    <script src="gamedata.js"></script>
@@ -1062,7 +1059,20 @@ function initClassSelects(){
   ['r-class','f-class'].forEach(id=>{const el=g(id);if(el)el.innerHTML=opts;});
 }
 
-/* bsInit() appelé par gamedata:ready event */
+// Init synchrone — gamedata.js doit être chargé par le layout avant cette page
+if (typeof GD_CLASSES !== 'undefined') {
+  bsInit();
+} else {
+  // Fallback : attendre que le DOM soit prêt + gamedata disponible
+  var _bsInitInterval = setInterval(function() {
+    if (typeof GD_CLASSES !== 'undefined') {
+      clearInterval(_bsInitInterval);
+      bsInit();
+    }
+  }, 50);
+  // Timeout de sécurité 5s
+  setTimeout(function() { clearInterval(_bsInitInterval); }, 5000);
+}
 
 </script>
 </div>

@@ -185,7 +185,7 @@
 </div>
 
 <script>
-(function(){var s=document.createElement('script');s.src='gamedata.js';s.onload=function(){document.dispatchEvent(new CustomEvent('gamedata:ready'));if(typeof renderComps==='function')renderComps();if(typeof ecUp==='function')ecUp();};s.onerror=function(){console.error('[gamedata] Impossible de charger gamedata.js');};(document.head||document.body).appendChild(s);})();
+// gamedata.js chargé par le layout du site
 </script>
 <script>
 
@@ -450,5 +450,9 @@ if(typeof window.registerSearchEntries==='function'){
     {title:'Créateur d\'Ennemis',page:'enemy-creator',section:'Outils',content:'ennemi biome tier IA compétences affinités export CSV filtrage ciblage loc req'},
   ]);
 }
+
+if(typeof GD_TRIGGERS!=='undefined'){if(typeof renderComps==='function')renderComps();if(typeof ecUp==='function')ecUp();}
+
+if(typeof GD_TRIGGERS!=='undefined'){if(typeof renderComps==='function')renderComps();if(typeof ecUp==='function')ecUp();}
 </script>
 </div>
