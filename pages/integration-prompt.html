@@ -4,7 +4,7 @@
 </div>
 
 <div class="callout callout-or">
-  <strong>Architecture du site</strong> — Le site est multi-fichiers. <code>index.html</code> est le shell global (CSS, navigation, moteur). Chaque page est un fragment HTML dans <code>pages/ID.html</code>, chargé à la demande. Les <code>&lt;script&gt;</code> et les <code>&lt;style&gt;</code> dans les fragments fonctionnent normalement — aucune modification de <code>index.html</code> n'est nécessaire pour ajouter une page.
+  <strong>Architecture du site</strong> — Le site est multi-fichiers. <code>index.html</code> est le shell global (CSS, navigation, moteur). <code>gamedata.js</code> expose les données du jeu globalement (effets, triggers, faveurs, reliques…). Chaque page est un fragment HTML dans <code>pages/ID.html</code>, chargé à la demande. Les <code>&lt;script&gt;</code> et les <code>&lt;style&gt;</code> dans les fragments fonctionnent normalement — aucune modification de <code>index.html</code> n'est nécessaire pour ajouter une page.
 </div>
 
 <h2 class="section">Prompt à donner à Claude</h2>
@@ -25,6 +25,7 @@ ARCHITECTURE DU SITE
 Structure de fichiers :
   index.html       ← Shell (CSS global, navigation, JS core) — NE PAS MODIFIER
   nav.json         ← Arbre de navigation — seule modification nécessaire
+  gamedata.js      ← Données du jeu (chargé globalement par index.html) — NE PAS MODIFIER
   pages/ID.html    ← Fragments de page — à créer
 
 Chaque page est un fragment HTML sans &lt;html&gt;/&lt;head&gt;/&lt;body&gt;,
@@ -36,6 +37,37 @@ Après injection, index.html appelle automatiquement :
 
 CONSÉQUENCE : les pages sont 100% autonomes. Aucune modification
 de index.html n'est jamais nécessaire pour ajouter une nouvelle page.
+
+════════════════════════════════════════
+DONNÉES DU JEU — gamedata.js
+════════════════════════════════════════
+
+gamedata.js est chargé UNE SEULE FOIS par index.html avant toute page.
+Il expose ces variables globales accessibles depuis n'importe quel fragment :
+
+  GD_EFFECTS        → Array — 100 effets  {id, nom, r, req, tags, desc, cd}
+  GD_TRIGGERS       → Array — 88 déclencheurs  {nom, type, r, loc, tags, cond, desc}
+  GD_FAVEURS        → Array — 28 faveurs  {id, nom, cout, effet, cond}
+  GD_MALEDICTIONS   → Array — 26 malédictions  {id, nom, effet, contrepartie, cout, cond}
+  GD_RELIQUES       → Array — 53 reliques  {id, nom, type, desc, bonus, malus, tags}
+  GD_TAGS           → Array — 70 tags  {nom, famille, niveau, type, desc}
+  GD_ARCHETYPES     → Array — 15 archétypes de synergies  {id, nom, e, tags}
+  GD_CLASSES        → Object — 12 classes  {nom: {b1, b2, tags[]}}
+  LOC_COMPAT        → Object — table de compatibilité ciblage {loc: [req...]}
+
+Fonctions utilitaires disponibles :
+  getCompatEffects(trigger)   → effets compatibles avec un trigger (filtre loc/req)
+  getCompatTriggers(effect)   → triggers compatibles avec un effet
+  getRarityOrder(r)           → 0–3 (Commun→Légendaire)
+  rarityColor(r)              → couleur CSS par rareté
+  detectSynergies(allTags)    → [{a: archetype, tier: 1|2|3}] triés par tier
+
+RÈGLES D'UTILISATION :
+  ✓ Accéder directement : GD_EFFECTS.filter(...), getCompatEffects(trig)
+  ✓ Vérifier si besoin : if (typeof GD_CLASSES !== 'undefined')
+  ✗ Ne jamais charger gamedata.js depuis une page — il est déjà là
+  ✗ Ne jamais redéclarer GD_EFFECTS, GD_TRIGGERS, etc.
+  ✗ Ne jamais embarquer des données du jeu dans une page
 
 ════════════════════════════════════════
 PALETTE CSS ET VARIABLES DISPONIBLES
@@ -122,18 +154,16 @@ Fichier : pages/mon-outil.html
 
   &lt;div class="callout callout-or"&gt;...mode d'emploi...&lt;/div&gt;
 
-  &lt;!-- Styles locaux — préfixe les sélecteurs pour éviter les conflits --&gt;
+  &lt;!-- Styles locaux — préfixer TOUS les sélecteurs pour éviter les conflits --&gt;
   &lt;style&gt;
     #mo-root { display: grid; ... }
     .mo-panel { background: var(--noir2); ... }
     /* Utiliser les variables CSS du site, jamais de valeurs hardcodées */
   &lt;/style&gt;
 
-  &lt;!-- HTML de l'outil --&gt;
+  &lt;!-- HTML de l'outil — préfixer TOUS les IDs (ex: "mo-") --&gt;
   &lt;div id="mo-root"&gt;
-    &lt;!-- Utiliser des IDs préfixés (ex: "mo-") pour éviter les conflits --&gt;
     &lt;select id="mo-select"&gt;...&lt;/select&gt;
-    &lt;canvas id="mo-canvas"&gt;&lt;/canvas&gt;
   &lt;/div&gt;
 
   &lt;div class="sources"&gt;...&lt;/div&gt;
@@ -141,34 +171,51 @@ Fichier : pages/mon-outil.html
 &lt;/div&gt;&lt;!-- /data-fullwidth --&gt;
 
 &lt;!--
-  RÈGLES POUR LE JAVASCRIPT :
-  1. Tout le JS dans une IIFE (function() { ... })() pour éviter
-     la pollution de scope global entre les pages.
-  2. Préfixer toutes les fonctions et variables locales.
-  3. Utiliser uniquement document.getElementById() — pas de sélecteurs
-     globaux qui pourraient toucher d'autres pages encore en cache.
-  4. Les event listeners sur document/window doivent être propres :
-     éviter d'en ajouter plusieurs si la page est visitée plusieurs fois.
-  5. window.registerSearchEntries() appeler à la fin du script.
+  RÈGLES CRITIQUES POUR LE JAVASCRIPT :
+
+  1. IIFE OBLIGATOIRE — tout le JS dans (function() { 'use strict'; ... })()
+     Le scope global est partagé entre toutes les pages.
+
+  2. PRÉFIXER toutes les variables et fonctions locales (ex: "mo_").
+
+  3. EXPOSER via window.* uniquement les fonctions appelées depuis le HTML
+     (onclick, onchange, etc.). Ces assignations doivent être dans l'IIFE.
+
+  4. document.getElementById() uniquement — pas de querySelector globaux.
+
+  5. Les variables GD_* sont TOUJOURS disponibles à l'exécution.
+     Accéder directement, sans vérification ni attente.
+
+  6. window.registerSearchEntries() en dernier.
+
+  7. Appeler init() à la fin de l'IIFE.
 --&gt;
 &lt;script&gt;
 (function() {
   'use strict';
 
-  // Toutes les variables et fonctions ici sont locales à cette page.
-
   function g(id) { return document.getElementById(id); }
 
-  // ... logique de l'outil ...
+  // Données du jeu disponibles directement (chargées par index.html) :
+  // GD_EFFECTS, GD_TRIGGERS, GD_FAVEURS, GD_MALEDICTIONS,
+  // GD_RELIQUES, GD_TAGS, GD_ARCHETYPES, GD_CLASSES, LOC_COMPAT
+  // getCompatEffects(), getCompatTriggers(), rarityColor(), detectSynergies()
 
-  // Enregistrement dans la recherche — toujours en dernier
+  // --- Fonctions internes ---
+  function moRenderSomething() { ... }
+
+  // --- Fonctions exposées (appelées via onclick dans le HTML) ---
+  window.moDoSomething = function(param) { ... };
+
+  // --- Recherche ---
   if (typeof window.registerSearchEntries === 'function') {
     window.registerSearchEntries([
       { title: 'Mon Outil', page: 'mon-outil', section: 'Outils', content: 'mots-clés' },
     ]);
   }
 
-  // Initialisation
+  // --- Init ---
+  function init() { moRenderSomething(); }
   init();
 })();
 &lt;/script&gt;
@@ -179,12 +226,12 @@ ENTRÉE nav.json À AJOUTER
 
 Dans la section appropriée de nav.json :
 {
-  "id": "mon-sujet",    ← nom du fichier sans .html
+  "id": "mon-sujet",
   "icon": "🎮",
   "label": "Mon sujet"
 }
 
-Si la section n'existe pas encore, ajouter un bloc :
+Si la section n'existe pas encore :
 {
   "section": "Ma Section",
   "items": [
@@ -200,16 +247,11 @@ Livrer :
   A. Le fichier pages/mon-sujet.html complet et autonome
   B. L'entrée nav.json à ajouter (section + item)
 
-NE PAS livrer de modifications à index.html — ce n'est jamais nécessaire.
-
-Pour les outils avec beaucoup de JS : utiliser une IIFE,
-préfixer tous les IDs HTML et les variables JS, ne jamais
-utiliser de noms génériques (ex: "canvas", "btn") qui
-pourraient entrer en conflit avec d'autres pages.
-
-Pour les styles : toujours utiliser les variables CSS du site
-(--or, --noir2, --vert, etc.) plutôt que des valeurs hardcodées,
-et préfixer les sélecteurs CSS pour les limiter à l'outil.
+NE PAS livrer :
+  - Modifications à index.html — jamais nécessaire
+  - Données du jeu embarquées — utiliser GD_* depuis gamedata.js
+  - JS hors d'une IIFE — risque de conflit entre pages
+  - Loaders ou import pour gamedata.js — déjà chargé globalement
 
 ════════════════════════════════════════
 CONTENU À INTÉGRER
@@ -222,13 +264,13 @@ CONTENU À INTÉGRER
 
 <div class="table-wrap"><table>
   <thead>
-    <tr><th>Type de contenu</th><th>data-fullwidth</th><th>Style inline</th><th>JS dans le fragment</th></tr>
+    <tr><th>Type de contenu</th><th>data-fullwidth</th><th>Style inline</th><th>JS dans le fragment</th><th>Données GD_*</th></tr>
   </thead>
   <tbody>
-    <tr><td>Documentation, guide, référence</td><td class="neutral">Non</td><td class="neutral">Non (classes du site)</td><td class="neutral">Uniquement <code>registerSearchEntries</code></td></tr>
-    <tr><td>Simulateur simple</td><td class="neutral">Non</td><td class="neutral">Non</td><td class="check">Oui, IIFE recommandée</td></tr>
-    <tr><td>Outil interactif (canvas, 3 colonnes…)</td><td class="check">Oui</td><td class="check">Oui, préfixé</td><td class="check">Oui, IIFE obligatoire</td></tr>
-    <tr><td>Visualiseur de données</td><td class="check">Oui</td><td class="check">Oui, préfixé</td><td class="check">Oui, IIFE obligatoire</td></tr>
+    <tr><td>Documentation, guide, référence</td><td class="neutral">Non</td><td class="neutral">Non (classes du site)</td><td class="neutral">Uniquement <code>registerSearchEntries</code></td><td class="neutral">Non nécessaire</td></tr>
+    <tr><td>Simulateur simple</td><td class="neutral">Non</td><td class="neutral">Non</td><td class="check">Oui, IIFE recommandée</td><td class="neutral">Selon le besoin</td></tr>
+    <tr><td>Outil interactif (canvas, 3 colonnes…)</td><td class="check">Oui</td><td class="check">Oui, préfixé</td><td class="check">Oui, IIFE obligatoire</td><td class="check">Via GD_* directement</td></tr>
+    <tr><td>Visualiseur de données</td><td class="check">Oui</td><td class="check">Oui, préfixé</td><td class="check">Oui, IIFE obligatoire</td><td class="check">Via GD_* directement</td></tr>
   </tbody>
 </table></div>
 
@@ -240,14 +282,24 @@ CONTENU À INTÉGRER
     <span class="card-link" onclick="window.navigateTo('arena_forge_integration')" style="cursor:pointer">→ Voir la page</span>
   </div>
   <div class="card">
+    <div class="card-title">🎲 Simulateur de Build</div>
+    <div class="card-desc">Run pas-à-pas avec taux de rareté progressifs, gestion d'inventaire, salle de repos complète. Utilise GD_EFFECTS, GD_TRIGGERS, GD_FAVEURS.</div>
+    <span class="card-link" onclick="window.navigateTo('build-simulator')" style="cursor:pointer">→ Voir la page</span>
+  </div>
+  <div class="card">
     <div class="card-title">⚖️ Équilibreur PP</div>
-    <div class="card-desc">Calcul de budget Point de Puissance pour les effets et déclencheurs.</div>
-    <div class="card-link" style="color:var(--gris)">À intégrer</div>
+    <div class="card-desc">Calcul de budget Point de Puissance pour les effets et déclencheurs. Utilise GD_EFFECTS, GD_TRIGGERS.</div>
+    <span class="card-link" onclick="window.navigateTo('pp-balancer')" style="cursor:pointer">→ Voir la page</span>
+  </div>
+  <div class="card">
+    <div class="card-title">👾 Créateur d'Ennemis</div>
+    <div class="card-desc">Assemblage de compétences ennemies depuis le catalogue d'effets et déclencheurs. Utilise GD_EFFECTS, GD_TRIGGERS.</div>
+    <span class="card-link" onclick="window.navigateTo('enemy-creator')" style="cursor:pointer">→ Voir la page</span>
   </div>
 </div>
 
 <script>
 window.registerSearchEntries([
-  { title: 'Prompt d\'intégration', page: 'integration-prompt', section: 'Référence', content: 'prompt intégration outil page fragment html js css autonome pleine largeur data-fullwidth IIFE runPageScripts nav.json' },
+  { title: 'Prompt d\'intégration', page: 'integration-prompt', section: 'Référence', content: 'prompt intégration outil page fragment html js css autonome pleine largeur data-fullwidth IIFE runPageScripts nav.json gamedata GD_EFFECTS GD_TRIGGERS' },
 ]);
 </script>

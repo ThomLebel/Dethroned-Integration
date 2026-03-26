@@ -281,10 +281,13 @@
 </div>
 
 <script>
-/* ══════════════════════════════════
-   gamedata.js doit être chargé avant ce script
-   <script src="gamedata.js"></script>
-══════════════════════════════════ */
+(function() {
+  'use strict';
+
+  // Données du jeu disponibles globalement via gamedata.js :
+  // GD_EFFECTS, GD_TRIGGERS, GD_FAVEURS, GD_MALEDICTIONS,
+  // GD_RELIQUES, GD_ARCHETYPES, GD_CLASSES, LOC_COMPAT
+  // getCompatEffects(), getCompatTriggers(), rarityColor(), detectSynergies()
 
 /* ══ TAUX DE RARETÉ ══ */
 const RARITY_WEIGHTS = {
@@ -1059,20 +1062,25 @@ function initClassSelects(){
   ['r-class','f-class'].forEach(id=>{const el=g(id);if(el)el.innerHTML=opts;});
 }
 
-// Init synchrone — gamedata.js doit être chargé par le layout avant cette page
-if (typeof GD_CLASSES !== 'undefined') {
-  bsInit();
-} else {
-  // Fallback : attendre que le DOM soit prêt + gamedata disponible
-  var _bsInitInterval = setInterval(function() {
+  // ── Init ──────────────────────────────────────────────────────────────────
+  function init() {
     if (typeof GD_CLASSES !== 'undefined') {
-      clearInterval(_bsInitInterval);
       bsInit();
+    } else {
+      var t = setInterval(function() {
+        if (typeof GD_CLASSES !== 'undefined') { clearInterval(t); bsInit(); }
+      }, 50);
+      setTimeout(function() { clearInterval(t); }, 5000);
     }
-  }, 50);
-  // Timeout de sécurité 5s
-  setTimeout(function() { clearInterval(_bsInitInterval); }, 5000);
-}
+  }
 
+  if (typeof window.registerSearchEntries === 'function') {
+    window.registerSearchEntries([
+      { title: 'Simulateur de Build', page: 'build-simulator', section: 'Outils', content: 'simulateur build run rareté faveurs malédictions inventaire sacrifice réorganiser marchand mini-boss' },
+      { title: 'Création Libre de Build', page: 'build-simulator', section: 'Outils', content: 'création libre build compétences reliques synergies export free mode' },
+    ]);
+  }
+
+  init();
+})();
 </script>
-</div>

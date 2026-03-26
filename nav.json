@@ -129,5 +129,15 @@
         "label": "Power Point Balancer"
       }
     ]
+  },
+  {
+    "section": "Systèmes divers",
+    "items": [
+      {
+        "id": "tags--ressources",
+        "icon": "🏷️",
+        "label": "Tags dynamiques"
+      }
+    ]
   }
 ]
