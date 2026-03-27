@@ -181,6 +181,27 @@ window.GD_PLAYLIST = [
     note: 'Candidate pour les salles de combat — énergie basse',
     cover_color: '#4a3a6a'
   },
+
+  {
+    titre: 'Forest Waltz',
+    artiste: 'Various — Uppbeat',
+    style: 'Ambient · Nature',
+    plateforme: 'Uppbeat',
+    url: 'https://uppbeat.io/my/boards/shared/5452b3b2-802d-46e6-8d9a-9627e33dff5b',
+    tags: ['forêt', 'biome', 'ambient'],
+    note: 'Candidate biome Forêt — texture organique',
+    cover_color: '#2a4a2a'
+  },
+  {
+    titre: 'Desert Wind',
+    artiste: 'Various — Uppbeat',
+    style: 'World · Cinematic',
+    plateforme: 'Uppbeat',
+    url: 'https://uppbeat.io/my/boards/shared/5452b3b2-802d-46e6-8d9a-9627e33dff5b',
+    tags: ['savane', 'cinematic'],
+    note: 'Candidate biome Savane — vent du désert',
+    cover_color: '#5a4020'
+  },
   {
     titre: 'Golden Throne',
     artiste: 'Fat Jon',

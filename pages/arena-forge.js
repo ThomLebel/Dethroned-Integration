@@ -1,25 +1,38 @@
 /**
- * pages/arena-forge.js — Intégration arena_forge_v2.html
+ * pages/arena-forge.js — Wrapper SPA pour Arena Forge
  */
 window.PAGE_ARENA_FORGE = {
+  _ready: false,
+
   render() {
-    return `
-<div class="page-enter" style="height:calc(100vh - var(--nav-h));display:flex;flex-direction:column;">
-  <div style="
-    display:flex;align-items:center;justify-content:space-between;
-    padding:10px 20px;background:var(--bg2);border-bottom:1px solid var(--gris2);
-    flex-shrink:0;
-  ">
-    <div style="font-family:var(--font-display);font-size:13px;color:var(--or);letter-spacing:3px;">ARENA FORGE</div>
-    <div style="font-family:var(--font-mono);font-size:8px;color:var(--txt2);letter-spacing:2px;">Éditeur d'arènes — v2</div>
-  </div>
-  <iframe src="arena_forge_v2.html"
-    style="flex:1;border:none;width:100%;display:block;"
-    title="Arena Forge — Dethroned"
-    loading="lazy">
-  </iframe>
-</div>`;
+    return `<div id="tool-af-wrap" style="height:calc(100vh - var(--nav-h));overflow:hidden;display:flex;flex-direction:column;"></div>`;
   },
 
-  init() {}
+  init() {
+    const wrap = document.getElementById('tool-af-wrap');
+    if (!wrap) return;
+
+    // Injecter le style scopé (une seule fois)
+    if (!document.getElementById('style-tool-af')) {
+      const st = document.createElement('style');
+      st.id = 'style-tool-af';
+      st.textContent = AF_SCOPED_CSS;
+      document.head.appendChild(st);
+    }
+
+    // Injecter le HTML
+    wrap.innerHTML = AF_BODY_HTML;
+
+    // Injecter le script (rechargement à chaque visite pour réinitialiser l'état)
+    const old = document.getElementById('script-tool-af');
+    if (old) old.remove();
+    const s = document.createElement('script');
+    s.id = 'script-tool-af';
+    s.src = 'pages/arena-forge-logic.js';
+    s.onload = () => {
+      // buildEnemyPalette et generateArena sont appelés à la fin du script
+      // mais les éléments DOM sont maintenant présents → ça fonctionne
+    };
+    document.body.appendChild(s);
+  }
 };
