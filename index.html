@@ -1,711 +1,168 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dethroned — Guide Architecture</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
-<style>
-/* ── Variables & Reset ─────────────────────────────────── */
-:root {
-  --or:#F2B749;--ocre:#A65526;--brun:#6B3A1F;--vert:#4A7C59;
-  --rouge:#8B1A1A;--bleu:#2E5B8A;--violet:#6B3FA0;
-  --noir:#0D0A07;--noir2:#1A1008;--noir3:#241508;
-  --gris:#888888;--gris2:#444444;--blanc:#F5F0E8;--fond:#FAFAF8;
-  --font-display:'Syne',sans-serif;--font-mono:'Space Mono',monospace;--font-body:'Inter',sans-serif;
-  --sidebar-w:260px;--header-h:56px;--radius:6px;--transition:0.18s ease;
-}
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-body{background:var(--noir);color:var(--blanc);font-family:var(--font-body);font-size:15px;line-height:1.65;overflow-x:hidden}
-a{color:var(--or);text-decoration:none}a:hover{text-decoration:underline}
-code,pre{font-family:var(--font-mono)}
-
-/* ── Layout ─────────────────────────────────────────────── */
-#app{display:flex;min-height:100vh}
-
-/* Sidebar */
-#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--noir2);border-right:1px solid rgba(242,183,73,.12);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;transition:transform var(--transition);overflow:hidden}
-#sidebar-header{padding:18px 16px 12px;border-bottom:1px solid rgba(242,183,73,.1)}
-#logo{font-family:var(--font-display);font-size:13px;font-weight:800;color:var(--or);letter-spacing:2px;text-transform:uppercase}
-#logo span{color:var(--gris);font-weight:400;display:block;font-size:10px;margin-top:2px;letter-spacing:1px}
-#search-wrap{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.05);position:relative}
-#search{width:100%;background:var(--noir3);border:1px solid rgba(255,255,255,.08);color:var(--blanc);padding:7px 10px 7px 30px;border-radius:var(--radius);font-size:12px;outline:none;transition:border-color var(--transition);font-family:var(--font-body)}
-#search:focus{border-color:var(--or)}
-#search-icon{position:absolute;left:20px;top:50%;transform:translateY(-50%);color:var(--gris);font-size:11px;pointer-events:none}
-#nav{flex:1;overflow-y:auto;padding:8px 0 20px}
-#nav::-webkit-scrollbar{width:3px}#nav::-webkit-scrollbar-track{background:transparent}#nav::-webkit-scrollbar-thumb{background:var(--brun);border-radius:2px}
-.nav-section{margin-bottom:4px}
-.nav-section-title{font-size:9px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--gris);padding:8px 16px 4px;display:flex;align-items:center;justify-content:space-between}
-.nav-item{display:flex;align-items:center;gap:8px;padding:7px 16px;font-size:12px;color:rgba(245,240,232,.7);cursor:pointer;border-left:2px solid transparent;transition:all var(--transition);user-select:none}
-.nav-item:hover{color:var(--blanc);background:rgba(255,255,255,.04)}
-.nav-item.active{color:var(--or);border-left-color:var(--or);background:rgba(242,183,73,.06)}
-.nav-item .icon{font-size:13px;min-width:16px}
-.nav-item .badge{margin-left:auto;font-size:9px;background:var(--brun);color:var(--blanc);padding:1px 5px;border-radius:10px}
-#sidebar-footer{padding:12px 16px;border-top:1px solid rgba(255,255,255,.05);display:flex;gap:8px}
-.sidebar-action{flex:1;background:var(--noir3);border:1px solid rgba(255,255,255,.08);color:var(--gris);padding:6px;border-radius:var(--radius);font-size:10px;cursor:pointer;text-align:center;transition:all var(--transition);font-family:var(--font-mono)}
-.sidebar-action:hover{border-color:var(--or);color:var(--or)}
-
-/* Main */
-#main{margin-left:var(--sidebar-w);flex:1;display:flex;flex-direction:column;min-height:100vh}
-#topbar{height:var(--header-h);background:rgba(13,10,7,.85);backdrop-filter:blur(12px);border-bottom:1px solid rgba(242,183,73,.08);display:flex;align-items:center;padding:0 28px;gap:16px;position:sticky;top:0;z-index:50}
-#breadcrumb{font-size:12px;color:var(--gris);font-family:var(--font-mono)}
-#breadcrumb span{color:var(--or)}
-#topbar-actions{margin-left:auto;display:flex;gap:8px}
-.btn{padding:5px 14px;border-radius:var(--radius);font-size:11px;font-family:var(--font-mono);cursor:pointer;transition:all var(--transition);border:1px solid;display:flex;align-items:center;gap:5px}
-.btn-outline{background:transparent;border-color:rgba(255,255,255,.15);color:var(--gris)}
-.btn-outline:hover{border-color:var(--or);color:var(--or)}
-.btn-primary{background:var(--or);border-color:var(--or);color:var(--noir);font-weight:700}
-.btn-primary:hover{background:var(--ocre);border-color:var(--ocre)}
-#hamburger{display:none;background:none;border:none;color:var(--blanc);font-size:20px;cursor:pointer}
-#content{flex:1;padding:36px 40px 60px;max-width:960px}
-
-/* Page loader */
-#page-container{min-height:300px}
-.page-loading{display:flex;align-items:center;justify-content:center;min-height:200px;color:var(--gris);font-family:var(--font-mono);font-size:13px;gap:10px}
-.page-loading::before{content:'';width:16px;height:16px;border:2px solid var(--brun);border-top-color:var(--or);border-radius:50%;animation:spin .6s linear infinite}
-@keyframes spin{to{transform:rotate(360deg)}}
-.page-error{padding:24px;background:rgba(139,26,26,.1);border:1px solid rgba(139,26,26,.3);border-radius:var(--radius);color:#d68888;font-family:var(--font-mono);font-size:13px}
-
-/* Search results */
-#search-results{display:none;position:fixed;top:56px;left:var(--sidebar-w);right:0;background:var(--noir2);border-bottom:1px solid rgba(242,183,73,.15);z-index:200;max-height:400px;overflow-y:auto;padding:12px 0}
-#search-results.visible{display:block}
-.search-result{padding:10px 28px;cursor:pointer;transition:background var(--transition);border-left:2px solid transparent}
-.search-result:hover{background:rgba(255,255,255,.04);border-left-color:var(--or)}
-.sr-title{font-size:13px;color:var(--blanc);font-weight:500}
-.sr-section{font-size:10px;color:var(--gris);font-family:var(--font-mono);margin-top:2px}
-.sr-highlight{color:var(--or);font-weight:600}
-#search-empty{padding:20px 28px;color:var(--gris);font-size:13px;text-align:center}
-
-/* ── Composants typographiques (partagés par toutes les pages) ── */
-.page-hero{margin-bottom:40px;padding-bottom:28px;border-bottom:1px solid rgba(242,183,73,.12)}
-.page-hero h1{font-family:var(--font-display);font-size:32px;font-weight:800;color:var(--or);line-height:1.15;margin-bottom:10px}
-.page-hero .lead{font-size:15px;color:rgba(245,240,232,.65);max-width:680px;line-height:1.7}
-.page-hero .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
-.tag{font-size:10px;font-family:var(--font-mono);padding:3px 8px;border-radius:3px;border:1px solid}
-.tag-or{color:var(--or);border-color:rgba(242,183,73,.4);background:rgba(242,183,73,.08)}
-.tag-vert{color:var(--vert);border-color:rgba(74,124,89,.4);background:rgba(74,124,89,.08)}
-.tag-bleu{color:#6ba3d6;border-color:rgba(107,163,214,.4);background:rgba(107,163,214,.08)}
-.tag-rouge{color:#d68888;border-color:rgba(214,136,136,.4);background:rgba(214,136,136,.08)}
-.tag-violet{color:#b86ef7;border-color:rgba(184,110,247,.4);background:rgba(184,110,247,.08)}
-h2.section{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--or);margin:36px 0 14px;padding-bottom:8px;border-bottom:1px solid rgba(242,183,73,.15)}
-h3.subsection{font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--ocre);margin:24px 0 10px}
-h4.mini{font-size:13px;color:var(--blanc);margin:18px 0 8px;font-weight:600}
-p.text{color:rgba(245,240,232,.8);margin-bottom:14px;line-height:1.7}
-ul.list{list-style:none;margin:0 0 14px}
-ul.list li{padding:4px 0 4px 18px;position:relative;color:rgba(245,240,232,.75);font-size:14px}
-ul.list li::before{content:'▸';position:absolute;left:0;color:var(--or);font-size:10px;top:6px}
-.callout{border-left:3px solid;padding:12px 16px;border-radius:0 var(--radius) var(--radius) 0;margin:16px 0;font-size:13px;line-height:1.6}
-.callout-or{border-color:var(--or);background:rgba(242,183,73,.07);color:rgba(245,240,232,.9)}
-.callout-vert{border-color:var(--vert);background:rgba(74,124,89,.07);color:rgba(245,240,232,.9)}
-.callout-rouge{border-color:var(--rouge);background:rgba(139,26,26,.07);color:rgba(245,240,232,.9)}
-.callout-bleu{border-color:var(--bleu);background:rgba(46,91,138,.07);color:rgba(245,240,232,.9)}
-.callout-violet{border-color:var(--violet);background:rgba(107,63,160,.07);color:rgba(245,240,232,.9)}
-.callout strong{color:var(--or)}
-.code-wrap{background:var(--noir2);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);margin:14px 0;overflow:hidden}
-.code-header{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:rgba(255,255,255,.03);border-bottom:1px solid rgba(255,255,255,.06)}
-.code-lang{font-size:10px;font-family:var(--font-mono);color:var(--gris);letter-spacing:1px}
-.copy-btn{font-size:10px;background:none;border:1px solid rgba(255,255,255,.1);color:var(--gris);padding:3px 8px;border-radius:3px;cursor:pointer;font-family:var(--font-mono);transition:all var(--transition)}
-.copy-btn:hover{border-color:var(--or);color:var(--or)}
-.copy-btn.copied{border-color:var(--vert);color:var(--vert)}
-pre{padding:16px;overflow-x:auto;font-size:12.5px;line-height:1.65;color:rgba(245,240,232,.85)}
-pre::-webkit-scrollbar{height:3px}pre::-webkit-scrollbar-track{background:transparent}pre::-webkit-scrollbar-thumb{background:var(--brun)}
-.kw{color:#e06c75}.fn{color:var(--or)}.tp{color:#61afef}.st{color:#98c379}.cm{color:var(--gris);font-style:italic}.nm{color:#d19a66}
-.table-wrap{overflow-x:auto;margin:14px 0;border-radius:var(--radius)}
-table{width:100%;border-collapse:collapse;font-size:13px}
-thead tr{background:var(--brun)}
-thead th{padding:9px 12px;text-align:left;color:var(--blanc);font-weight:600;font-family:var(--font-mono);font-size:11px;letter-spacing:.5px}
-tbody tr{border-bottom:1px solid rgba(255,255,255,.04);transition:background var(--transition)}
-tbody tr:nth-child(even){background:rgba(255,255,255,.02)}
-tbody tr:hover{background:rgba(242,183,73,.04)}
-tbody td{padding:8px 12px;color:rgba(245,240,232,.8);vertical-align:top}
-td code{font-size:11px;color:var(--or);background:rgba(242,183,73,.08);padding:1px 5px;border-radius:3px}
-.check{color:var(--vert)}.cross{color:var(--rouge)}.neutral{color:var(--gris)}
-.cards{display:grid;gap:14px;margin:16px 0}
-.cards-2{grid-template-columns:repeat(2,1fr)}
-.cards-3{grid-template-columns:repeat(3,1fr)}
-.card{background:var(--noir2);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);padding:18px;transition:border-color var(--transition)}
-.card:hover{border-color:rgba(242,183,73,.25)}
-.card-icon{font-size:22px;margin-bottom:10px}
-.card-title{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--blanc);margin-bottom:6px}
-.card-desc{font-size:12px;color:var(--gris);line-height:1.55}
-.card-link{font-size:11px;color:var(--or);margin-top:10px;display:block;font-family:var(--font-mono);cursor:pointer}
-.card-action{cursor:pointer}
-.layer-card{border-left:3px solid;background:var(--noir2);border-radius:0 var(--radius) var(--radius) 0;padding:14px 16px;margin:8px 0}
-.layer-card .lc-title{font-family:var(--font-mono);font-size:11px;font-weight:700;margin-bottom:4px}
-.layer-card .lc-managers{font-size:12px;color:rgba(245,240,232,.6)}
-.layer-infra{border-color:var(--gris)}.layer-persist{border-color:var(--violet)}.layer-c0{border-color:var(--or)}
-.layer-c1{border-color:var(--rouge)}.layer-c2{border-color:var(--bleu)}.layer-c3{border-color:var(--vert)}.layer-c4{border-color:var(--gris2)}
-.simulator{background:var(--noir2);border:1px solid rgba(242,183,73,.15);border-radius:var(--radius);padding:20px;margin:20px 0}
-.sim-title{font-family:var(--font-display);font-size:14px;font-weight:700;color:var(--or);margin-bottom:14px;display:flex;align-items:center;gap:8px}
-.sim-controls{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
-.sim-select,.sim-input{background:var(--noir3);border:1px solid rgba(255,255,255,.1);color:var(--blanc);padding:7px 10px;border-radius:var(--radius);font-size:12px;outline:none}
-.sim-select:focus,.sim-input:focus{border-color:var(--or)}
-.sim-btn{background:var(--or);color:var(--noir);border:none;padding:7px 16px;border-radius:var(--radius);font-size:12px;font-family:var(--font-mono);font-weight:700;cursor:pointer;transition:background var(--transition)}
-.sim-btn:hover{background:var(--ocre);color:var(--blanc)}
-.sim-output{background:var(--noir3);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius);padding:14px;font-family:var(--font-mono);font-size:12px;line-height:1.7;min-height:60px;color:rgba(245,240,232,.85);white-space:pre}
-.sim-flow{display:flex;align-items:flex-start;gap:0;flex-wrap:wrap;margin-top:10px}
-.sim-step{background:var(--noir3);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:8px 12px;font-size:11px;font-family:var(--font-mono)}
-.sim-step.done{border-color:var(--vert);background:rgba(74,124,89,.08)}
-.sim-arrow{color:var(--gris);padding:8px 6px;font-size:14px;align-self:center}
-.sim-step-label{color:var(--gris);font-size:9px;letter-spacing:1px;margin-bottom:2px}
-.sim-step-value{color:var(--blanc);font-size:11px}
-.sources{margin:24px 0 0}
-.sources-title{font-size:11px;font-family:var(--font-mono);color:var(--gris);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
-.source-list{display:flex;flex-direction:column;gap:6px}
-.source-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--noir2);border:1px solid rgba(255,255,255,.05);border-radius:var(--radius);transition:border-color var(--transition)}
-.source-item:hover{border-color:rgba(242,183,73,.2)}
-.source-badge{font-size:9px;font-family:var(--font-mono);padding:2px 6px;border-radius:3px;min-width:48px;text-align:center;font-weight:700}
-.badge-docs{background:rgba(46,91,138,.4);color:#6ba3d6}.badge-video{background:rgba(139,26,26,.4);color:#d68888}
-.badge-repo{background:rgba(74,124,89,.4);color:#7ec894}.badge-forum{background:rgba(107,63,160,.4);color:#b86ef7}
-.source-content{flex:1}
-.source-title{font-size:13px;color:var(--blanc);font-weight:500}
-.source-desc{font-size:11px;color:var(--gris);margin-top:2px}
-.source-link{font-size:11px;color:var(--or);font-family:var(--font-mono);margin-top:3px;display:block;word-break:break-all}
-
-/* ── Modals ─────────────────────────────────────────────── */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:500;align-items:center;justify-content:center}
-.modal-bg.open{display:flex}
-.modal-box{background:var(--noir2);border:1px solid rgba(242,183,73,.2);border-radius:var(--radius);padding:28px;width:480px;max-width:94vw;max-height:90vh;overflow-y:auto}
-.modal-box h3{font-family:var(--font-display);font-size:16px;color:var(--or);margin-bottom:16px}
-.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:20px}
-.btn-cancel{background:none;border:1px solid rgba(255,255,255,.1);color:var(--gris);padding:8px 16px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:11px;transition:all var(--transition)}
-.btn-cancel:hover{border-color:var(--gris);color:var(--blanc)}
-
-/* Export */
-.export-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
-.export-opt{background:var(--noir3);border:1px solid rgba(255,255,255,.08);padding:14px;border-radius:var(--radius);cursor:pointer;transition:all var(--transition);text-align:center}
-.export-opt:hover,.export-opt.selected{border-color:var(--or);background:rgba(242,183,73,.07)}
-.export-opt .eo-icon{font-size:22px;margin-bottom:6px}
-.export-opt .eo-label{font-size:12px;color:var(--blanc);font-weight:600}
-.export-opt .eo-desc{font-size:10px;color:var(--gris);margin-top:3px}
-
-/* Nav editor */
-#nav-editor-list{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
-.ne-section{background:var(--noir3);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);padding:10px 12px}
-.ne-section-header{display:flex;align-items:center;gap:8px;margin-bottom:8px}
-.ne-section-name{font-family:var(--font-mono);font-size:11px;color:var(--or);flex:1;background:transparent;border:none;outline:none;color:var(--or)}
-.ne-section-name:focus{border-bottom:1px solid var(--or)}
-.ne-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.04)}
-.ne-item:last-child{border-bottom:none}
-.ne-drag{cursor:grab;color:var(--gris);font-size:12px}
-.ne-item input{background:transparent;border:none;outline:none;color:rgba(245,240,232,.8);font-size:12px;flex:1}
-.ne-item input:focus{border-bottom:1px solid var(--gris)}
-.ne-del{background:none;border:none;color:var(--rouge);cursor:pointer;font-size:14px;padding:0 4px;opacity:.5;transition:opacity var(--transition)}
-.ne-del:hover{opacity:1}
-.ne-add-item{font-size:10px;font-family:var(--font-mono);color:var(--gris);cursor:pointer;padding:4px 0;transition:color var(--transition)}
-.ne-add-item:hover{color:var(--or)}
-.ne-add-section{font-size:11px;font-family:var(--font-mono);color:var(--gris);cursor:pointer;padding:8px 0;border:1px dashed rgba(255,255,255,.1);border-radius:var(--radius);text-align:center;transition:all var(--transition);margin-top:8px}
-.ne-add-section:hover{border-color:var(--or);color:var(--or)}
-
-/* Responsive */
-@media(max-width:768px){
-  :root{--sidebar-w:0px}
-  #sidebar{transform:translateX(-260px);width:260px}
-  #sidebar.open{transform:translateX(0)}
-  #main{margin-left:0}
-  #hamburger{display:block}
-  #content{padding:24px 18px 48px}
-  .cards-2,.cards-3{grid-template-columns:1fr}
-  #search-results{left:0}
-}
-
-/* Pleine largeur — activée par les pages via data-fullwidth="true" */
-#content.content-fullwidth{max-width:100%;padding:36px 28px 60px}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dethroned: The King's Den — Bonaventure Studio</title>
+  <meta name="description" content="Dethroned: The King's Den — roguelite physique où vous incarnez une proie lancée comme une bille pour renverser le Lion. Par Bonaventure Studio, Montpellier.">
+  <meta property="og:title" content="Dethroned: The King's Den">
+  <meta property="og:description" content="Un roguelite physique de bille. Renversez le Lion sur son trône.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div id="app">
 
-<!-- Sidebar -->
-<aside id="sidebar">
-  <div id="sidebar-header">
-    <div id="logo">Dethroned<span>Guide Architecture · Godot 4.6</span></div>
-  </div>
-  <div id="search-wrap">
-    <span id="search-icon">🔍</span>
-    <input id="search" type="text" placeholder="Rechercher..." autocomplete="off">
-  </div>
-  <nav id="nav"></nav>
-  <div id="sidebar-footer">
-    <button class="sidebar-action" onclick="openExport()">⬇ Export</button>
-    <button class="sidebar-action" onclick="openNavEditor()">✏️ Nav</button>
-  </div>
-</aside>
-
-<!-- Main -->
-<main id="main">
-  <div id="topbar">
-    <button id="hamburger" onclick="toggleSidebar()">☰</button>
-    <div id="breadcrumb">Dethroned / <span id="breadcrumb-page">Chargement…</span></div>
-    <div id="topbar-actions">
-      <button class="btn btn-outline" onclick="openExport()">⬇ Exporter</button>
-      <button class="btn btn-primary" onclick="navigateTo('add-content')">➕ Ajouter</button>
+<!-- ═══════════════════════════════════════════
+     HEADER
+     ═══════════════════════════════════════════ -->
+<header id="site-header">
+  <a href="#home" class="site-logo" onclick="SPA.go('home');return false;">
+    <!-- Logo Bonaventure Studio — remplace par <img src="logo.webp"> quand disponible -->
+    <div style="
+      width:36px;height:36px;background:var(--or);
+      display:flex;align-items:center;justify-content:center;
+      font-family:var(--font-display);font-size:14px;font-weight:900;
+      color:var(--bg);letter-spacing:-1px;
+    ">B</div>
+    <div class="site-logo-text">
+      <span class="site-logo-game">DETHRONED</span>
+      <span class="site-logo-studio">Bonaventure Studio</span>
     </div>
-  </div>
-  <div id="search-results">
-    <div id="search-results-list"></div>
-    <div id="search-empty" style="display:none">Aucun résultat</div>
-  </div>
-  <div id="content">
-    <div id="page-container"><div class="page-loading">Chargement…</div></div>
-  </div>
+  </a>
+
+  <nav class="site-nav">
+    <a class="nav-link" href="#home"      onclick="SPA.go('home');return false;"       data-page="home">Présentation</a>
+    <a class="nav-link" href="#moodboard" onclick="SPA.go('moodboard');return false;"  data-page="moodboard">Moodboard</a>
+    <a class="nav-link" href="#playlist"  onclick="SPA.go('playlist');return false;"   data-page="playlist">Playlist</a>
+    <div style="width:1px;height:20px;background:var(--gris2);margin:0 4px;"></div>
+    <a class="nav-link nav-tool" href="#mockups"    onclick="SPA.go('mockups');return false;"    data-page="mockups">UI Mockups</a>
+    <a class="nav-link nav-tool" href="#build-sim"  onclick="SPA.go('build-sim');return false;"  data-page="build-sim">Build Sim</a>
+    <a class="nav-link nav-tool" href="#arena-forge" onclick="SPA.go('arena-forge');return false;" data-page="arena-forge">Arena Forge</a>
+    <div style="width:1px;height:20px;background:var(--gris2);margin:0 4px;"></div>
+    <a class="nav-link" href="https://bonaventure.games" target="_blank" style="color:var(--txt3);">Studio ↗</a>
+  </nav>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     MAIN
+     ═══════════════════════════════════════════ -->
+<main id="main-content">
+  <!-- Injecté par le routeur SPA -->
+  <div id="page-root"></div>
 </main>
-</div>
 
-<!-- Modal Export -->
-<div class="modal-bg" id="export-modal">
-  <div class="modal-box">
-    <h3>Exporter le contenu</h3>
-    <div class="export-options">
-      <div class="export-opt selected" id="opt-md" onclick="selectExport('md')"><div class="eo-icon">📝</div><div class="eo-label">Markdown</div><div class="eo-desc">Page actuelle en .md</div></div>
-      <div class="export-opt" id="opt-pdf" onclick="selectExport('pdf')"><div class="eo-icon">📄</div><div class="eo-label">PDF</div><div class="eo-desc">Impression navigateur</div></div>
-      <div class="export-opt" id="opt-html" onclick="selectExport('html')"><div class="eo-icon">🌐</div><div class="eo-label">HTML</div><div class="eo-desc">Page standalone</div></div>
-      <div class="export-opt" id="opt-json" onclick="selectExport('json')"><div class="eo-icon">📦</div><div class="eo-label">JSON</div><div class="eo-desc">Données structurées</div></div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal('export-modal')">Annuler</button>
-      <button class="btn btn-primary" onclick="doExport()">⬇ Télécharger</button>
-    </div>
+<!-- ═══════════════════════════════════════════
+     FOOTER (masqué sur les outils plein écran)
+     ═══════════════════════════════════════════ -->
+<footer id="site-footer">
+  <div>
+    <div style="font-family:var(--font-display);font-size:11px;color:var(--or);letter-spacing:2px;margin-bottom:6px;">DETHRONED: THE KING'S DEN</div>
+    <div class="footer-copy">© 2025–2026 Bonaventure Studio — Montpellier, Occitanie</div>
   </div>
-</div>
 
-<!-- Modal Éditeur de navigation -->
-<div class="modal-bg" id="nav-editor-modal">
-  <div class="modal-box" style="width:560px">
-    <h3>✏️ Éditeur de navigation</h3>
-    <p style="font-size:12px;color:var(--gris);margin-bottom:14px">Glisser-déposer pour réordonner. Modifier les labels et sections. Ajouter ou supprimer des pages.</p>
-    <div id="nav-editor-list"></div>
-    <div class="ne-add-section" onclick="neAddSection()">+ Ajouter une section</div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal('nav-editor-modal')">Annuler</button>
-      <button class="btn btn-primary" onclick="saveNavEditor()">💾 Appliquer</button>
-    </div>
+  <div class="footer-links">
+    <!-- Discord -->
+    <a href="#" class="footer-link" title="Discord">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+      Discord
+    </a>
+
+    <!-- Instagram -->
+    <a href="#" class="footer-link" title="Instagram">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/></svg>
+      Instagram
+    </a>
+
+    <!-- Itch.io -->
+    <a href="#" class="footer-link" title="Itch.io">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M3.13 1.338C2.08 1.96.02 4.328 0 4.95v1.03c0 1.303 1.22 2.45 2.325 2.45 1.33 0 2.436-1.102 2.436-2.406 0 1.304 1.07 2.406 2.4 2.406 1.328 0 2.362-1.102 2.362-2.406 0 1.304 1.106 2.406 2.435 2.406h.024c1.33 0 2.435-1.102 2.435-2.406 0 1.304 1.034 2.406 2.363 2.406 1.33 0 2.4-1.102 2.4-2.406 0 1.304 1.106 2.406 2.436 2.406C22.78 8.43 24 7.282 24 5.98V4.95c-.02-.622-2.08-2.99-3.13-3.612C19.754.95 12.76.725 12 .725c-.76 0-7.754.226-8.87.613zm8.87 5.328c-.487 0-.9-.132-1.302-.32C10.372 6.17 9.93 5.96 9.75 5.96c-.178 0-.622.21-.947.386-.4.188-.815.32-1.302.32-.87 0-1.567-.41-1.97-.976-.298.48-.722.79-1.173.948v5.62c.43.13.735.278.735.278s1.286.56 3.49.56c.76 0 1.537-.06 2.29-.186a17.7 17.7 0 0 0-.047-.42c-.07-.67-.02-1.38.214-2.07.234-.69.64-1.38 1.27-1.9.628-.52 1.434-.8 2.27-.8.43 0 .85.08 1.24.22v-1.5c-.452-.158-.876-.468-1.174-.948-.403.566-1.1.976-1.97.976zm3.496 4.618c-.628 0-1.21.22-1.64.58-.43.36-.7.88-.834 1.42-.133.54-.133 1.1-.057 1.65.076.55.25 1.08.52 1.54.27.46.648.85 1.098 1.11.45.26.97.39 1.49.39.522 0 1.04-.13 1.492-.39.45-.26.83-.65 1.1-1.11.27-.46.443-.99.52-1.54.076-.55.076-1.11-.057-1.65-.133-.54-.403-1.06-.833-1.42-.43-.36-1.012-.58-1.64-.58h-.16zm.16 1.14c.43 0 .77.2.99.5.22.3.33.71.33 1.12 0 .41-.11.82-.33 1.12-.22.3-.56.5-.99.5s-.77-.2-.99-.5c-.22-.3-.33-.71-.33-1.12 0-.41.11-.82.33-1.12.22-.3.56-.5.99-.5z"/></svg>
+      Itch.io
+    </a>
+
+    <!-- Email -->
+    <a href="mailto:contact@bonaventure.games" class="footer-link" title="Email">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+      contact@bonaventure.games
+    </a>
   </div>
-</div>
+</footer>
 
+<!-- ═══════════════════════════════════════════
+     SCRIPTS — Ordre de chargement critique
+     ═══════════════════════════════════════════ -->
+
+<!-- 1. Données partagées -->
 <script src="gamedata.js"></script>
+
+<!-- 2. Modules de pages -->
+<script src="pages/home.js"></script>
+<script src="pages/moodboard.js"></script>
+<script src="pages/playlist.js"></script>
+<script src="pages/mockups.js"></script>
+<script src="pages/build-sim.js"></script>
+<script src="pages/arena-forge.js"></script>
+
+<!-- 3. Routeur SPA -->
 <script>
-// ═══════════════════════════════════════════════════════
-// STATE
-// ═══════════════════════════════════════════════════════
-let navData = [];
-let currentPage = '';
-let pageCache = {};
-let searchIndex = [];
-let selectedExportType = 'md';
+const SPA = {
+  // Mapping route → module
+  PAGES: {
+    'home':        { module: PAGE_HOME,        footer: true,  fullscreen: false },
+    'moodboard':   { module: PAGE_MOODBOARD,   footer: true,  fullscreen: false },
+    'playlist':    { module: PAGE_PLAYLIST,    footer: true,  fullscreen: false },
+    'mockups':     { module: PAGE_MOCKUPS,     footer: false, fullscreen: true  },
+    'build-sim':   { module: PAGE_BUILD_SIM,   footer: false, fullscreen: true  },
+    'arena-forge': { module: PAGE_ARENA_FORGE, footer: false, fullscreen: true  },
+  },
 
-// ═══════════════════════════════════════════════════════
-// BOOT — charge nav.json puis la première page
-// ═══════════════════════════════════════════════════════
-async function boot() {
-  try {
-    const r = await fetch('nav.json');
-    navData = await r.json();
-  } catch(e) {
-    // Fallback minimal si nav.json inaccessible (ouverture directe du fichier)
-    navData = [{ section: 'Erreur', items:[{id:'home',icon:'🏠',label:'Accueil'}] }];
-    console.warn('nav.json non chargé — lancer via un serveur HTTP local');
-  }
-  buildSearchIndex();
-  renderNav();
-  // Page initiale depuis l'URL hash ou 'home'
-  const hash = location.hash.replace('#','') || 'home';
-  navigateTo(hash, true);
-}
+  current: null,
 
-// ═══════════════════════════════════════════════════════
-// NAVIGATION
-// ═══════════════════════════════════════════════════════
-function renderNav() {
-  const nav = document.getElementById('nav');
-  nav.innerHTML = navData.map(section => `
-    <div class="nav-section">
-      <div class="nav-section-title">${section.section}</div>
-      ${section.items.map(item => `
-        <div class="nav-item${currentPage===item.id?' active':''}" data-page="${item.id}" onclick="navigateTo('${item.id}')">
-          <span class="icon">${item.icon||'📄'}</span>
-          ${item.label}
-          ${item.badge ? `<span class="badge">${item.badge}</span>` : ''}
-        </div>
-      `).join('')}
-    </div>
-  `).join('');
-}
+  go(page) {
+    if (!this.PAGES[page]) page = 'home';
+    const cfg = this.PAGES[page];
 
-async function navigateTo(pageId, initial = false) {
-  currentPage = pageId;
-  location.hash = pageId;
-  renderNav();
+    // Mettre à jour le hash sans déclencher hashchange
+    history.replaceState(null, '', '#' + page);
 
-  // Breadcrumb
-  const label = findNavLabel(pageId);
-  document.getElementById('breadcrumb-page').textContent = label;
+    // Injecter le HTML
+    const root = document.getElementById('page-root');
+    root.innerHTML = cfg.module.render();
 
-  // Ferme sidebar mobile
-  if (window.innerWidth <= 768 && !initial) {
-    document.getElementById('sidebar').classList.remove('open');
-  }
-
-  // Ferme résultats recherche
-  document.getElementById('search-results').classList.remove('visible');
-
-  // Charge la page
-  await loadPage(pageId);
-  window.scrollTo(0,0);
-}
-
-function findNavLabel(id) {
-  for (const section of navData) {
-    const item = section.items.find(i => i.id === id);
-    if (item) return item.label;
-  }
-  return id;
-}
-
-// ═══════════════════════════════════════════════════════
-// CHARGEMENT DES PAGES (fetch + cache)
-// ═══════════════════════════════════════════════════════
-
-// Ré-exécute tous les <script> présents dans un conteneur
-// après injection via innerHTML (les scripts injectés par
-// innerHTML ne s'exécutent pas — ceci corrige ce comportement).
-function runPageScripts(container) {
-  container.querySelectorAll('script').forEach(oldScript => {
-    const newScript = document.createElement('script');
-    // Copie les attributs (type, src, etc.)
-    [...oldScript.attributes].forEach(attr => newScript.setAttribute(attr.name, attr.value));
-    newScript.textContent = oldScript.textContent;
-    oldScript.parentNode.replaceChild(newScript, oldScript);
-  });
-}
-
-// Gère la pleine largeur si la page le demande via
-// data-fullwidth="true" sur son premier élément racine.
-function applyPageLayout(container) {
-  const root = container.firstElementChild;
-  const content = document.getElementById('content');
-  if (root && root.dataset.fullwidth === 'true') {
-    content.classList.add('content-fullwidth');
-  } else {
-    content.classList.remove('content-fullwidth');
-  }
-}
-
-async function loadPage(pageId) {
-  const container = document.getElementById('page-container');
-  container.innerHTML = '<div class="page-loading">Chargement…</div>';
-
-  if (pageCache[pageId]) {
-    container.innerHTML = pageCache[pageId];
-    applyPageLayout(container);
-    runPageScripts(container);
-    initPageScripts(pageId);
-    return;
-  }
-
-  try {
-    const r = await fetch(`pages/${pageId}.html`);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const html = await r.text();
-    pageCache[pageId] = html;
-    container.innerHTML = html;
-    applyPageLayout(container);
-    runPageScripts(container);
-    initPageScripts(pageId);
-  } catch(e) {
-    container.innerHTML = `
-      <div class="page-error">
-        ❌ Page introuvable : <code>pages/${pageId}.html</code><br><br>
-        Pour créer cette page, consulte la section <strong>Ajouter du contenu</strong> ou utilise le prompt d'intégration.<br><br>
-        <small>Erreur : ${e.message}</small>
-      </div>`;
-  }
-}
-
-// Scripts spécifiques aux pages existantes (simulateurs inline).
-// N'ajouter ici QUE les pages qui définissent leur init dans index.html.
-// Les nouvelles pages autonomes n'ont pas besoin d'être listées ici.
-function initPageScripts(pageId) {
-  if (pageId === 'hierarchy')   initHierarchySim();
-  if (pageId === 'skills-flow') initFlowSim();
-}
-
-// ═══════════════════════════════════════════════════════
-// SEARCH
-// ═══════════════════════════════════════════════════════
-function buildSearchIndex() {
-  // Index de base — sera complété par chaque page via window.registerSearchEntries()
-  searchIndex = [];
-  navData.forEach(section => {
-    section.items.forEach(item => {
-      searchIndex.push({
-        title: item.label,
-        page: item.id,
-        section: section.section,
-        content: item.label.toLowerCase()
-      });
-    });
-  });
-}
-
-// Les pages peuvent enrichir l'index via cette fonction globale
-window.registerSearchEntries = function(entries) {
-  // Déduplique par title+page
-  entries.forEach(e => {
-    if (!searchIndex.find(x => x.title === e.title && x.page === e.page)) {
-      searchIndex.push(e);
+    // Init du module si nécessaire
+    if (typeof cfg.module.init === 'function') {
+      // Attendre que le DOM soit dispo
+      requestAnimationFrame(() => cfg.module.init());
     }
-  });
+
+    // Footer & main-content height
+    const footer = document.getElementById('site-footer');
+    if (footer) footer.style.display = cfg.footer ? '' : 'none';
+
+    // Nav active state
+    document.querySelectorAll('[data-page]').forEach(el => {
+      el.classList.toggle('active', el.dataset.page === page);
+    });
+
+    this.current = page;
+    window.scrollTo(0, 0);
+  },
+
+  init() {
+    // Lire le hash initial
+    const hash = window.location.hash.replace('#', '') || 'home';
+    this.go(hash);
+
+    // Écouter les changements de hash (bouton retour)
+    window.addEventListener('hashchange', () => {
+      const page = window.location.hash.replace('#', '') || 'home';
+      if (page !== this.current) this.go(page);
+    });
+  }
 };
 
-const searchEl = document.getElementById('search');
-const resultsEl = document.getElementById('search-results');
-searchEl.addEventListener('input', () => {
-  const q = searchEl.value.trim().toLowerCase();
-  if (!q) { resultsEl.classList.remove('visible'); return; }
-  const hits = searchIndex.filter(i =>
-    i.title.toLowerCase().includes(q) || i.content.toLowerCase().includes(q)
-  ).slice(0, 8);
-  const list = document.getElementById('search-results-list');
-  const empty = document.getElementById('search-empty');
-  list.innerHTML = '';
-  empty.style.display = hits.length ? 'none' : 'block';
-  hits.forEach(h => {
-    const d = document.createElement('div');
-    d.className = 'search-result';
-    const hl = h.title.replace(new RegExp(q,'gi'), m => `<span class="sr-highlight">${m}</span>`);
-    d.innerHTML = `<div class="sr-title">${hl}</div><div class="sr-section">${h.section}</div>`;
-    d.onclick = () => { navigateTo(h.page); searchEl.value=''; };
-    list.appendChild(d);
-  });
-  resultsEl.classList.add('visible');
-});
-document.addEventListener('click', e => {
-  if (!e.target.closest('#search-wrap') && !e.target.closest('#search-results'))
-    resultsEl.classList.remove('visible');
-});
-
-// ═══════════════════════════════════════════════════════
-// COPY CODE (global, utilisé par les pages)
-// ═══════════════════════════════════════════════════════
-window.copyCode = function(btn) {
-  const pre = btn.closest('.code-wrap').querySelector('pre');
-  navigator.clipboard.writeText(pre.innerText).then(() => {
-    btn.textContent = '✅ Copié';
-    btn.classList.add('copied');
-    setTimeout(() => { btn.textContent = '📋 Copier'; btn.classList.remove('copied'); }, 2000);
-  });
-};
-
-// ═══════════════════════════════════════════════════════
-// EXPORT
-// ═══════════════════════════════════════════════════════
-function openExport() { document.getElementById('export-modal').classList.add('open'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
-function selectExport(t) {
-  selectedExportType = t;
-  document.querySelectorAll('.export-opt').forEach(o => o.classList.remove('selected'));
-  document.getElementById('opt-'+t).classList.add('selected');
-}
-function doExport() {
-  const container = document.getElementById('page-container');
-  const title = document.getElementById('breadcrumb-page').textContent;
-  const slug = title.toLowerCase().replace(/\s+/g,'-').replace(/[^\w-]/g,'');
-  if (selectedExportType === 'md') {
-    download(`dethroned-${slug}.md`, toMarkdown(container, title), 'text/markdown');
-  } else if (selectedExportType === 'html') {
-    const styles = document.querySelector('style').outerHTML;
-    download(`dethroned-${slug}.html`,
-      `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>${title}</title>${styles}</head><body style="background:var(--noir);color:var(--blanc);padding:40px">${container.innerHTML}</body></html>`,
-      'text/html');
-  } else if (selectedExportType === 'pdf') {
-    window.print();
-  } else {
-    download(`dethroned-${slug}.json`,
-      JSON.stringify({ title, exported: new Date().toISOString(), content: container.innerText }, null, 2),
-      'application/json');
-  }
-  closeModal('export-modal');
-}
-function toMarkdown(el, title) {
-  let md = `# ${title}\n\n`;
-  el.querySelectorAll('h2.section,h3.subsection,p.text,pre,.callout,table').forEach(n => {
-    if (n.tagName==='H2') md += `## ${n.innerText}\n\n`;
-    else if (n.tagName==='H3') md += `### ${n.innerText}\n\n`;
-    else if (n.classList.contains('text')) md += `${n.innerText}\n\n`;
-    else if (n.tagName==='PRE') md += `\`\`\`\n${n.innerText}\n\`\`\`\n\n`;
-    else if (n.classList.contains('callout')) md += `> ${n.innerText}\n\n`;
-    else if (n.tagName==='TABLE') {
-      n.querySelectorAll('tr').forEach((row,i) => {
-        const cells = [...row.querySelectorAll('th,td')].map(c => c.innerText.replace(/\n/g,' '));
-        md += `| ${cells.join(' | ')} |\n`;
-        if (i===0) md += `| ${cells.map(()=>'---').join(' | ')} |\n`;
-      });
-      md += '\n';
-    }
-  });
-  return md;
-}
-function download(filename, content, type) {
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([content],{type}));
-  a.download = filename; a.click();
-}
-
-// ═══════════════════════════════════════════════════════
-// ÉDITEUR DE NAVIGATION
-// ═══════════════════════════════════════════════════════
-let editorData = [];
-function openNavEditor() {
-  editorData = JSON.parse(JSON.stringify(navData)); // deep copy
-  renderNavEditor();
-  document.getElementById('nav-editor-modal').classList.add('open');
-}
-
-function renderNavEditor() {
-  const list = document.getElementById('nav-editor-list');
-  list.innerHTML = editorData.map((section, si) => `
-    <div class="ne-section" data-si="${si}">
-      <div class="ne-section-header">
-        <span style="color:var(--gris);font-size:11px">📁</span>
-        <input class="ne-section-name" value="${section.section}"
-          onchange="editorData[${si}].section=this.value">
-        <button class="ne-del" onclick="neDelSection(${si})" title="Supprimer la section">✕</button>
-      </div>
-      ${section.items.map((item, ii) => `
-        <div class="ne-item" data-si="${si}" data-ii="${ii}" draggable="true"
-          ondragstart="neDragStart(event,${si},${ii})"
-          ondragover="event.preventDefault()"
-          ondrop="neDrop(event,${si},${ii})">
-          <span class="ne-drag">⠿</span>
-          <span style="font-size:14px">${item.icon||'📄'}</span>
-          <input value="${item.label}" style="flex:1"
-            onchange="editorData[${si}].items[${ii}].label=this.value"
-            title="Label affiché dans la nav">
-          <input value="${item.id}" style="width:130px;color:var(--gris)"
-            onchange="editorData[${si}].items[${ii}].id=this.value"
-            title="ID = nom du fichier pages/ID.html">
-          <input value="${item.icon||''}" style="width:32px;text-align:center"
-            onchange="editorData[${si}].items[${ii}].icon=this.value"
-            title="Emoji icône">
-          <button class="ne-del" onclick="neDelItem(${si},${ii})">✕</button>
-        </div>
-      `).join('')}
-      <div class="ne-add-item" onclick="neAddItem(${si})">+ Ajouter une page</div>
-    </div>
-  `).join('');
-}
-
-let neDragging = null;
-function neDragStart(e, si, ii) { neDragging = {si, ii}; }
-function neDrop(e, si, ii) {
-  if (!neDragging) return;
-  const item = editorData[neDragging.si].items.splice(neDragging.ii, 1)[0];
-  editorData[si].items.splice(ii, 0, item);
-  neDragging = null;
-  renderNavEditor();
-}
-function neDelSection(si) {
-  if (!confirm('Supprimer cette section et toutes ses pages ?')) return;
-  editorData.splice(si, 1);
-  renderNavEditor();
-}
-function neDelItem(si, ii) { editorData[si].items.splice(ii,1); renderNavEditor(); }
-function neAddItem(si) {
-  editorData[si].items.push({ id: 'nouvelle-page', icon: '📄', label: 'Nouvelle page' });
-  renderNavEditor();
-}
-function neAddSection() {
-  editorData.push({ section: 'Nouvelle section', items: [] });
-  renderNavEditor();
-}
-function saveNavEditor() {
-  navData = JSON.parse(JSON.stringify(editorData));
-  // Vide le cache des pages renommées
-  pageCache = {};
-  buildSearchIndex();
-  renderNav();
-  closeModal('nav-editor-modal');
-
-  // Propose de télécharger le nav.json mis à jour
-  const json = JSON.stringify(navData, null, 2);
-  if (confirm('Navigation mise à jour !\n\nTélécharger le nav.json mis à jour pour le sauvegarder ?')) {
-    download('nav.json', json, 'application/json');
-  }
-}
-
-// ═══════════════════════════════════════════════════════
-// SIMULATEURS (initialisés après injection des pages)
-// ═══════════════════════════════════════════════════════
-function initHierarchySim() {
-  window.checkDep = function() {
-    const layerOrder = { infra:0, c0:1, c1:2, c2:3, c3:4, c4:5 };
-    const layerNames = {
-      infra:'Infrastructure', c0:'C0 — RunManager', c1:'C1 — CombatManager…',
-      c2:'C2 — HealthManager…', c3:'C3 — LootManager…', c4:'C4 — VFXManager…'
-    };
-    const from = document.getElementById('sim-from')?.value;
-    const to   = document.getElementById('sim-to')?.value;
-    const res  = document.getElementById('dep-result');
-    if (!from || !to || !res) return;
-    if (to === 'infra') {
-      res.textContent = `✅ AUTORISÉ\n${layerNames[from]} peut appeler ${layerNames[to]}.\nInfrastructure accessible depuis toutes les couches.`;
-    } else if (layerOrder[from] <= layerOrder[to]) {
-      res.textContent = `✅ AUTORISÉ\n${layerNames[from]} (N=${layerOrder[from]}) → ${layerNames[to]} (N=${layerOrder[to]})\nAppel vers le bas ou même niveau. Conforme.`;
-    } else {
-      res.textContent = `❌ INTERDIT\n${layerNames[from]} (N=${layerOrder[from]}) → ${layerNames[to]} (N=${layerOrder[to]})\nAppel vers le haut — viole la règle cardinale.\n→ Utiliser un callback ou une couche intermédiaire.`;
-    }
-  };
-}
-
-function initFlowSim() {
-  const evtFlows = {
-    enemy_hit:{ steps:['PhysicsManager','CombatManager','SkillManager.ContextBuilder','TriggerRunner','EffectRunner'], ctx:'event_type: "enemy_hit"\ninitiator: BilleJoueur\nreceiver: Fennec\nspeed: 340.0\ntarget_hp_ratio: 0.85\ntarget_has_dot: false\nhealth_manager: HealthManager\nstatus_manager: StatusManager' },
-    wall_hit:{ steps:['PhysicsManager','CombatManager','SkillManager.ContextBuilder','TriggerRunner','EffectRunner'], ctx:'event_type: "wall_hit"\nposition: Vector3(20,0,0)\nnormal: Vector3(-1,0,0)\nspeed: 290.0\ntrigger_state: TriggerStateComponent' },
-    kill:{ steps:['HealthManager','CombatManager','SkillManager.ContextBuilder','TriggerRunner','EnemyManager'], ctx:'event_type: "kill"\ntarget: Fennec\nkill_cause: "direct"\nposition: Vector3(12,0,-4)' },
-    damage_received:{ steps:['HealthManager','SkillManager.ContextBuilder','TriggerRunner','EffectRunner'], ctx:'event_type: "damage_received"\namount: 15.0\nplayer_hp_ratio: 0.55' },
-    timer:{ steps:['SkillManager (interne)','SkillManager.ContextBuilder','TriggerRunner'], ctx:'event_type: "timer"\ntimestamp: 147.0\nplayer_speed: 180.0' },
-    zone_entered:{ steps:['Area3D.body_entered','PhysicsManager.ZoneTracker','SkillManager.ContextBuilder','TriggerRunner'], ctx:'event_type: "zone_entered"\nzone_tags: ["#poison","#zone_ennemie"]' },
-  };
-  window.runSimFlow = function() {
-    const type = document.getElementById('evt-type')?.value;
-    if (!type) return;
-    const flow = evtFlows[type];
-    const display = document.getElementById('sim-flow-display');
-    const ctxDisplay = document.getElementById('sim-ctx-display');
-    if (!display || !ctxDisplay) return;
-    display.innerHTML = '';
-    flow.steps.forEach((step, i) => {
-      if (i > 0) { const a = document.createElement('div'); a.className='sim-arrow'; a.textContent='→'; display.appendChild(a); }
-      const el = document.createElement('div');
-      el.className = 'sim-step';
-      el.innerHTML = `<div class="sim-step-label">Étape ${i+1}</div><div class="sim-step-value">${step}</div>`;
-      display.appendChild(el);
-      setTimeout(() => el.classList.add('done'), (i+1)*120);
-    });
-    setTimeout(() => { ctxDisplay.textContent = 'CTX construit :\n\n' + flow.ctx; }, flow.steps.length*120+100);
-  };
-}
-
-// ═══════════════════════════════════════════════════════
-// UTILS
-// ═══════════════════════════════════════════════════════
-function toggleSidebar() { document.getElementById('sidebar').classList.toggle('open'); }
-document.addEventListener('keydown', e => {
-  if (e.key==='Escape') {
-    document.querySelectorAll('.modal-bg.open').forEach(m => m.classList.remove('open'));
-    resultsEl.classList.remove('visible');
-  }
-});
-// Expose navigateTo aux pages injectées
-window.navigateTo = navigateTo;
-
-// ═══════════════════════════════════════════════════════
-// GO
-// ═══════════════════════════════════════════════════════
-boot();
+// Démarrage
+document.addEventListener('DOMContentLoaded', () => SPA.init());
 </script>
+
 </body>
 </html>
