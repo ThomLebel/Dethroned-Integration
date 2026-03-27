@@ -3,7 +3,7 @@
  */
 window.PAGE_MOODBOARD = {
   // Remplace CANVA_EMBED_URL par ton lien embed Canva
-  CANVA_URL: 'CANVA_EMBED_URL',
+  CANVA_URL: 'https://www.canva.com/design/DAHCOCTjWLY/HJkkH8J6_bIehJoXGSxyCA/view',
 
   render() {
     const hasUrl = this.CANVA_URL !== 'CANVA_EMBED_URL';

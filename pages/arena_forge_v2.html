@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arena Forge v2 — Dethroned</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Space+Mono:wght@400;700&display=swap');
+:root {
+  --bg:#0d0f0a;--bg2:#141710;--bg3:#1c2014;--border:#2e3428;
+  --gold:#c8a84b;--gold2:#e8c86a;--red:#c0392b;--red2:#e05040;
+  --green:#4a7c59;--green2:#6baf7a;--grey:#5a6050;--grey2:#3a4030;
+  --text:#d4cdb8;--text2:#8a8470;--blue:#4a7aaa;--purple:#8a5aaa;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;min-height:100vh;overflow:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:2000;opacity:0.4;}
+header{display:flex;align-items:center;justify-content:space-between;padding:14px 22px;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+.logo{font-family:'Cinzel',serif;font-size:16px;font-weight:900;color:var(--gold);letter-spacing:3px;}
+.logo span{color:var(--text2);font-weight:700;font-size:9px;letter-spacing:2px;display:block;margin-top:1px;}
+.header-badge{font-size:9px;letter-spacing:2px;color:var(--text2);border:1px solid var(--border);padding:3px 8px;}
+.app{display:grid;grid-template-columns:270px 1fr 268px;height:calc(100vh - 49px);overflow:hidden;}
+
+/* ── PANELS ── */
+.panel{background:var(--bg2);overflow-y:auto;padding:14px 13px;}
+.panel-left{border-right:1px solid var(--border);}
+.panel-right{border-left:1px solid var(--border);}
+.panel-center{display:flex;flex-direction:column;align-items:center;padding:14px;background:var(--bg);overflow:hidden;}
+
+.sec{font-family:'Cinzel',serif;font-size:8px;font-weight:700;letter-spacing:3px;color:var(--gold);text-transform:uppercase;margin-bottom:9px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+.cg{margin-bottom:14px;}
+label{display:block;font-size:8px;letter-spacing:2px;color:var(--text2);text-transform:uppercase;margin-bottom:4px;}
+
+select,input[type=text],input[type=number]{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:10px;padding:5px 8px;appearance:none;outline:none;cursor:pointer;}
+select:hover,select:focus,input:focus{border-color:var(--gold);}
+input[type=text],input[type=number]{cursor:text;}
+
+/* Slider + input combo */
+.slider-row{display:flex;align-items:center;gap:6px;}
+.slider-row input[type=range]{flex:1;height:3px;accent-color:var(--gold);cursor:pointer;}
+.slider-row input[type=number]{width:52px;flex-shrink:0;padding:4px 6px;}
+
+.btn{width:100%;background:transparent;border:1px solid var(--gold);color:var(--gold);font-family:'Cinzel',serif;font-size:10px;font-weight:700;letter-spacing:2px;padding:8px;cursor:pointer;text-transform:uppercase;transition:all .15s;margin-bottom:6px;}
+.btn:hover{background:var(--gold);color:var(--bg);}
+.btn.primary{background:var(--gold);color:var(--bg);}
+.btn.primary:hover{background:var(--gold2);}
+.btn.danger{border-color:var(--red);color:var(--red);}
+.btn.danger:hover{background:var(--red);color:#fff;}
+.btn.small{font-size:8px;padding:5px 7px;letter-spacing:1px;margin-bottom:3px;}
+.btn-row{display:flex;gap:5px;} .btn-row .btn{margin-bottom:0;}
+hr.div{border:none;border-top:1px solid var(--border);margin:12px 0;}
+
+/* Tags */
+.tag-row{display:flex;flex-wrap:wrap;gap:3px;margin-top:5px;}
+.tag{font-size:8px;letter-spacing:1px;padding:2px 6px;border:1px solid var(--border);color:var(--text2);cursor:pointer;transition:all .1s;position:relative;}
+.tag.active{border-color:var(--gold);color:var(--gold);background:rgba(200,168,75,.08);}
+.tag[title]:hover::after{content:attr(title);position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);background:var(--bg2);border:1px solid var(--gold);color:var(--text);font-size:8px;padding:4px 7px;white-space:nowrap;z-index:999;pointer-events:none;letter-spacing:.5px;line-height:1.5;}
+
+/* Name/desc */
+.name-row{display:flex;gap:4px;align-items:center;}
+.name-row input{flex:1;}
+.name-row .btn{width:auto;padding:5px 8px;font-size:9px;letter-spacing:1px;margin:0;flex-shrink:0;}
+textarea{width:100%;background:var(--bg3);border:1px solid var(--border);color:var(--text);font-family:'Space Mono',monospace;font-size:9px;padding:6px 8px;resize:vertical;outline:none;min-height:52px;line-height:1.5;}
+textarea:focus{border-color:var(--gold);}
+
+/* Tool palette */
+.tool-palette{display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-top:5px;}
+.tool-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:8px;padding:4px 3px;cursor:pointer;text-align:center;transition:all .1s;letter-spacing:.5px;line-height:1.4;}
+.tool-btn:hover{border-color:var(--text2);color:var(--text);}
+.tool-btn.active{border-color:var(--gold2);color:var(--gold2);background:rgba(200,168,75,.12);}
+.tool-swatch{width:10px;height:10px;display:inline-block;border:1px solid rgba(255,255,255,.2);vertical-align:middle;margin-right:3px;}
+
+/* Enemy palette */
+.enemy-palette{display:flex;flex-direction:column;gap:3px;margin-top:5px;}
+.enemy-btn{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);padding:4px 7px;cursor:pointer;transition:all .1s;}
+.enemy-btn:hover{border-color:var(--text2);}
+.enemy-btn.active{border-color:var(--gold2);}
+.enemy-icon{width:16px;height:16px;border-radius:50%;border:1.5px solid rgba(255,255,255,.3);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;}
+.enemy-label{font-size:8px;color:var(--text2);letter-spacing:.5px;flex:1;}
+.enemy-btn.active .enemy-label{color:var(--gold2);}
+
+/* Canvas area */
+.arena-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;width:100%;}
+.arena-name-display{font-family:'Cinzel',serif;font-size:13px;font-weight:700;color:var(--gold2);letter-spacing:2px;}
+.arena-meta-display{font-size:8px;color:var(--text2);letter-spacing:1px;}
+#arenaCanvas{border:1px solid var(--border);cursor:crosshair;image-rendering:pixelated;max-width:100%;flex-shrink:0;}
+.canvas-footer{display:flex;align-items:center;justify-content:space-between;width:100%;margin-top:7px;}
+.canvas-hint{font-size:8px;color:var(--text2);letter-spacing:.5px;}
+.validation-row{display:flex;gap:8px;}
+.vbadge{font-size:8px;padding:2px 6px;letter-spacing:.5px;}
+.vbadge.ok{background:rgba(74,124,89,.2);border:1px solid var(--green);color:var(--green2);}
+.vbadge.warn{background:rgba(200,168,75,.1);border:1px solid var(--gold);color:var(--gold2);}
+.vbadge.err{background:rgba(192,57,43,.15);border:1px solid var(--red);color:var(--red2);}
+
+/* Stats */
+.stat-row{display:flex;justify-content:space-between;font-size:9px;padding:4px 0;border-bottom:1px solid var(--bg3);}
+.stat-label{color:var(--text2);}
+.stat-val{color:var(--text);font-weight:700;}
+.stat-val.good{color:var(--green2);}
+.stat-val.warn{color:var(--gold);}
+.stat-val.bad{color:var(--red2);}
+
+/* Legend */
+.leg-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.leg-sw{width:13px;height:13px;border:1px solid rgba(255,255,255,.15);flex-shrink:0;}
+.leg-lbl{font-size:8px;color:var(--text2);letter-spacing:.5px;}
+
+/* Library */
+.lib-item{background:var(--bg3);border:1px solid var(--border);padding:6px 8px;margin-bottom:4px;cursor:pointer;display:flex;align-items:center;gap:7px;transition:border-color .15s;}
+.lib-item:hover{border-color:var(--gold);}
+.lib-item.sel{border-color:var(--gold2);background:rgba(200,168,75,.06);}
+.lib-preview{width:44px;height:25px;border:1px solid var(--border);flex-shrink:0;}
+.lib-preview canvas{width:100%;height:100%;image-rendering:pixelated;}
+.lib-info{flex:1;min-width:0;}
+.lib-name{font-size:8px;color:var(--gold);letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.lib-meta{font-size:7px;color:var(--text2);margin-top:1px;}
+.lib-del{background:none;border:none;color:var(--grey);cursor:pointer;font-size:11px;padding:1px 4px;transition:color .1s;}
+.lib-del:hover{color:var(--red);}
+.empty-lib{font-size:8px;color:var(--text2);text-align:center;padding:16px 0;line-height:2;letter-spacing:.5px;}
+
+.json-box{background:var(--bg3);border:1px solid var(--border);padding:8px;font-size:7px;color:var(--text2);line-height:1.6;max-height:140px;overflow-y:auto;white-space:pre;font-family:'Space Mono',monospace;margin-top:6px;}
+
+/* Context menu */
+#ctxMenu{position:fixed;background:var(--bg2);border:1px solid var(--gold);z-index:1500;min-width:160px;display:none;box-shadow:0 4px 20px rgba(0,0,0,.6);}
+.ctx-item{display:flex;align-items:center;gap:7px;padding:6px 10px;font-size:9px;cursor:pointer;letter-spacing:.5px;transition:background .1s;}
+.ctx-item:hover{background:rgba(200,168,75,.12);}
+.ctx-icon{width:12px;height:12px;border-radius:50%;border:1px solid rgba(255,255,255,.3);flex-shrink:0;}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0;}
+.ctx-title{font-size:8px;color:var(--text2);padding:5px 10px 2px;letter-spacing:1px;text-transform:uppercase;}
+
+/* Toolbar sous canvas */
+.tb-btn{background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-size:8px;padding:4px 7px;cursor:pointer;white-space:nowrap;transition:all .1s;letter-spacing:.5px;display:flex;align-items:center;gap:4px;}
+.tb-btn:hover{border-color:var(--text2);color:var(--text);}
+.tb-btn.active{border-color:var(--gold2)!important;color:var(--gold2);background:rgba(200,168,75,.12);}
+.tb-swatch{width:9px;height:9px;border:1px solid rgba(255,255,255,.2);flex-shrink:0;border-radius:1px;}
+.tb-enemy-btn{width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,.2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;transition:all .1s;flex-shrink:0;}
+.tb-enemy-btn:hover{transform:scale(1.15);}
+.tb-enemy-btn.active{border-color:#fff!important;transform:scale(1.2);box-shadow:0 0 6px rgba(255,255,255,.3);}
+
+/* Tooltip global */
+#tooltip{position:fixed;background:var(--bg2);border:1px solid var(--gold);color:var(--text);font-size:8px;padding:4px 7px;pointer-events:none;z-index:1600;display:none;letter-spacing:.5px;max-width:220px;line-height:1.5;}
+
+::-webkit-scrollbar{width:3px;}::-webkit-scrollbar-track{background:var(--bg);}::-webkit-scrollbar-thumb{background:var(--border);}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Arena Forge <span>Dethroned · The King's Den — Bonaventure Studio</span></div>
+  <div class="header-badge">PRÉVISUALISEUR v2.0</div>
+</header>
+
+<div class="app">
+
+<!-- ══════════════ PANEL GAUCHE ══════════════ -->
+<div class="panel panel-left">
+
+  <div class="cg">
+    <div class="sec">Génération</div>
+    <label>Biome</label>
+    <select id="selBiome" title="Thème visuel de l'arène : sol, obstacles et couleurs">
+      <option value="random">🎲 Aléatoire</option>
+      <option value="savane">🌅 Savane</option>
+      <option value="foret">🌿 Forêt</option>
+      <option value="zh">🌊 Zones Humides</option>
+      <option value="ruines">🏛️ Ruines</option>
+    </select>
+  </div>
+
+  <div class="cg">
+    <label>Gabarit</label>
+    <select id="selTemplate" title="Structure d'obstacles prédéfinie : piliers, couloirs, anneaux...">
+      <option value="random">🎲 Aléatoire</option>
+      <optgroup label="Ouvertes"><option value="G01">G01 — Plaine Dégagée</option><option value="G02">G02 — Îlots Épars</option></optgroup>
+      <optgroup label="Couloirs"><option value="G03">G03 — Couloir Central</option><option value="G04">G04 — Couloir en L</option><option value="G05">G05 — Double Passage</option></optgroup>
+      <optgroup label="Îlots"><option value="G06">G06 — Quatre Piliers</option><option value="G07">G07 — Croix Inversée</option><option value="G08">G08 — Archipel</option></optgroup>
+      <optgroup label="Asymétriques"><option value="G09">G09 — Front de Bataille</option><option value="G10">G10 — Entonnoir</option></optgroup>
+      <optgroup label="Structure Centrale"><option value="G13">G13 — Mur Brisé</option><option value="G14">G14 — Anneau</option><option value="G15">G15 — Diagonale</option><option value="G16">G16 — Couloir Courbe</option></optgroup>
+      <optgroup label="E/S Décalés"><option value="G17">G17 — Axe Inversé</option><option value="G18">G18 — Même Bord</option><option value="G19">G19 — Coin à Coin</option><option value="G20">G20 — Pincer</option></optgroup>
+      <optgroup label="Spéciales"><option value="G11">G11 — Mini-Boss</option><option value="G21">G21 — Repos</option><option value="G22">G22 — Marchand</option><option value="G23">G23 — Mini-Boss Circ.</option><option value="G24">G24 — Élite</option></optgroup>
+    </select>
+  </div>
+
+  <div class="cg">
+    <label>Type de salle</label>
+    <select id="selRoomType" title="Détermine la composition d'ennemis générée et oriente le nom/description de la salle" onchange="onRoomTypeChange()">
+      <option value="normal">⚔ Normale</option>
+      <option value="elite">💀 Élite</option>
+      <option value="miniboss">👁 Mini-Boss</option>
+      <option value="boss">👑 Boss</option>
+    </select>
+  </div>
+
+  <div class="cg">
+    <label>Forme d'arène</label>
+    <select id="selShape" title="Contour jouable de l'arène : ovale, haricot, losange, irrégulier...">
+      <option value="random">🎲 Aléatoire</option>
+      <option value="oval">Ovale</option>
+      <option value="rect_soft">Rectangle arrondi</option>
+      <option value="bean">Haricot</option>
+      <option value="diamond">Losange</option>
+      <option value="lshape">Forme en L</option>
+      <option value="cross">Croix</option>
+      <option value="hex">Hexagone</option>
+      <option value="irregular">Irrégulier</option>
+    </select>
+  </div>
+
+  <div class="cg">
+    <label title="Proportion de cellules jouables occupées par des obstacles (max 25%)">Densité obstacles</label>
+    <div class="slider-row">
+      <input type="range" id="sliderDensity" min="0" max="25" value="15" step="1" oninput="syncInput('sliderDensity','inputDensity')">
+      <input type="number" id="inputDensity" min="0" max="25" value="15" style="width:46px" oninput="syncSlider('inputDensity','sliderDensity',0,25)"> <span style="font-size:9px;color:var(--text2)">%</span>
+    </div>
+  </div>
+
+  <div class="cg">
+    <label title="Graine de génération aléatoire. Même seed + mêmes paramètres = même salle. 0 = nouvelle graine à chaque fois.">Seed</label>
+    <div class="slider-row">
+      <input type="range" id="sliderSeed" min="0" max="9999" value="0" step="1" oninput="syncInput('sliderSeed','inputSeed')">
+      <input type="number" id="inputSeed" min="0" max="9999" value="0" style="width:54px" oninput="syncSlider('inputSeed','sliderSeed',0,9999)">
+    </div>
+    <div style="font-size:8px;color:var(--text2);margin-top:3px;">0 = aléatoire à chaque génération</div>
+  </div>
+
+  <div class="cg">
+    <label>Options</label>
+    <div class="tag-row">
+      <span class="tag active" id="tagMirror" onclick="toggleTag(this)" title="Applique aléatoirement un effet miroir horizontal sur la forme de l'arène (formes asymétriques comme L, entonnoir)">Miroir</span>
+      <span class="tag active" id="tagInteractive" onclick="toggleTag(this)" title="Place 1 à 3 zones interactives par biome (poussière, eau peu profonde, mousse, dalle instable)">Tuiles interactives</span>
+      <span class="tag active" id="tagEntry" onclick="toggleTag(this)" title="Affiche le point d'entrée (E) du joueur sur la carte">Entrée visible</span>
+      <span class="tag" id="tagDouble" onclick="toggleTag(this)" title="Divise l'arène en deux biomes différents avec une couture organique au centre">Salle double biome</span>
+    </div>
+  </div>
+
+  <button class="btn primary" onclick="generateArena()">⚔ Générer</button>
+  <button class="btn" onclick="generateArena(true)">🎲 Tout aléatoire</button>
+
+  <hr class="div">
+  <div class="sec">Ennemis</div>
+  <div class="cg">
+    <label title="Nombre total d'ennemis spawné dans la salle">Nombre d'ennemis</label>
+    <div class="slider-row">
+      <input type="range" id="sliderEnemies" min="0" max="20" value="5" step="1" oninput="syncInput('sliderEnemies','inputEnemies');respawnEnemies()">
+      <input type="number" id="inputEnemies" min="0" max="20" value="5" style="width:46px" oninput="syncSlider('inputEnemies','sliderEnemies',0,20);respawnEnemies()">
+    </div>
+  </div>
+  <div style="font-size:8px;color:var(--text2);margin-bottom:5px;">Type actif (pour peindre sur la carte) :</div>
+  <div class="enemy-palette" id="enemyPalette"></div>
+
+  <hr class="div">
+  <button class="btn small" onclick="saveToLibrary()">💾 Sauvegarder</button>
+  <button class="btn small danger" onclick="exportJSON()">↓ Exporter JSON</button>
+</div>
+
+<!-- ══════════════ CENTRE ══════════════ -->
+<div class="panel-center">
+  <div class="arena-header">
+    <div>
+      <div class="arena-name-display" id="arenaTitle">—</div>
+      <div class="arena-meta-display" id="arenaMeta"></div>
+    </div>
+  </div>
+
+  <div class="cg" style="width:100%;margin-bottom:8px;">
+    <div class="name-row">
+      <input type="text" id="arenaNameInput" placeholder="Nom de la salle..." style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold2);">
+      <button class="btn" style="width:auto;padding:5px 10px;font-size:9px;margin:0;" onclick="generateName()" title="Génère un nom aléatoire basé sur le biome actuel">🎲 Nom</button>
+      <button class="btn" style="width:auto;padding:5px 10px;font-size:9px;margin:0;" onclick="generateDescription()" title="Génère une courte description d'ambiance pour la salle">✍ Desc</button>
+    </div>
+    <textarea id="arenaDesc" placeholder="Description de l'arène..." style="margin-top:4px;min-height:38px;font-size:8px;"></textarea>
+  </div>
+
+  <canvas id="arenaCanvas" width="800" height="400"></canvas>
+
+  <!-- BARRE D'OUTILS FIXE -->
+  <div id="toolBar" style="width:100%;margin-top:7px;background:var(--bg2);border:1px solid var(--border);padding:6px 8px;">
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+      <span style="font-size:8px;color:var(--text2);letter-spacing:1px;flex-shrink:0;">OUTIL :</span>
+      <div id="toolBarItems" style="display:flex;gap:3px;flex-wrap:wrap;flex:1;"></div>
+      <div style="display:flex;align-items:center;gap:5px;border-left:1px solid var(--border);padding-left:8px;flex-shrink:0;">
+        <span style="font-size:8px;color:var(--text2);">ENNEMI :</span>
+        <div id="toolBarEnemyPick" style="display:flex;gap:3px;flex-wrap:wrap;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-footer" style="margin-top:5px;">
+    <div class="canvas-hint" id="canvasHint">Clic gauche = peindre · Clic droit = menu contextuel · Survole = inspecter</div>
+    <div class="validation-row" id="validationRow"></div>
+  </div>
+</div>
+
+<!-- ══════════════ PANEL DROIT ══════════════ -->
+<div class="panel panel-right">
+
+  <div class="sec">Statistiques</div>
+  <div id="statsBlock">
+    <div class="stat-row"><span class="stat-label">Gabarit</span><span class="stat-val" id="stTemplate">—</span></div>
+    <div class="stat-row"><span class="stat-label">Forme</span><span class="stat-val" id="stShape">—</span></div>
+    <div class="stat-row"><span class="stat-label">Biome</span><span class="stat-val" id="stBiome">—</span></div>
+    <div class="stat-row"><span class="stat-label">Cellules jouables</span><span class="stat-val" id="stPlayable">—</span></div>
+    <div class="stat-row"><span class="stat-label">Obstacles</span><span class="stat-val" id="stObs">—</span></div>
+    <div class="stat-row"><span class="stat-label">Densité effective</span><span class="stat-val" id="stDensity">—</span></div>
+    <div class="stat-row"><span class="stat-label">Zone centrale</span><span class="stat-val" id="stCenter">—</span></div>
+    <div class="stat-row"><span class="stat-label">Couloir min</span><span class="stat-val" id="stCorridor">—</span></div>
+    <div class="stat-row"><span class="stat-label">Zones isolées</span><span class="stat-val" id="stIsolated">—</span></div>
+    <div class="stat-row"><span class="stat-label">Ennemis</span><span class="stat-val" id="stEnemies">—</span></div>
+    <div class="stat-row"><span class="stat-label">Seed</span><span class="stat-val" id="stSeed">—</span></div>
+  </div>
+
+  <hr class="div">
+  <div class="sec">Légende</div>
+  <div id="legendBlock"></div>
+
+  <hr class="div">
+  <div class="sec">Ennemis sur la carte</div>
+  <div id="enemyCountBlock" style="font-size:8px;color:var(--text2);margin-bottom:6px;"></div>
+
+  <hr class="div">
+  <div class="sec">Bibliothèque (<span id="libCount">0</span>)</div>
+  <div id="libraryList"><div class="empty-lib">Génère et sauvegarde<br>tes meilleures arènes.</div></div>
+
+  <hr class="div">
+  <div class="sec">JSON</div>
+  <div class="json-box" id="jsonBox">// Génère une arène</div>
+</div>
+</div>
+
+<!-- Context menu -->
+<div id="ctxMenu"></div>
+<div id="tooltip"></div>
+<script>
+// Désactiver le menu contextuel natif partout
+document.addEventListener('contextmenu',e=>e.preventDefault());
+// ══════════════════════════════════════════════════
+// CONSTANTES
+// ══════════════════════════════════════════════════
+const COLS=32,ROWS=18;
+const CELL={VOID:0,FLOOR:1,OBSTACLE:2,STRUCT:3,WALL:4,CENTER:5,ENTRY:6,INTERACTIVE:8,SPECIAL:9};
+const CELL_NAMES={0:'Hors arène',1:'Sol',2:'Obstacle',3:'Obstacle structurel',4:'Mur interne',5:'Zone centrale',6:'Entrée',8:'Tuile interactive',9:'Élément spécial'};
+
+const BIOMES={
+  savane:{name:'Savane',emoji:'🌅',floor:'#b87a3a',obs:'#6a4422',wall:'#3a2210',zone:'#d4a060',accent:'#d4884a',struct:'#c07840'},
+  foret: {name:'Forêt', emoji:'🌿',floor:'#4a6a2a',obs:'#2a4a1a',wall:'#1a2a0a',zone:'#6a9a3a',accent:'#5a8a40',struct:'#4a7030'},
+  zh:    {name:'Zones Humides',emoji:'🌊',floor:'#3a5a6a',obs:'#1a3a4a',wall:'#0a1a2a',zone:'#5a8a9a',accent:'#4a7a8a',struct:'#3a6070'},
+  ruines:{name:'Ruines',emoji:'🏛️',floor:'#7a6a5a',obs:'#4a3a2a',wall:'#2a1a0a',zone:'#9a8a6a',accent:'#8a7060',struct:'#706050'},
+};
+const SHAPES=['oval','rect_soft','bean','diamond','lshape','cross','hex','irregular'];
+
+const ENEMY_TYPES=[
+  {id:'weak',    label:'Faible',       color:'#5aaa5a',ring:'#2a6a2a',symbol:'w'},
+  {id:'normal',  label:'Normal',       color:'#aaaa3a',ring:'#6a6a1a',symbol:'n'},
+  {id:'strong',  label:'Fort',         color:'#e07030',ring:'#8a4010',symbol:'f'},
+  {id:'e_weak',  label:'Élite Faible', color:'#3aaaaa',ring:'#1a6a6a',symbol:'EW'},
+  {id:'e_normal',label:'Élite Normal', color:'#3a7aee',ring:'#1a3a9a',symbol:'EN'},
+  {id:'e_strong',label:'Élite Fort',   color:'#aa3aaa',ring:'#6a1a6a',symbol:'EF'},
+  {id:'miniboss',label:'Mini-Boss',    color:'#ee3a3a',ring:'#8a0000',symbol:'MB'},
+  {id:'boss',    label:'Boss',         color:'#c8a84b',ring:'#7a5a00',symbol:'B'},
+];
+
+const TOOLS=[
+  {id:'floor',    label:'Sol',        color:'#b87a3a'},
+  {id:'obstacle', label:'Obstacle',   color:'#6a4422'},
+  {id:'struct',   label:'Obs. struct',color:'#c07840'},
+  {id:'wall',     label:'Mur interne',color:'#3a2210'},
+  {id:'center',   label:'Zone C.',    color:'rgba(255,255,255,0.15)'},
+  {id:'interactive',label:'Tuile IA.',color:'#d4a060'},
+  {id:'special',  label:'Spécial',    color:'#c8a84b'},
+  {id:'entry',    label:'Entrée',     color:'#2a7a3a'},
+  {id:'void',     label:'Effacer',    color:'#0a0c08'},
+  {id:'enemy',    label:'Ennemi →',   color:'transparent',isEnemy:true},
+  {id:'rm_enemy', label:'Retirer enn.',color:'#c0392b'},
+];
+
+const TEMPLATES={
+  G01:{name:'Plaine Dégagée',family:'Ouverte',density:[8,12],struct:[]},
+  G02:{name:'Îlots Épars',family:'Ouverte',density:[10,18],struct:[]},
+  G03:{name:'Couloir Central',family:'Couloirs',density:[18,22],struct:['band_h']},
+  G04:{name:'Couloir en L',family:'Couloirs',density:[10,15],struct:['l_shape']},
+  G05:{name:'Double Passage',family:'Couloirs',density:[12,18],struct:['double_wall']},
+  G06:{name:'Quatre Piliers',family:'Îlots',density:[15,20],struct:['four_pillars']},
+  G07:{name:'Croix Inversée',family:'Îlots',density:[18,22],struct:['cross_corners']},
+  G08:{name:'Archipel',family:'Îlots',density:[15,22],struct:[]},
+  G09:{name:'Front de Bataille',family:'Asymétrique',density:[20,25],struct:['right_dense']},
+  G10:{name:'Entonnoir',family:'Asymétrique',density:[18,24],struct:['funnel']},
+  G11:{name:'Mini-Boss',family:'Spéciale',density:[5,10],struct:['central_boss']},
+  G13:{name:'Mur Brisé',family:'Structure',density:[8,15],struct:['broken_wall']},
+  G14:{name:'Anneau',family:'Structure',density:[5,12],struct:['ring']},
+  G15:{name:'Diagonale',family:'Structure',density:[8,15],struct:['diagonal_band']},
+  G16:{name:'Couloir Courbe',family:'Structure',density:[8,15],struct:['curve_wall']},
+  G17:{name:'Axe Inversé',family:'E/S Décalés',density:[8,18],struct:[]},
+  G18:{name:'Même Bord',family:'E/S Décalés',density:[12,18],struct:[]},
+  G19:{name:'Coin à Coin',family:'E/S Décalés',density:[10,16],struct:[]},
+  G20:{name:'Pincer',family:'E/S Décalés',density:[18,24],struct:['pincer']},
+  G21:{name:'Salle de Repos',family:'Spéciale',density:[0,0],struct:['altar']},
+  G22:{name:'Marchand Corbeau',family:'Spéciale',density:[0,0],struct:['merchant']},
+  G23:{name:'Mini-Boss Circulaire',family:'Spéciale',density:[5,8],struct:['round_corners']},
+  G24:{name:"Salle d'Élite",family:'Spéciale',density:[5,10],struct:['inner_frame']},
+};
+
+// Noms de salles par biome
+const NAMES={
+  savane:{
+    adj:['Aride','Écorchée','Embrasée','Assoiffée','Sèche','Brûlante','Battue','Poussiéreuse','Oubliée','Dorée'],
+    noun:['Plaine','Termitière','Broussaille','Savane','Crête','Plateau','Clairière','Rocaille','Étendue','Dépression'],
+    suffix:['des Lions','du Vent','de la Sécheresse','des Vautours','du Soleil Couchant','des Hyènes','de la Poussière'],
+  },
+  foret:{
+    adj:['Sombre','Enchevêtrée','Moussue','Humide','Torse','Silencieuse','Profonde','Envahie','Crépusculaire','Nouée'],
+    noun:['Clairière','Sous-bois','Fourré','Canopée','Lisière','Racines','Taillis','Bosquet','Cavée','Brèche'],
+    suffix:['des Renards','des Écureuils','de la Mousse','des Ombres','de la Fougère','du Vieux Chêne','des Feuilles Mortes'],
+  },
+  zh:{
+    adj:['Noyée','Brumeuse','Glissante','Trouble','Stagnante','Marécageuse','Voilée','Saumâtre','Vaseuse','Miroir'],
+    noun:['Berge','Flaque','Vasière','Mare','Roseaux','Tourbière','Confluence','Anse','Bras Mort','Gué'],
+    suffix:['des Crabes','des Piranhas','de la Brume','des Anguilles','du Crocodile','des Nénuphars','des Reflets'],
+  },
+  ruines:{
+    adj:['Effondrée','Érodée','Envahie','Désolée','Ancestrale','Oubliée','Brisée','Sacrée','Maudite','Profanée'],
+    noun:['Temple','Colonnade','Autel','Crypte','Mausolée','Vestiges','Galerie','Sanctuaire','Arène','Cella'],
+    suffix:['des Anciens','du Conquérant','de la Jungle','des Statues','du Dieu Mort','des Lianes','de Pierre'],
+  },
+};
+
+const DESCS={
+  savane:['La terre craquelée absorbe chaque impact. La chaleur distord les horizons.',
+    'Des termitières brisées jonchent le sol ocre. Le vent chaud apporte l\'odeur du sang.',
+    'Herbe rase et poussière rouge. Rien ne vit ici depuis longtemps.',
+    'Le soleil couchant teinte tout en orange. Les ombres s\'allongent dangereusement.'],
+  foret:['Les racines forment un labyrinthe naturel. La lumière peine à percer la canopée.',
+    'Silence de sous-bois. Seul le craquement des branches sous les pas.',
+    'Mousse glissante, troncs imposants. La forêt observe, impassible.',
+    'Une clairière creusée par des années de combats. La terre garde les cicatrices.'],
+  zh:['L\'eau trouble réfléchit des silhouettes qui n\'existent pas.',
+    'Les roseaux masquent les mouvements. Rien n\'est ce qu\'il paraît.',
+    'Sol vaseux, brume basse. Chaque pas résonne différemment.',
+    'L\'eau peu profonde ralentit. La berge offre la seule traction.'],
+  ruines:['Des colonnes brisées servent d\'abri et de piège à la fois.',
+    'Le temple tient debout par obstination. Ses dieux sont partis depuis longtemps.',
+    'Herbe entre les dalles. La jungle reprend ce qui lui appartient.',
+    'Des fresques à moitié effacées représentent des combats oubliés.'],
+};
+
+// ══════════════════════════════════════════════════
+// ÉTAT
+// ══════════════════════════════════════════════════
+let S={
+  grid:null,mask:null,biome:'savane',template:'G01',shape:'oval',
+  density:15,usedSeed:0,
+  enemies:[],           // [{x,y,type}]
+  activeEnemy:'normal',
+  activeTool:'floor',
+  library:[],
+  currentJSON:null,
+  isPainting:false,
+  ctxCell:{x:0,y:0},
+};
+
+// ══════════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════════
+function mkRng(seed){
+  let s=seed||(Math.floor(Math.random()*9998)+1);
+  S.usedSeed=s;
+  return()=>{s=(s*1664525+1013904223)&0xffffffff;return(s>>>0)/0xffffffff;};
+}
+function syncInput(sliderId,inputId){document.getElementById(inputId).value=document.getElementById(sliderId).value;}
+function syncSlider(inputId,sliderId,mn,mx){
+  let v=parseInt(document.getElementById(inputId).value)||0;
+  v=Math.max(mn,Math.min(mx,v));
+  document.getElementById(sliderId).value=v;
+  document.getElementById(inputId).value=v;
+}
+function toggleTag(el){el.classList.toggle('active');}
+function getTag(id){return document.getElementById(id)?.classList.contains('active')??false;}
+function cellToTool(c){const m={1:'floor',2:'obstacle',3:'struct',4:'wall',5:'center',6:'entry',8:'interactive',9:'special',0:'void'};return m[c]||'floor';}
+function toolToCell(t){const m={floor:1,obstacle:2,struct:3,wall:4,center:5,entry:6,interactive:8,special:9,void:0};return m[t]??1;}
+
+// ══════════════════════════════════════════════════
+// GÉNÉRATION DE FORME
+// ══════════════════════════════════════════════════
+function generateShape(shape,rng){
+  const mask=Array.from({length:ROWS},()=>new Array(COLS).fill(false));
+  const cx=COLS/2,cy=ROWS/2;
+  const mirrorEnabled=getTag('tagMirror');
+  if(shape==='oval'){
+    const rx=COLS*.42,ry=ROWS*.40;
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)mask[y][x]=((x-cx)/rx)**2+((y-cy)/ry)**2<=1;
+  } else if(shape==='rect_soft'){
+    const pad=2,curve=3;
+    for(let y=pad;y<ROWS-pad;y++)for(let x=pad;x<COLS-pad;x++){
+      const mh=Math.min(x-pad,COLS-pad-1-x),mv=Math.min(y-pad,ROWS-pad-1-y);
+      if(mh<curve&&mv<curve){const dx=curve-mh-.5,dy=curve-mv-.5;mask[y][x]=dx*dx+dy*dy<=curve*curve;}
+      else mask[y][x]=true;
+    }
+  } else if(shape==='bean'){
+    const c1x=cx-COLS*.1,c2x=cx+COLS*.14;
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+      mask[y][x]=((x-c1x)/(COLS*.3))**2+((y-cy)/(ROWS*.38))**2<=1||((x-c2x)/(COLS*.28))**2+((y-cy)/(ROWS*.33))**2<=1;
+  } else if(shape==='diamond'){
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+      mask[y][x]=Math.abs((x-cx)/(COLS*.44))+Math.abs((y-cy)/(ROWS*.42))<=1;
+  } else if(shape==='lshape'){
+    const flip=mirrorEnabled&&rng()>.5;
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+      const px=flip?COLS-1-x:x;
+      mask[y][x]=(px>=1&&px<=COLS*.65&&y>=1&&y<=ROWS*.6)||(px>=1&&px<=COLS*.38&&y>=ROWS*.3&&y<=ROWS-2);
+    }
+  } else if(shape==='cross'){
+    const hw=Math.floor(COLS*.3),vw=Math.floor(ROWS*.3);
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+      mask[y][x]=(x>=2&&x<=COLS-3&&y>=cy-vw/2&&y<=cy+vw/2)||(y>=1&&y<=ROWS-2&&x>=cx-hw/2&&x<=cx+hw/2);
+  } else if(shape==='hex'){
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+      const nx=Math.abs(x-cx)/(COLS*.44),ny=Math.abs(y-cy)/(ROWS*.40);
+      mask[y][x]=nx<=1&&ny<=1&&nx+ny*.6<=1.1;
+    }
+  } else { // irregular
+    const pts=24,radii=Array.from({length:pts},()=>.30+rng()*.18);
+    for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+      const dx=(x-cx)/(COLS*.5),dy=(y-cy)/(ROWS*.5),dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<.01){mask[y][x]=true;continue;}
+      const angle=Math.atan2(dy,dx),idx=((angle/(2*Math.PI)*pts)+pts)%pts;
+      const i0=Math.floor(idx)%pts,i1=(i0+1)%pts,t=idx-Math.floor(idx);
+      mask[y][x]=dist<=(radii[i0]*(1-t)+radii[i1]*t)*1.7;
+    }
+  }
+  for(let x=0;x<COLS;x++){mask[0][x]=false;mask[ROWS-1][x]=false;}
+  for(let y=0;y<ROWS;y++){mask[y][0]=false;mask[y][COLS-1]=false;}
+  return mask;
+}
+
+// ══════════════════════════════════════════════════
+// FLOOD FILL — CONNECTIVITÉ
+// ══════════════════════════════════════════════════
+function floodFill(grid,mask,startX,startY){
+  const visited=Array.from({length:ROWS},()=>new Array(COLS).fill(false));
+  const q=[[startX,startY]];
+  if(!mask[startY]?.[startX])return visited;
+  visited[startY][startX]=true;
+  while(q.length){
+    const[x,y]=q.shift();
+    for(const[dx,dy]of[[0,1],[0,-1],[1,0],[-1,0]]){
+      const nx=x+dx,ny=y+dy;
+      if(nx<0||nx>=COLS||ny<0||ny>=ROWS)continue;
+      if(visited[ny][nx]||!mask[ny][nx])continue;
+      const c=grid[ny][nx];
+      if(c===CELL.OBSTACLE||c===CELL.STRUCT||c===CELL.WALL)continue;
+      visited[ny][nx]=true;q.push([nx,ny]);
+    }
+  }
+  return visited;
+}
+
+function findEntryCell(mask){
+  // Cherche la première cellule jouable près du bord gauche
+  for(let x=1;x<Math.floor(COLS/2);x++)
+    for(let y=1;y<ROWS-1;y++)
+      if(mask[y][x])return{x,y};
+  return{x:1,y:Math.floor(ROWS/2)};
+}
+
+function removeIsolated(grid,mask,entryX,entryY){
+  // Flood fill depuis l'entrée, toute cellule non-atteinte et non-obstacle devient obstacle
+  const reached=floodFill(grid,mask,entryX,entryY);
+  let fixed=0;
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    if(!mask[y][x])continue;
+    const c=grid[y][x];
+    if(c===CELL.OBSTACLE||c===CELL.STRUCT||c===CELL.WALL)continue;
+    if(!reached[y][x]){grid[y][x]=CELL.OBSTACLE;fixed++;}
+  }
+  return fixed;
+}
+
+function ensureEntryFree(grid,mask,entryX,entryY){
+  // Libère les cellules directement adjacentes à l'entrée si bloquées
+  const adj=[[entryX,entryY],[entryX+1,entryY],[entryX+2,entryY],[entryX,entryY-1],[entryX,entryY+1]];
+  for(const[x,y]of adj){
+    if(x>=0&&x<COLS&&y>=0&&y<ROWS&&mask[y][x]){
+      if(grid[y][x]===CELL.OBSTACLE||grid[y][x]===CELL.STRUCT)grid[y][x]=CELL.FLOOR;
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════
+// GABARIT
+// ══════════════════════════════════════════════════
+function applyTemplate(grid,mask,tId,rng){
+  const t=TEMPLATES[tId];if(!t||!t.struct.length)return;
+  const cx=Math.floor(COLS/2),cy=Math.floor(ROWS/2);
+  const p=(x,y,type)=>{if(x>=0&&x<COLS&&y>=0&&y<ROWS&&mask[y][x]&&grid[y][x]===CELL.FLOOR)grid[y][x]=type;};
+  for(const s of t.struct){
+    if(s==='band_h'){
+      for(const y of[2,3])for(const x of[3,4,6,7,22,23,25,26])p(x,y,CELL.STRUCT);
+      for(const y of[ROWS-4,ROWS-3])for(const x of[3,4,6,7,22,23,25,26])p(x,y,CELL.STRUCT);
+    }else if(s==='l_shape'){
+      for(let x=18;x<=24;x++)for(let y=1;y<=4;y++)p(x,y,CELL.STRUCT);
+      for(let x=3;x<=8;x++)for(let y=ROWS-5;y<=ROWS-2;y++)p(x,y,CELL.STRUCT);
+    }else if(s==='double_wall'){
+      for(let x=6;x<=12;x++){p(x,2,CELL.WALL);p(x,ROWS-3,CELL.WALL);}
+      for(let x=18;x<=24;x++){p(x,2,CELL.WALL);p(x,ROWS-3,CELL.WALL);}
+    }else if(s==='four_pillars'){
+      [[5,2],[8,2],[5,5],[8,5],[22,2],[25,2],[22,5],[25,5],
+       [5,ROWS-7],[8,ROWS-7],[5,ROWS-4],[8,ROWS-4],[22,ROWS-7],[25,ROWS-7],[22,ROWS-4],[25,ROWS-4]]
+      .forEach(([x,y])=>p(x,y,CELL.STRUCT));
+    }else if(s==='cross_corners'){
+      for(let x=3;x<=7;x++)for(const y of[[2,5],[ROWS-6,ROWS-3]])for(let yy=y[0];yy<=y[1];yy++)p(x,yy,CELL.STRUCT);
+      for(let x=24;x<=28;x++)for(const y of[[2,5],[ROWS-6,ROWS-3]])for(let yy=y[0];yy<=y[1];yy++)p(x,yy,CELL.STRUCT);
+    }else if(s==='right_dense'){
+      for(let x=18;x<=28;x++)for(let y=1;y<ROWS-1;y++)if(rng()<.55&&mask[y][x])p(x,y,CELL.STRUCT);
+    }else if(s==='funnel'){
+      for(let x=6;x<=18;x++){const sp=Math.floor((x-6)*.35);p(x,1+sp,CELL.STRUCT);p(x,ROWS-2-sp,CELL.STRUCT);}
+    }else if(s==='central_boss'){
+      for(let dx=-1;dx<=1;dx++)for(let dy=-1;dy<=1;dy++)p(cx+dx,cy+dy,CELL.SPECIAL);
+    }else if(s==='broken_wall'){
+      const g1=7+Math.floor(rng()*3),g2=20+Math.floor(rng()*3);
+      for(let x=2;x<COLS-2;x++)if(Math.abs(x-g1)>1&&Math.abs(x-g2)>1)p(x,cy,CELL.WALL);
+    }else if(s==='ring'){
+      for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+        const d=((x-cx)/10)**2+((y-cy)/5)**2;if(d>=.7&&d<=1.15)p(x,y,CELL.STRUCT);
+      }
+    }else if(s==='diagonal_band'){
+      for(let x=2;x<COLS-2;x++){const y=Math.round(cy+(x-cx)*.35);if(Math.abs(x-cx)>3){p(x,y,CELL.STRUCT);p(x,y+1,CELL.STRUCT);}}
+    }else if(s==='curve_wall'){
+      for(let x=3;x<COLS-3;x++){
+        const yT=Math.round(2+Math.sin((x/COLS)*Math.PI)*3),yB=Math.round(ROWS-3-Math.sin((x/COLS)*Math.PI)*3);
+        if(x<8||x>COLS-8){p(x,yT,CELL.STRUCT);p(x,yB,CELL.STRUCT);}
+      }
+    }else if(s==='pincer'){
+      for(let x=1;x<COLS-1;x++){p(x,1,CELL.STRUCT);p(x,ROWS-2,CELL.STRUCT);}
+    }else if(s==='altar'){
+      p(cx,cy,CELL.SPECIAL);p(cx+1,cy,CELL.SPECIAL);p(cx,cy+1,CELL.SPECIAL);p(cx+1,cy+1,CELL.SPECIAL);
+    }else if(s==='merchant'){
+      p(cx,cy,CELL.SPECIAL);
+      for(let dx=-2;dx<=2;dx++)for(let dy=-2;dy<=2;dy++)if(Math.abs(dx)+Math.abs(dy)===2)p(cx+dx,cy+dy,CELL.STRUCT);
+    }else if(s==='round_corners'){
+      [[0,0],[COLS-1,0],[0,ROWS-1],[COLS-1,ROWS-1]].forEach(([ox,oy])=>{
+        for(let dx=0;dx<=3;dx++)for(let dy=0;dy<=3;dy++){
+          const x=ox===0?ox+dx:ox-dx,y=oy===0?oy+dy:oy-dy;p(x,y,CELL.STRUCT);
+        }
+      });
+    }else if(s==='inner_frame'){
+      const pad=3;
+      for(let x=pad;x<COLS-pad;x++){p(x,pad,CELL.STRUCT);p(x,ROWS-pad-1,CELL.STRUCT);}
+      for(let y=pad;y<ROWS-pad;y++){p(pad,y,CELL.STRUCT);p(COLS-pad-1,y,CELL.STRUCT);}
+    }
+  }
+}
+
+// ══════════════════════════════════════════════════
+// WFC OBSTACLES
+// ══════════════════════════════════════════════════
+function applyWFC(grid,mask,density,rng){
+  const playable=[];
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+    if(mask[y][x]&&grid[y][x]===CELL.FLOOR)playable.push([x,y]);
+  const target=Math.floor(playable.length*density/100);
+  for(let i=playable.length-1;i>0;i--){const j=Math.floor(rng()*i);[playable[i],playable[j]]=[playable[j],playable[i]];}
+  let placed=0;
+  for(const[x,y]of playable){
+    if(placed>=target)break;
+    if(grid[y][x]!==CELL.FLOOR)continue;
+    let free=0;
+    for(const[dx,dy]of[[0,-1],[0,1],[1,0],[-1,0]]){
+      let run=0;
+      for(let d=1;d<=3;d++){const nx=x+dx*d,ny=y+dy*d;if(nx>=0&&nx<COLS&&ny>=0&&ny<ROWS&&mask[ny][nx]&&grid[ny][nx]===CELL.FLOOR)run++;else break;}
+      if(run>=3)free++;
+    }
+    if(free>=1){grid[y][x]=CELL.OBSTACLE;placed++;}
+  }
+}
+
+function applyCenter(grid,mask){
+  const cx=Math.floor(COLS/2),cy=Math.floor(ROWS/2);
+  for(let y=cy-3;y<=cy+3;y++)for(let x=cx-4;x<=cx+4;x++)
+    if(x>=0&&x<COLS&&y>=0&&y<ROWS&&mask[y][x]&&(grid[y][x]===CELL.FLOOR||grid[y][x]===CELL.OBSTACLE))grid[y][x]=CELL.CENTER;
+}
+
+function applyInteractive(grid,mask,rng){
+  const count=1+Math.floor(rng()*3);
+  const floors=[];
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+    if(mask[y][x]&&grid[y][x]===CELL.FLOOR)floors.push([x,y]);
+  for(let i=0;i<count&&floors.length;i++){
+    const idx=Math.floor(rng()*floors.length);
+    const[x,y]=floors.splice(idx,1)[0];
+    grid[y][x]=CELL.INTERACTIVE;
+    [[x+1,y],[x,y+1],[x+1,y+1]].forEach(([nx,ny])=>{
+      if(nx<COLS&&ny<ROWS&&mask[ny][nx]&&grid[ny][nx]===CELL.FLOOR)grid[ny][nx]=CELL.INTERACTIVE;
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════
+// SPAWN ENNEMIS — selon type de salle
+// ══════════════════════════════════════════════════
+
+// Compositions par type de salle : [type, poids relatif]
+const ROOM_COMPOSITIONS={
+  normal:[
+    ['weak',4],['normal',5],['strong',2],
+  ],
+  elite:[
+    ['normal',2],['strong',3],['e_weak',4],['e_normal',3],['e_strong',1],
+  ],
+  miniboss:[
+    ['normal',2],['strong',2],['e_normal',2],['e_strong',2],['miniboss',1],
+  ],
+  boss:[
+    ['e_strong',2],['boss',1],
+  ],
+};
+
+// Defaults de count par type
+const ROOM_COUNT_DEFAULTS={normal:5,elite:4,miniboss:3,boss:1};
+
+function getRoomType(){
+  return document.getElementById('selRoomType')?.value||'normal';
+}
+
+function weightedPick(rng,table){
+  const total=table.reduce((s,[,w])=>s+w,0);
+  let r=(rng?rng():Math.random())*total;
+  for(const[type,w]of table){r-=w;if(r<=0)return type;}
+  return table[0][0];
+}
+
+function respawnEnemies(){
+  const count=parseInt(document.getElementById('inputEnemies').value)||0;
+  S.enemies=[];
+  if(!S.grid||!S.mask)return;
+  const floors=[];
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+    if(S.mask[y][x]&&(S.grid[y][x]===CELL.FLOOR||S.grid[y][x]===CELL.CENTER))
+      floors.push([x,y]);
+  for(let i=floors.length-1;i>0;i--){const j=Math.floor(Math.random()*i);[floors[i],floors[j]]=[floors[j],floors[i]];}
+  const roomType=getRoomType();
+  const comp=ROOM_COMPOSITIONS[roomType]||ROOM_COMPOSITIONS.normal;
+  for(let i=0;i<Math.min(count,floors.length);i++){
+    const[x,y]=floors[i];
+    S.enemies.push({x,y,type:weightedPick(null,comp)});
+  }
+  renderAll();updateStats();buildJSON();
+}
+
+function onRoomTypeChange(){
+  // Met à jour le count par défaut selon le type
+  const t=getRoomType();
+  const def=ROOM_COUNT_DEFAULTS[t];
+  document.getElementById('inputEnemies').value=def;
+  document.getElementById('sliderEnemies').value=def;
+  // Régénère immédiatement les ennemis si une salle est chargée
+  if(S.grid)respawnEnemies();
+  // Régénère nom et description
+  generateName(true);
+  generateDescription(true);
+}
+
+// ══════════════════════════════════════════════════
+// GÉNÉRATION PRINCIPALE
+// ══════════════════════════════════════════════════
+function generateArena(fullRandom){
+  const biomeKey=(fullRandom||document.getElementById('selBiome').value==='random')
+    ?Object.keys(BIOMES)[Math.floor(Math.random()*4)]
+    :document.getElementById('selBiome').value;
+  const templateId=(fullRandom||document.getElementById('selTemplate').value==='random')
+    ?Object.keys(TEMPLATES)[Math.floor(Math.random()*Object.keys(TEMPLATES).length)]
+    :document.getElementById('selTemplate').value;
+  const shapeKey=(fullRandom||document.getElementById('selShape').value==='random')
+    ?SHAPES[Math.floor(Math.random()*SHAPES.length)]
+    :document.getElementById('selShape').value;
+  const density=parseInt(document.getElementById('inputDensity').value)||15;
+  const seedVal=parseInt(document.getElementById('inputSeed').value)||0;
+
+  S.biome=biomeKey; S.template=templateId; S.shape=shapeKey; S.density=density;
+
+  const rng=mkRng(seedVal===0?null:seedVal);
+  const mask=generateShape(shapeKey,rng);
+  const grid=Array.from({length:ROWS},(_,y)=>Array.from({length:COLS},(_,x)=>mask[y][x]?CELL.FLOOR:CELL.VOID));
+
+  applyTemplate(grid,mask,templateId,rng);
+  applyCenter(grid,mask);
+
+  const tInfo=TEMPLATES[templateId];
+  const effD=tInfo.density[0]===0?0:Math.max(tInfo.density[0],Math.min(tInfo.density[1],density));
+  applyWFC(grid,mask,effD,rng);
+
+  // Entrée
+  const entry=findEntryCell(mask);
+  ensureEntryFree(grid,mask,entry.x,entry.y);
+
+  // Supprimer zones isolées
+  removeIsolated(grid,mask,entry.x,entry.y);
+  // Re-libérer entrée après correction
+  ensureEntryFree(grid,mask,entry.x,entry.y);
+
+  if(getTag('tagInteractive')&&tInfo.density[0]>0)
+    applyInteractive(grid,mask,rng);
+
+  if(getTag('tagEntry'))
+    grid[entry.y][entry.x]=CELL.ENTRY;
+
+  S.grid=grid; S.mask=mask; S.entryPos=entry; S.enemies=[];
+
+  // Spawn ennemis avec count adapté au type de salle
+  const rt=getRoomType();
+  const defCount=ROOM_COUNT_DEFAULTS[rt];
+  document.getElementById('inputEnemies').value=defCount;
+  document.getElementById('sliderEnemies').value=defCount;
+  respawnEnemies();
+
+  // Toujours régénérer nom et description à chaque génération
+  document.getElementById('arenaNameInput').value='';
+  document.getElementById('arenaDesc').value='';
+  generateName(true);
+  generateDescription(true);
+
+  updateStats();
+  renderAll();
+  buildJSON();
+  buildToolBar();
+}
+
+// ══════════════════════════════════════════════════
+// NOM & DESCRIPTION — biome + type de salle
+// ══════════════════════════════════════════════════
+
+const ROOM_TYPE_PREFIXES={
+  normal:  {fr:''},
+  elite:   {fr:['Repaire','Antre','Territoire','Domaine','Fief']},
+  miniboss:{fr:['Sanctuaire','Arène','Chasse-gardée','Fief','Bastion']},
+  boss:    {fr:['Trône','Couronne','Domination','Règne','Palais']},
+};
+
+const ROOM_TYPE_DESCS={
+  normal:null, // utilise DESCS par biome
+  elite:{
+    savane:['Un chasseur d\'élite protège ce territoire avec une férocité hors du commun.',
+      'La poussière porte encore les traces du dernier combat. L\'élite attend.',
+      'Espace restreint, ennemi redoutable. Il connaît chaque centimètre du terrain.'],
+    foret:['Les arbres semblent se refermer. Quelque chose de plus grand que d\'habitude rôde ici.',
+      'Le silence est trop parfait. L\'élite a déjà repéré ta présence.',
+      'Terrain familier pour l\'élite. Chaque racine, chaque ombre lui appartient.'],
+    zh:['Les eaux troubles dissimulent un prédateur d\'élite. Il attend que tu t\'approches.',
+      'L\'élite se fond dans la brume. Sa maîtrise du terrain est totale.',
+      'Les roseaux bougent sans vent. L\'élite est déjà en position.'],
+    ruines:['Ces ruines sont son territoire. Il les connaît mieux que toi.',
+      'L\'élite garde ces pierres depuis plus longtemps que tu ne l\'imagines.',
+      'Chaque colonne, chaque alcôve est un avantage pour l\'élite qui t\'attend.'],
+  },
+  miniboss:{
+    savane:['La savane tombe silencieuse. Un prédateur hors norme s\'est établi ici.',
+      'Des carcasses récentes. Ce territoire appartient à quelqu\'un d\'exceptionnel.',
+      'La chaleur est plus lourde ici. Quelque chose d\'imposant contrôle cet espace.'],
+    foret:['Les arbres portent des marques de griffes trop hautes pour être normales.',
+      'Le sous-bois est dégagé — nettoyé par quelqu\'un qui avait besoin d\'espace pour se battre.',
+      'Les autres créatures ont fui. Quelque chose d\'unique s\'est installé ici.'],
+    zh:['L\'eau ne bouge plus. Même les prédateurs aquatiques ont déserté ce coin.',
+      'Un territoire aquatique défendu par une force hors du commun.',
+      'Les pierres portent des traces d\'un combat récent et violent.'],
+    ruines:['Ces ruines ont été réclamées par quelque chose de plus puissant que les autres.',
+      'Un gardien d\'exception veille sur ces vestiges. Il ne les abandonnera pas.',
+      'La végétation a été repoussée. Quelque chose a voulu espace pour régner ici.'],
+  },
+  boss:{
+    savane:['La savane tout entière retient son souffle. Le Lion règne ici.',
+      'Sol de latérite marqué par des années de domination absolue. C\'est le trône.',
+      'Horizon dégagé. Ici, le Lion voit tout. Et il t\'a déjà vu arriver.'],
+    foret:['La forêt s\'incline. Chaque arbre, chaque ombre lui appartient.',
+      'Clairière du roi. Aucun autre n\'ose s\'aventurer ici. Sauf toi.',
+      'Le sol est marqué par les rondes du Lion. Tu entres dans son palais.'],
+    zh:['Les eaux reflètent son ombre depuis toujours. Tu n\'es que la prochaine proie.',
+      'Brume de pouvoir. Le Lion commande même les éléments dans cette arène.',
+      'Point d\'eau du roi. Tous viennent s\'y abreuver. Toi, tu viens le défier.'],
+    ruines:['Temple érigé à sa gloire. Il l\'a simplement... occupé.',
+      'Trône de pierre au milieu des ruines. Il l\'a toujours considéré comme sien.',
+      'Le Lion n\'a pas besoin de murs pour régner. Ses yeux sont les seules frontières.'],
+  },
+};
+
+function generateName(force=true){
+  if(!force&&document.getElementById('arenaNameInput').value)return;
+  const b=S.biome;
+  const roomType=getRoomType();
+  const N=NAMES[b]||NAMES.savane;
+  const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
+
+  let name;
+  if(roomType==='normal'){
+    const r=Math.random();
+    if(r<.4)name=pick(N.adj)+' '+pick(N.noun);
+    else if(r<.7)name=pick(N.noun)+' '+pick(N.suffix);
+    else name=pick(N.adj)+' '+pick(N.noun)+' '+pick(N.suffix);
+  } else {
+    const pref=ROOM_TYPE_PREFIXES[roomType];
+    const prefix=pick(pref.fr);
+    const r=Math.random();
+    if(r<.5)name=prefix+' '+pick(N.suffix);
+    else name=prefix+' '+pick(N.adj)+' '+pick(N.noun);
+  }
+  document.getElementById('arenaNameInput').value=name;
+  document.getElementById('arenaTitle').textContent=name;
+}
+
+function generateDescription(force=true){
+  if(!force&&document.getElementById('arenaDesc').value)return;
+  const roomType=getRoomType();
+  const b=S.biome;
+  let pool;
+  if(roomType==='normal'||!ROOM_TYPE_DESCS[roomType]){
+    pool=DESCS[b]||DESCS.savane;
+  } else {
+    pool=(ROOM_TYPE_DESCS[roomType]?.[b])||DESCS[b]||DESCS.savane;
+  }
+  document.getElementById('arenaDesc').value=pool[Math.floor(Math.random()*pool.length)];
+}
+
+// Sync titre en temps réel
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('arenaNameInput').addEventListener('input',function(){
+    document.getElementById('arenaTitle').textContent=this.value||'—';
+  });
+});
+
+// ══════════════════════════════════════════════════
+// RENDU
+// ══════════════════════════════════════════════════
+function renderAll(){
+  if(!S.grid)return;
+  render(S.grid,S.mask,S.biome,document.getElementById('arenaCanvas'),false,S.enemies);
+}
+
+function render(grid,mask,biomeKey,canvas,small,enemies){
+  const ctx=canvas.getContext('2d');
+  const cw=canvas.width,ch=canvas.height;
+  const cW=cw/COLS,cH=ch/ROWS;
+  const b=BIOMES[biomeKey];
+  ctx.clearRect(0,0,cw,ch);
+  ctx.fillStyle='#080a06';ctx.fillRect(0,0,cw,ch);
+
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    const cell=grid[y][x],px=x*cW,py=y*cH;
+    if(!mask[y][x]){
+      ctx.fillStyle='#0a0c08';ctx.fillRect(px,py,cW,cH);
+      if(isBorder(x,y,mask)){ctx.fillStyle=b.wall+'99';ctx.fillRect(px+cW*.15,py+cH*.15,cW*.7,cH*.7);}
+      continue;
+    }
+    // sol base
+    ctx.fillStyle=b.floor;ctx.fillRect(px,py,cW,cH);
+    if(!small&&(x+y)%2===0){ctx.fillStyle='rgba(0,0,0,.06)';ctx.fillRect(px,py,cW,cH);}
+
+    if(cell===CELL.OBSTACLE||cell===CELL.STRUCT){
+      ctx.fillStyle=cell===CELL.STRUCT?b.struct:b.obs;
+      ctx.fillRect(px+1,py+1,cW-2,cH-2);
+      if(!small){
+        ctx.fillStyle='rgba(255,255,255,.09)';ctx.fillRect(px+1,py+1,cW-2,2);
+        ctx.fillStyle='rgba(0,0,0,.25)';ctx.fillRect(px+1,py+cH-3,cW-2,2);
+      }
+    }else if(cell===CELL.WALL){
+      ctx.fillStyle=b.wall;ctx.fillRect(px,py,cW,cH);
+    }else if(cell===CELL.CENTER){
+      ctx.fillStyle=b.floor;ctx.fillRect(px,py,cW,cH);
+      ctx.fillStyle='rgba(255,255,255,.06)';ctx.fillRect(px,py,cW,cH);
+    }else if(cell===CELL.INTERACTIVE){
+      ctx.fillStyle=b.zone;ctx.fillRect(px,py,cW,cH);
+      if(!small){
+        ctx.fillStyle='rgba(255,255,255,.18)';
+        ctx.beginPath();ctx.arc(px+cW/2,py+cH/2,Math.min(cW,cH)*.28,0,Math.PI*2);ctx.fill();
+      }
+    }else if(cell===CELL.SPECIAL){
+      ctx.fillStyle='#c8a84b';ctx.fillRect(px+1,py+1,cW-2,cH-2);
+    }else if(cell===CELL.ENTRY){
+      ctx.fillStyle='#1a5a2a';ctx.fillRect(px,py,cW,cH);
+      if(!small){
+        ctx.fillStyle='#4aff6a';ctx.font=`bold ${Math.floor(cH*.65)}px monospace`;
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText('E',px+cW/2,py+cH/2);
+      }
+    }
+    if(!small){ctx.strokeStyle='rgba(0,0,0,.12)';ctx.lineWidth=.4;ctx.strokeRect(px,py,cW,cH);}
+  }
+
+  // Contour arène
+  if(!small)drawBorder(ctx,mask,cW,cH,b);
+
+  // Ennemis
+  if(enemies&&!small){
+    for(const e of enemies){
+      const et=ENEMY_TYPES.find(t=>t.id===e.type)||ENEMY_TYPES[0];
+      const px=e.x*cW,py=e.y*cH;
+      const r=Math.min(cW,cH)*.38;
+      ctx.fillStyle=et.ring;ctx.beginPath();ctx.arc(px+cW/2,py+cH/2,r+1.5,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle=et.color;ctx.beginPath();ctx.arc(px+cW/2,py+cH/2,r,0,Math.PI*2);ctx.fill();
+      ctx.fillStyle='rgba(0,0,0,.7)';
+      ctx.font=`bold ${Math.floor(r*1.1)}px monospace`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(et.symbol[0],px+cW/2,py+cH/2+.5);
+      // Badge type (2e lettre si élite)
+      if(et.symbol.length>1){
+        ctx.font=`bold ${Math.floor(r*.6)}px monospace`;
+        ctx.fillStyle='rgba(255,255,255,.9)';
+        ctx.fillText(et.symbol[1],px+cW/2+r*.5,py+cH/2-r*.4);
+      }
+    }
+  }
+}
+
+function isBorder(x,y,mask){
+  return[[0,1],[0,-1],[1,0],[-1,0]].some(([dx,dy])=>{const nx=x+dx,ny=y+dy;return nx>=0&&nx<COLS&&ny>=0&&ny<ROWS&&mask[ny][nx];});
+}
+function drawBorder(ctx,mask,cW,cH,b){
+  ctx.strokeStyle=b.accent+'bb';ctx.lineWidth=1.5;
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    if(!mask[y][x])continue;
+    const px=x*cW,py=y*cH;
+    [{dx:0,dy:-1,sx:0,sy:0,ex:cW,ey:0},{dx:0,dy:1,sx:0,sy:cH,ex:cW,ey:cH},
+     {dx:-1,dy:0,sx:0,sy:0,ex:0,ey:cH},{dx:1,dy:0,sx:cW,sy:0,ex:cW,ey:cH}]
+    .forEach(({dx,dy,sx,sy,ex,ey})=>{
+      const nx=x+dx,ny=y+dy;
+      if(nx<0||nx>=COLS||ny<0||ny>=ROWS||!mask[ny][nx]){
+        ctx.beginPath();ctx.moveTo(px+sx,py+sy);ctx.lineTo(px+ex,py+ey);ctx.stroke();
+      }
+    });
+  }
+}
+
+// ══════════════════════════════════════════════════
+// STATS & VALIDATION
+// ══════════════════════════════════════════════════
+function updateStats(){
+  if(!S.grid)return;
+  let playable=0,obs=0,interactive=0,centerFree=0,minCorridor=99;
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    if(!S.mask[y][x])continue;playable++;
+    const c=S.grid[y][x];
+    if(c===CELL.OBSTACLE||c===CELL.STRUCT||c===CELL.WALL)obs++;
+    if(c===CELL.INTERACTIVE)interactive++;
+    if(c===CELL.CENTER)centerFree++;
+  }
+  for(let y=1;y<ROWS-1;y++){let run=0;
+    for(let x=0;x<COLS;x++){
+      if(S.mask[y][x]&&S.grid[y][x]!==CELL.OBSTACLE&&S.grid[y][x]!==CELL.STRUCT&&S.grid[y][x]!==CELL.WALL)run++;
+      else run=0;
+      if(run>0&&run<minCorridor)minCorridor=run;
+    }
+  }
+  // Vérif zones isolées
+  const entry=S.entryPos||{x:1,y:Math.floor(ROWS/2)};
+  const reached=floodFill(S.grid,S.mask,entry.x,entry.y);
+  let isolated=0;
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
+    if(!S.mask[y][x])continue;
+    const c=S.grid[y][x];
+    if(c===CELL.OBSTACLE||c===CELL.STRUCT||c===CELL.WALL)continue;
+    if(!reached[y][x])isolated++;
+  }
+
+  const density=playable>0?Math.round(obs/playable*100):0;
+  const s=(id,val,cls)=>{const e=document.getElementById(id);if(e){e.textContent=val;e.className='stat-val '+(cls||'');}};
+  s('stTemplate',S.template+' · '+(TEMPLATES[S.template]?.name||''));
+  s('stShape',S.shape);
+  s('stBiome',BIOMES[S.biome].emoji+' '+BIOMES[S.biome].name);
+  s('stPlayable',playable);
+  s('stObs',obs);
+  s('stDensity',density+'%',density<=25?'good':'bad');
+  s('stCenter',centerFree>0?'✓ Dégagée':'✗ Obstruée',centerFree>0?'good':'bad');
+  s('stCorridor',minCorridor>=3?'✓ OK ('+minCorridor+')':'⚠ Étroit ('+minCorridor+')',minCorridor>=3?'good':'warn');
+  s('stIsolated',isolated===0?'✓ Aucune':'⚠ '+isolated+' cellule(s)',isolated===0?'good':'warn');
+  s('stEnemies',S.enemies.length);
+  s('stSeed',S.usedSeed);
+
+  // Badges validation
+  const vr=document.getElementById('validationRow');
+  vr.innerHTML='';
+  const addBadge=(label,ok)=>vr.insertAdjacentHTML('beforeend',`<span class="vbadge ${ok?'ok':'warn'}">${label}</span>`);
+  addBadge('Densité ≤25%',density<=25);
+  addBadge('Couloir ≥3',minCorridor>=3);
+  addBadge('Connectée',isolated===0);
+  addBadge('Zone C.',centerFree>0);
+
+  // Légende
+  buildLegend();
+  buildEnemyCount();
+}
+
+function buildLegend(){
+  const b=BIOMES[S.biome];
+  const items=[
+    [b.floor,'Sol jouable'],[b.obs,'Obstacle WFC'],[b.struct,'Obstacle structurel'],
+    [b.wall,'Mur interne'],[b.zone,'Tuile interactive'],['#c8a84b','Élément spécial'],['#1a5a2a','Entrée (E)'],
+    ...ENEMY_TYPES.map(e=>[e.color,e.label])
+  ];
+  document.getElementById('legendBlock').innerHTML=items.map(([c,l])=>
+    `<div class="leg-row"><div class="leg-sw" style="background:${c}"></div><span class="leg-lbl">${l}</span></div>`
+  ).join('');
+}
+
+function buildEnemyCount(){
+  const counts={};
+  for(const e of S.enemies)counts[e.type]=(counts[e.type]||0)+1;
+  document.getElementById('enemyCountBlock').innerHTML=
+    ENEMY_TYPES.filter(t=>counts[t.id]).map(t=>`<span style="color:${t.color}">● ${t.label}: ${counts[t.id]}</span>`).join(' &nbsp;');
+}
+
+// ══════════════════════════════════════════════════
+// INTERACTION CANVAS
+// ══════════════════════════════════════════════════
+const canvas=document.getElementById('arenaCanvas');
+let painting=false;
+
+function getCellFromEvent(e){
+  const rect=canvas.getBoundingClientRect();
+  const x=Math.floor((e.clientX-rect.left)/rect.width*COLS);
+  const y=Math.floor((e.clientY-rect.top)/rect.height*ROWS);
+  return{x:Math.max(0,Math.min(COLS-1,x)),y:Math.max(0,Math.min(ROWS-1,y))};
+}
+
+function paintCell(x,y){
+  if(!S.grid||!S.mask[y]?.[x])return;
+  const tool=S.activeTool;
+  if(tool==='enemy'){
+    // Ajouter ennemi si cellule libre
+    if(S.grid[y][x]!==CELL.OBSTACLE&&S.grid[y][x]!==CELL.STRUCT&&S.grid[y][x]!==CELL.WALL&&S.grid[y][x]!==CELL.VOID){
+      if(!S.enemies.find(e=>e.x===x&&e.y===y))
+        S.enemies.push({x,y,type:S.activeEnemy});
+    }
+  }else if(tool==='rm_enemy'){
+    S.enemies=S.enemies.filter(e=>!(e.x===x&&e.y===y));
+  }else{
+    if(S.mask[y][x])S.grid[y][x]=toolToCell(tool);
+  }
+  renderAll();updateStats();buildJSON();
+}
+
+canvas.addEventListener('mousedown',e=>{
+  if(e.button===2){e.preventDefault();showCtxMenu(e);return;}
+  painting=true;
+  const{x,y}=getCellFromEvent(e);
+  paintCell(x,y);
+});
+canvas.addEventListener('mousemove',e=>{
+  const{x,y}=getCellFromEvent(e);
+  if(painting)paintCell(x,y);
+  // Tooltip
+  if(!S.grid)return;
+  const cell=S.grid[y]?.[x];
+  const enemy=S.enemies.find(e=>e.x===x&&e.y===y);
+  const et=enemy?ENEMY_TYPES.find(t=>t.id===enemy.type):null;
+  const tip=document.getElementById('tooltip');
+  tip.style.display='block';
+  tip.style.left=(e.clientX+14)+'px';tip.style.top=(e.clientY+8)+'px';
+  tip.textContent=`[${x},${y}] ${CELL_NAMES[cell]??'?'}${et?' · '+et.label:''}${!S.mask[y]?.[x]?' (hors arène)':''}`;
+});
+canvas.addEventListener('mouseup',()=>{painting=false;});
+canvas.addEventListener('mouseleave',()=>{painting=false;document.getElementById('tooltip').style.display='none';});
+
+// Context menu
+function showCtxMenu(e){
+  if(!S.grid)return;
+  const{x,y}=getCellFromEvent(e);
+  S.ctxCell={x,y};
+  const menu=document.getElementById('ctxMenu');
+  const cell=S.grid[y]?.[x];
+  const inMask=S.mask[y]?.[x];
+  const enemy=S.enemies.find(en=>en.x===x&&en.y===y);
+
+  let html=`<div class="ctx-title">Cellule [${x},${y}]</div>`;
+  if(inMask){
+    html+=`<div class="ctx-sep"></div>`;
+    html+=`<div class="ctx-title">Changer en</div>`;
+    const cellTypes=[
+      {t:'floor',label:'Sol',c:BIOMES[S.biome].floor},
+      {t:'obstacle',label:'Obstacle',c:BIOMES[S.biome].obs},
+      {t:'struct',label:'Obs. structurel',c:BIOMES[S.biome].struct},
+      {t:'wall',label:'Mur interne',c:BIOMES[S.biome].wall},
+      {t:'center',label:'Zone centrale',c:'rgba(255,255,255,.2)'},
+      {t:'interactive',label:'Tuile interactive',c:BIOMES[S.biome].zone},
+      {t:'special',label:'Élément spécial',c:'#c8a84b'},
+      {t:'entry',label:'Entrée',c:'#1a5a2a'},
+    ];
+    cellTypes.forEach(({t,label,c})=>{
+      html+=`<div class="ctx-item" onclick="ctxSetCell('${t}')"><div class="ctx-icon" style="background:${c}"></div>${label}</div>`;
+    });
+    html+=`<div class="ctx-sep"></div><div class="ctx-title">Ennemi</div>`;
+    if(enemy){
+      html+=`<div class="ctx-item" onclick="ctxRemoveEnemy()">✕ Retirer l'ennemi</div>`;
+    }else{
+      ENEMY_TYPES.forEach(et=>{
+        html+=`<div class="ctx-item" onclick="ctxAddEnemy('${et.id}')"><div class="ctx-icon" style="background:${et.color}"></div>${et.label}</div>`;
+      });
+    }
+  }
+  html+=`<div class="ctx-sep"></div><div class="ctx-item" onclick="closeCtx()">✕ Fermer</div>`;
+  menu.innerHTML=html;
+  menu.style.display='block';
+  menu.style.left=Math.min(e.clientX,window.innerWidth-170)+'px';
+  menu.style.top=Math.min(e.clientY,window.innerHeight-300)+'px';
+}
+
+function ctxSetCell(tool){S.grid[S.ctxCell.y][S.ctxCell.x]=toolToCell(tool);renderAll();updateStats();buildJSON();closeCtx();}
+function ctxAddEnemy(type){
+  const{x,y}=S.ctxCell;
+  if(!S.enemies.find(e=>e.x===x&&e.y===y))S.enemies.push({x,y,type});
+  renderAll();updateStats();buildJSON();closeCtx();
+}
+function ctxRemoveEnemy(){
+  S.enemies=S.enemies.filter(e=>!(e.x===S.ctxCell.x&&e.y===S.ctxCell.y));
+  renderAll();updateStats();buildJSON();closeCtx();
+}
+function closeCtx(){document.getElementById('ctxMenu').style.display='none';}
+document.addEventListener('click',e=>{if(!document.getElementById('ctxMenu').contains(e.target))closeCtx();});
+// ══════════════════════════════════════════════════
+// PALETTES UI
+// ══════════════════════════════════════════════════
+function buildToolPalette(){buildToolBar();} // alias de compatibilité
+
+function buildToolBar(){
+  const bar=document.getElementById('toolBarItems');
+  if(!bar)return;
+  const activeEnemy=ENEMY_TYPES.find(e=>e.id===S.activeEnemy)||ENEMY_TYPES[0];
+  bar.innerHTML=TOOLS.map(t=>{
+    const active=t.id===S.activeTool;
+    const swatchHtml=t.isEnemy
+      ?`<span style="color:${activeEnemy.color};font-size:10px;line-height:1;">●</span>`
+      :`<span class="tb-swatch" style="background:${t.color};${t.id==='void'?'border-color:#444':''}"></span>`;
+    return`<div class="tb-btn${active?' active':''}" onclick="setTool('${t.id}')" title="${getToolTip(t.id)}">${swatchHtml}${t.label}</div>`;
+  }).join('');
+
+  const ep=document.getElementById('toolBarEnemyPick');
+  if(ep) ep.innerHTML=ENEMY_TYPES.map(et=>`
+    <div class="tb-enemy-btn${et.id===S.activeEnemy?' active':''}"
+      style="background:${et.color};border-color:${et.ring};color:rgba(0,0,0,.8);"
+      onclick="setActiveEnemy('${et.id}')"
+      title="${et.label}">${et.symbol[0]}</div>`).join('');
+}
+
+function getToolTip(id){
+  const m={
+    floor:'Sol — Peint une cellule jouable vide',
+    obstacle:'Obstacle — Place un obstacle WFC standard',
+    struct:'Obs. structurel — Obstacle du gabarit (plus robuste visuellement)',
+    wall:'Mur interne — Barrière infranchissable, sert de rail de rebond',
+    center:'Zone centrale — Marque la zone toujours dégagée au centre',
+    interactive:'Tuile interactive — Zone spéciale biome (poussière/eau/mousse/dalle)',
+    special:"Élément spécial — Autel, trône, étal marchand...",
+    entry:"Entrée — Point de spawn du joueur",
+    void:'Effacer — Retire la cellule de l\'arène jouable',
+    enemy:"Ennemi — Place le type d'ennemi sélectionné à droite →",
+    rm_enemy:"Retirer ennemi — Supprime l'ennemi sur la cellule cliquée"
+  };
+  return m[id]||'';
+}
+
+function setTool(id){S.activeTool=id;buildToolBar();}
+
+function buildEnemyPalette(){
+  const el=document.getElementById('enemyPalette');
+  if(!el)return;
+  el.innerHTML=ENEMY_TYPES.map(et=>`
+    <div class="enemy-btn${et.id===S.activeEnemy?' active':''}" onclick="setActiveEnemy('${et.id}')" title="${et.label}">
+      <div class="enemy-icon" style="background:${et.color};border-color:${et.ring}">${et.symbol[0]}</div>
+      <span class="enemy-label">${et.label}</span>
+    </div>`).join('');
+}
+
+function setActiveEnemy(id){
+  S.activeEnemy=id;
+  buildEnemyPalette();
+  buildToolBar();
+}
+
+// ══════════════════════════════════════════════════
+// JSON & BIBLIOTHÈQUE
+// ══════════════════════════════════════════════════
+function buildJSON(){
+  if(!S.grid)return;
+  const cells=[];
+  for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++)
+    if(S.mask[y][x])cells.push({x,y,t:S.grid[y][x]});
+  S.currentJSON={
+    version:2,template:S.template,shape:S.shape,biome:S.biome,
+    roomType:getRoomType(),
+    seed:S.usedSeed,density:S.density,
+    name:document.getElementById('arenaNameInput').value||'',
+    description:document.getElementById('arenaDesc').value||'',
+    entry:S.entryPos,cols:COLS,rows:ROWS,
+    enemies:S.enemies,cells
+  };
+  document.getElementById('jsonBox').textContent=JSON.stringify(S.currentJSON,null,2).substring(0,700)+'\n…';
+}
+
+function saveToLibrary(){
+  if(!S.currentJSON)return;
+  S.library.push({id:Date.now(),data:{...S.currentJSON},grid:S.grid.map(r=>[...r]),mask:S.mask.map(r=>[...r]),biome:S.biome,enemies:[...S.enemies]});
+  renderLibrary();
+}
+
+function renderLibrary(){
+  document.getElementById('libCount').textContent=S.library.length;
+  const list=document.getElementById('libraryList');
+  if(!S.library.length){list.innerHTML='<div class="empty-lib">Aucun template.</div>';return;}
+  list.innerHTML=S.library.map((item,i)=>`
+    <div class="lib-item${i===S.selLib?' sel':''}" onclick="loadLib(${i})">
+      <div class="lib-preview"><canvas id="lc_${item.id}" width="44" height="25"></canvas></div>
+      <div class="lib-info">
+        <div class="lib-name">${item.data.name||item.data.template} ${BIOMES[item.biome].emoji}</div>
+        <div class="lib-meta">${item.data.shape} · s${item.data.seed} · ${item.data.enemies.length}⚔</div>
+      </div>
+      <button class="lib-del" onclick="event.stopPropagation();delLib(${i})">✕</button>
+    </div>`).join('');
+  S.library.forEach(item=>{
+    const c=document.getElementById('lc_'+item.id);
+    if(c)render(item.grid,item.mask,item.biome,c,true,[]);
+  });
+}
+
+function loadLib(i){
+  const item=S.library[i];
+  S.grid=item.grid.map(r=>[...r]);S.mask=item.mask.map(r=>[...r]);
+  S.biome=item.biome;S.enemies=[...item.enemies];S.currentJSON={...item.data};
+  document.getElementById('arenaNameInput').value=item.data.name||'';
+  document.getElementById('arenaDesc').value=item.data.description||'';
+  document.getElementById('arenaTitle').textContent=item.data.name||'—';
+  S.selLib=i;renderAll();updateStats();renderLibrary();
+  document.getElementById('jsonBox').textContent=JSON.stringify(item.data,null,2).substring(0,700)+'\n…';
+}
+
+function delLib(i){S.library.splice(i,1);if(S.selLib>=i)S.selLib=null;renderLibrary();}
+
+function exportJSON(){
+  if(!S.currentJSON)return;
+  const blob=new Blob([JSON.stringify(S.currentJSON,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`arena_${S.template}_${S.shape}_${S.usedSeed}.json`;a.click();
+}
+
+// ══════════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════════
+buildEnemyPalette();
+generateArena(); // buildToolBar appelé après génération via buildToolPalette alias
+</script>
+</body>
+</html>
