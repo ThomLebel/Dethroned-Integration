@@ -382,3 +382,4 @@ window.PAGE_HOME = {
   // Méthodes conservées pour compatibilité (non utilisées avec le nouveau carrousel)
   carouselNext() {},
   carouselPrev() {},
+}
