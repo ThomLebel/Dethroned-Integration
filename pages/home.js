@@ -108,19 +108,31 @@ window.PAGE_HOME = {
     </div>
   </section>
 
-  <!-- ════ CARROUSEL COMPÉTENCES ════ -->
+  <!-- ════ CARROUSEL COMPÉTENCES — boucle infinie + drag ════ -->
   <section style="padding:48px 0;background:var(--bg3);border-bottom:1px solid var(--gris2);border-top:1px solid var(--gris2);overflow:hidden;">
+    <style>
+      #carousel-outer { overflow:hidden; cursor:grab; user-select:none; }
+      #carousel-outer:active { cursor:grabbing; }
+      #carousel-track {
+        display:flex; gap:12px;
+        width:max-content;
+        will-change:transform;
+      }
+      #carousel-track.is-animating { transition:transform .5s cubic-bezier(.4,0,.2,1); }
+      @keyframes marquee-scroll {
+        from { transform: translateX(0); }
+        to   { transform: translateX(var(--marquee-dist)); }
+      }
+    </style>
     <div style="padding:0 60px;margin-bottom:24px;">
       <div class="section-label">Compétences — Exemples générés</div>
       <p style="font-size:.9rem;color:var(--txt2);font-style:italic;">Combinaisons déclencheur + effet respectant les règles réelles de build (compatibilité ciblage · rareté ≤ déclencheur)</p>
     </div>
-    <div style="position:relative;overflow:hidden;">
-      <div id="carousel-track" style="display:flex;gap:12px;transition:transform .6s cubic-bezier(.4,0,.2,1);will-change:transform;padding:0 60px 0 60px;"></div>
+    <div id="carousel-outer" style="position:relative;">
+      <div id="carousel-track"></div>
     </div>
     <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-top:20px;">
-      <button onclick="PAGE_HOME.carouselPrev()" style="background:transparent;border:1px solid var(--gris2);color:var(--txt2);font-family:var(--font-mono);font-size:10px;padding:6px 14px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--or)';this.style.color='var(--or)'" onmouseout="this.style.borderColor='var(--gris2)';this.style.color='var(--txt2)'">◀</button>
       <button onclick="PAGE_HOME.carouselShuffle()" style="background:transparent;border:1px solid var(--gris2);color:var(--txt2);font-family:var(--font-mono);font-size:8px;letter-spacing:2px;padding:6px 14px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--or)';this.style.color='var(--or)'" onmouseout="this.style.borderColor='var(--gris2)';this.style.color='var(--txt2)'">↺ REGÉNÉRER</button>
-      <button onclick="PAGE_HOME.carouselNext()" style="background:transparent;border:1px solid var(--gris2);color:var(--txt2);font-family:var(--font-mono);font-size:10px;padding:6px 14px;cursor:pointer;transition:all .15s;" onmouseover="this.style.borderColor='var(--or)';this.style.color='var(--or)'" onmouseout="this.style.borderColor='var(--gris2)';this.style.color='var(--txt2)'">▶</button>
     </div>
   </section>
 
@@ -255,51 +267,118 @@ window.PAGE_HOME = {
   },
 
   _cards: [],
-  _offset: 0,
   CARD_W: 222, // card width + gap
 
   init() {
-    this._cards = this.generateSkillCards(24);
-    this._offset = 0;
-    this._renderTrack();
-    this._startAuto();
+    this._cards = this.generateSkillCards(12);
+    this._initInfiniteCarousel();
   },
 
-  _renderTrack() {
+  _initInfiniteCarousel() {
     const track = document.getElementById('carousel-track');
-    if (!track) return;
-    track.innerHTML = this._cards.map(c => this.renderCard(c)).join('');
-    track.style.transform = `translateX(-${this._offset * this.CARD_W}px)`;
-  },
+    const outer = document.getElementById('carousel-outer');
+    if (!track || !outer) return;
 
-  _startAuto() {
-    if (this._carouselTimer) clearInterval(this._carouselTimer);
-    this._carouselTimer = setInterval(() => {
-      if (!document.getElementById('carousel-track')) {
-        clearInterval(this._carouselTimer);
-        return;
+    // Tripler les cartes pour la boucle infinie (avant + milieu + après)
+    const cards = this._cards;
+    const html = [...cards, ...cards, ...cards].map(c => this.renderCard(c)).join('');
+    track.innerHTML = html;
+
+    // Largeur d'un bloc (une copie des cartes)
+    const blockW = cards.length * this.CARD_W;
+
+    // Démarrer au milieu (bloc 2 sur 3)
+    let pos = blockW;
+    track.style.transform = `translateX(-${pos}px)`;
+
+    // Animation automatique continue
+    let rafId = null;
+    let speed = 0.6; // px par frame
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartPos = 0;
+    let lastDragX = 0;
+    let velocity = 0;
+
+    const animate = () => {
+      if (!isDragging) {
+        pos += speed;
+        // Recalage silencieux pour la boucle infinie
+        if (pos >= blockW * 2) pos -= blockW;
+        if (pos < blockW)      pos += blockW;
+        track.style.transform = `translateX(-${pos}px)`;
       }
-      this.carouselNext();
-    }, 2800);
-  },
+      rafId = requestAnimationFrame(animate);
+    };
 
-  carouselNext() {
-    const maxOffset = Math.max(0, this._cards.length - 5);
-    this._offset = this._offset >= maxOffset ? 0 : this._offset + 1;
-    const track = document.getElementById('carousel-track');
-    if (track) track.style.transform = `translateX(-${this._offset * this.CARD_W}px)`;
-  },
+    // Stocker pour cleanup
+    this._rafId = rafId;
+    this._stopCarousel = () => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = null;
+    };
 
-  carouselPrev() {
-    const maxOffset = Math.max(0, this._cards.length - 5);
-    this._offset = this._offset <= 0 ? maxOffset : this._offset - 1;
-    const track = document.getElementById('carousel-track');
-    if (track) track.style.transform = `translateX(-${this._offset * this.CARD_W}px)`;
+    // Démarrer l'animation
+    rafId = requestAnimationFrame(animate);
+    this._stopCarousel = () => cancelAnimationFrame(rafId);
+
+    // ── Drag'n'drop ─────────────────────────────────────────
+    const onPointerDown = (e) => {
+      isDragging = true;
+      dragStartX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+      dragStartPos = pos;
+      lastDragX = dragStartX;
+      velocity = 0;
+      track.classList.remove('is-animating');
+      outer.style.cursor = 'grabbing';
+    };
+
+    const onPointerMove = (e) => {
+      if (!isDragging) return;
+      const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+      const dx = clientX - dragStartX;
+      velocity = clientX - lastDragX;
+      lastDragX = clientX;
+      pos = dragStartPos - dx;
+      // Recalage pendant le drag
+      if (pos >= blockW * 2) pos -= blockW;
+      if (pos < blockW)      pos += blockW;
+      track.style.transform = `translateX(-${pos}px)`;
+    };
+
+    const onPointerUp = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      outer.style.cursor = 'grab';
+      // Impulsion basée sur la vélocité du drag
+      speed = Math.max(0.2, Math.min(3, 0.6 - velocity * 0.1));
+    };
+
+    outer.addEventListener('mousedown',  onPointerDown);
+    outer.addEventListener('touchstart', onPointerDown, { passive: true });
+    window.addEventListener('mousemove',  onPointerMove);
+    window.addEventListener('touchmove',  onPointerMove, { passive: true });
+    window.addEventListener('mouseup',    onPointerUp);
+    window.addEventListener('touchend',   onPointerUp);
+
+    // Stopper l'animation si on quitte la page
+    this._stopCarousel = () => {
+      cancelAnimationFrame(rafId);
+      outer.removeEventListener('mousedown',  onPointerDown);
+      outer.removeEventListener('touchstart', onPointerDown);
+      window.removeEventListener('mousemove',  onPointerMove);
+      window.removeEventListener('touchmove',  onPointerMove);
+      window.removeEventListener('mouseup',    onPointerUp);
+      window.removeEventListener('touchend',   onPointerUp);
+    };
   },
 
   carouselShuffle() {
-    this._cards = this.generateSkillCards(24);
-    this._offset = 0;
-    this._renderTrack();
+    if (this._stopCarousel) this._stopCarousel();
+    this._cards = this.generateSkillCards(12);
+    this._initInfiniteCarousel();
   },
-};
+
+  // Méthodes conservées pour compatibilité (non utilisées avec le nouveau carrousel)
+  carouselNext() {},
+  carouselPrev() {},

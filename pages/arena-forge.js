@@ -20,8 +20,8 @@ window.PAGE_ARENA_FORGE = {
       document.head.appendChild(st);
     }
 
-    // Injecter le HTML
-    wrap.innerHTML = AF_BODY_HTML;
+    // Injecter le HTML (enveloppé dans #tool-af pour que le CSS scopé s'applique)
+    wrap.innerHTML = `<div id="tool-af" style="display:flex;flex-direction:column;height:100%;">${AF_BODY_HTML}</div>`;
 
     // Injecter le script (rechargement à chaque visite pour réinitialiser l'état)
     const old = document.getElementById('script-tool-af');

@@ -17,7 +17,7 @@ window.PAGE_MOCKUPS = {
       document.head.appendChild(st);
     }
 
-    wrap.innerHTML = MOCK_BODY_HTML;
+    wrap.innerHTML = `<div id="tool-mock">${MOCK_BODY_HTML}</div>`;
 
     const old = document.getElementById('script-tool-mock');
     if (old) old.remove();

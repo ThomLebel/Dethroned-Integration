@@ -150,10 +150,10 @@ const SPA = {
     if (!cfg.module) cfg.module = window[cfg.key];
     if (!cfg.module) { console.error('Module not found:', cfg.key); return; }
 
-    // Arrêter le timer carrousel si on quitte home
-    if (this.current === 'home' && window.PAGE_HOME && window.PAGE_HOME._carouselTimer) {
-      clearInterval(window.PAGE_HOME._carouselTimer);
-      window.PAGE_HOME._carouselTimer = null;
+    // Arrêter le carrousel si on quitte home
+    if (this.current === 'home' && window.PAGE_HOME && window.PAGE_HOME._stopCarousel) {
+      window.PAGE_HOME._stopCarousel();
+      window.PAGE_HOME._stopCarousel = null;
     }
 
     history.replaceState(null, '', '#' + page);

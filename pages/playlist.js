@@ -29,7 +29,7 @@ window.PAGE_PLAYLIST = {
 
   <div style="padding:48px 60px;display:flex;flex-direction:column;gap:40px;">
 
-    <!-- ══ YOUTUBE — Lecteur embarqué natif ══ -->
+    <!-- ══ YOUTUBE — Widget compact audio-style ══ -->
     <div>
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px;">
         <div style="display:flex;align-items:center;justify-content:center;width:36px;height:36px;background:#ff0000;border-radius:50%;">
@@ -41,15 +41,37 @@ window.PAGE_PLAYLIST = {
         </div>
         <a href="https://youtube.com/playlist?list=${this.YT_PLAYLIST_ID}" target="_blank" style="margin-left:auto;font-family:var(--font-mono);font-size:8px;color:var(--txt3);letter-spacing:1px;text-decoration:none;border:1px solid var(--gris2);padding:5px 10px;transition:all .15s;" onmouseover="this.style.borderColor='var(--or)';this.style.color='var(--or)'" onmouseout="this.style.borderColor='var(--gris2)';this.style.color='var(--txt3)'">Ouvrir YouTube ↗</a>
       </div>
-      <div style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;background:var(--bg2);border:1px solid var(--gris2);">
-        <iframe
-          style="position:absolute;top:0;left:0;width:100%;height:100%;border:none;"
-          src="https://www.youtube.com/embed/videoseries?list=${this.YT_PLAYLIST_ID}&autoplay=0&rel=0&modestbranding=1&color=white"
-          title="Dethroned — Playlist YouTube"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowfullscreen
-          loading="lazy">
-        </iframe>
+      <!-- Couverture + player compact (pas d'iframe vidéo plein écran) -->
+      <div style="display:flex;gap:20px;background:var(--bg2);border:1px solid var(--gris2);overflow:hidden;">
+        <!-- Couverture artwork -->
+        <div style="position:relative;width:200px;min-height:200px;flex-shrink:0;background:linear-gradient(135deg,#1a1408 0%,#2a1c0e 50%,#1a1408 100%);display:flex;align-items:center;justify-content:center;">
+          <div style="text-align:center;">
+            <div style="font-size:48px;margin-bottom:8px;filter:drop-shadow(0 0 12px rgba(200,149,42,.4));">🎵</div>
+            <div style="font-family:var(--font-display);font-size:9px;color:var(--or);letter-spacing:2px;">DETHRONED</div>
+            <div style="font-family:var(--font-mono);font-size:7px;color:var(--txt3);letter-spacing:1px;margin-top:3px;">PLAYLIST</div>
+          </div>
+          <!-- Overlay gradient -->
+          <div style="position:absolute;inset:0;background:linear-gradient(to right,transparent 60%,var(--bg2));pointer-events:none;"></div>
+        </div>
+        <!-- Liste des tracks YouTube -->
+        <div style="flex:1;padding:16px 20px;display:flex;flex-direction:column;gap:6px;overflow:hidden;">
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--txt3);letter-spacing:2px;margin-bottom:4px;text-transform:uppercase;">Références musicales</div>
+          ${GD_PLAYLIST.filter(t => t.plateforme === 'YouTube').map((t, i) => `
+            <a href="${t.url}" target="_blank" style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--bg3);border:1px solid var(--gris2);border-left:2px solid #ff0000;text-decoration:none;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--or)'" onmouseout="this.style.borderColor='var(--gris2)'">
+              <div style="width:24px;height:24px;background:#ff0000;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                <svg width="8" height="8" viewBox="0 0 24 24" fill="white"><path d="M9.54 15.57V8.43L15.82 12l-6.28 3.57z"/></svg>
+              </div>
+              <div style="flex:1;min-width:0;">
+                <div style="font-family:var(--font-display);font-size:.82rem;color:var(--creme);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.titre}</div>
+                <div style="font-family:var(--font-mono);font-size:7px;color:var(--txt2);margin-top:2px;">${t.artiste} · ${t.style}</div>
+              </div>
+              <div style="font-family:var(--font-mono);font-size:7px;color:var(--txt3);flex-shrink:0;">▶ Écouter ↗</div>
+            </a>
+          `).join('')}
+          <div style="font-family:var(--font-mono);font-size:8px;color:var(--txt3);letter-spacing:1px;line-height:1.8;margin-top:8px;padding-top:8px;border-top:1px solid var(--gris2);">
+            Playlist complète disponible sur YouTube. Cliquez sur une piste pour l'ouvrir.
+          </div>
+        </div>
       </div>
     </div>
 
